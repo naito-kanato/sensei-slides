@@ -1,0 +1,32 @@
+{
+  "label": "下の帯",
+  "structure": "下の帯",
+  "palette": "青",
+  "desc": "左上の縦棒とタイトル、下の帯に結論の1行（ゼミの基本の形）",
+  "colors": {
+    "TEXT": "545455",
+    "RED": "FF0000",
+    "BULLET": "005AFF",
+    "BAND": "215F99",
+    "ARROW": "4E95D9",
+    "PALE": "DCE9F7",
+    "LIGHT": "F2F2F2",
+    "CONCLUDE": "FBE3D6",
+    "ACCENT": "4E95D9",
+    "TINT": "EAF1FA"
+  },
+  "band_align": "c",
+  "conclusion": "band",
+  "area": {
+    "x": 1.0,
+    "top": 1.9,
+    "right": 12.33,
+    "bottom": 6.62,
+    "heading": [
+      0.55,
+      1.14
+    ],
+    "fig_x": 7.6
+  },
+  "title_color": "ink"
+}

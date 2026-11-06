@@ -1,0 +1,8 @@
+# sensei-slides の Python 依存（pip install -r requirements.txt）
+# PowerPoint 本体（Windows）は render_check.ps1 / export_pdf.ps1 だけが使う。pptx の生成はこれだけで動く。
+python-pptx
+PyMuPDF>=1.24.3
+Pillow
+matplotlib
+numpy
+scipy

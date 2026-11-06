@@ -1,0 +1,38 @@
+{
+  "label": "左の淡い柱",
+  "structure": "左の淡い柱",
+  "palette": "珊瑚",
+  "desc": "左の 34% の淡い柱にタイトル・結論・短い要点、右に図を大きく（図が主役の枚）",
+  "colors": {
+    "TEXT": "3A3A3A",
+    "RED": "B42318",
+    "BULLET": "E8604C",
+    "BAND": "5A2E28",
+    "ARROW": "EE9A8C",
+    "PALE": "FCE3DD",
+    "LIGHT": "F6F1EF",
+    "CONCLUDE": "FCE3DD",
+    "ACCENT": "E8604C",
+    "TINT": "FBE7E1"
+  },
+  "band_align": "c",
+  "conclusion": "column",
+  "area": {
+    "x": 0.5,
+    "top": 2.75,
+    "right": 12.9,
+    "bottom": 6.95,
+    "heading": [
+      0.45,
+      2.2
+    ],
+    "fig_x": 4.95,
+    "text_right": 4.2,
+    "column": [
+      0.45,
+      1.05,
+      3.8
+    ]
+  },
+  "title_color": "main"
+}

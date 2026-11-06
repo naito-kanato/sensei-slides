@@ -1,0 +1,37 @@
+{
+  "label": "結論ヘッダー",
+  "structure": "結論ヘッダー",
+  "palette": "墨と藍",
+  "desc": "上に小さく話題と見出し、その下に大きく結論の一文（左に主色の短い縦棒）、細い線で本文と分ける。下の帯は無く、本文が一番広い",
+  "colors": {
+    "TEXT": "262626",
+    "RED": "C00000",
+    "BULLET": "2F75B5",
+    "BAND": "1F3864",
+    "ARROW": "9DB9D8",
+    "PALE": "DEEAF6",
+    "LIGHT": "F2F2F2",
+    "CONCLUDE": "FBE3D6",
+    "ACCENT": "2F75B5",
+    "TINT": "EEF3F9"
+  },
+  "band_align": "c",
+  "conclusion": "header",
+  "area": {
+    "x": 0.9,
+    "top": 1.72,
+    "right": 12.43,
+    "bottom": 6.95,
+    "heading": [
+      0.66,
+      0.58
+    ],
+    "fig_x": 7.5,
+    "message": [
+      0.66,
+      0.56
+    ]
+  },
+  "title_color": "main",
+  "arrow": "thin"
+}

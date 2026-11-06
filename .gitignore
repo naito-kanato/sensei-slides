@@ -1,0 +1,27 @@
+__pycache__/
+*.pyc
+/_work/
+# 見本を動かしたときにできるもの
+examples/zemi/build/
+examples/zemi/render/
+examples/zemi/figs/
+examples/zemi/*.pptx
+examples/zemi/*_原稿.html
+examples/template/build/
+examples/template/render/
+examples/template/*.pptx
+examples/course/_work/*/build/
+examples/course/_work/*/render/
+examples/course/_work/*/figs/
+examples/course/*/*.pptx
+examples/course/*/*_原稿.html
+*_コメント*.json
+スライド作成プロフィール.md
+~$*.pptx
+examples/structures/build/
+examples/structures/render*/
+examples/structures/figs/
+examples/structures/*.pptx
+
+# 配布の一式（tools/make_starter.py が作る）
+/dist/

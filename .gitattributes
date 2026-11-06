@@ -1,0 +1,3 @@
+# 配布の一式：Mac・Linux のシェルスクリプトは LF、Windows のバッチは CRLF（どの PC で zip を作っても同じに）
+*.sh text eol=lf
+*.bat text eol=crlf

@@ -1,0 +1,365 @@
+"""構成案（outline.md）・設計メモ（memo.md）の表から、build.py と notes.md の骨組みを作る。決まった形の部分を AI が書かずに済ませる
+（書いた量は読む量の約8倍の重さで使用量に数えられる）。
+
+    python <skill>/scripts/scaffold.py <work>           # <work>/build.py と <work>/notes.md を作る（すでにあれば作らない）
+    python <skill>/scripts/scaffold.py <work> --force   # 上書きする（書きかけを捨てるので、ふつうは使わない）
+    python <skill>/scripts/scaffold.py <work> --merge   # 書き手が書いた parts/NN.py・parts/NN.md を build.py・notes.md の N 枚目に戻す
+    python <skill>/scripts/scaffold.py <work> --source <資料.pdf|.txt>   # カードに入れる抜き出しの資料（省くと 資料/ に1つだけある PDF・テキスト）
+
+骨組みに入るもの
+  build.py：スキルの読み込み、Deck、表紙、枚ごとに deck.slide(タイトル, summary=青帯) と s.heading(●見出し)、
+            本文の形の列に合った部品の呼び出し（本文の要点の列の語を入れておく）、図の行（図で見せるものの列。コメントにしてある）、
+            確認問題・解答の枚（役割の列）。「TODO」の所を中身に書き換える
+  notes.md：枚ごとの「## 番号」と、その枚の目安（字数・ノートへの列・原稿に回した手当て）をコメントで
+  cards/NN.md：本文の枚ごとのカード。その枚を書くのに要るものだけ（筋の問いと答え・前とこの枚と次の青帯・前の枚からの語と書き方・
+            見出し・本文の形・要点・図・ノートへ・手当て・資料の範囲とその抜き出し（excerpt.py）・使う部品の書き方・目安・骨組みのコード）。書き手はカードとその範囲の資料だけを見て、
+            1枚ずつ parts/NN.py（build.py のその枚の所）と parts/NN.md（原稿）を書く。全ページを一度に書かない（SKILL.md 手順4）
+骨組みのあと：figs.py に図を描き、build.py の TODO と図の行、notes.md を書いて、make_deck.py で組んで検査する。
+"""
+from __future__ import annotations
+
+import os
+import re
+import sys
+from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+HERE = Path(__file__).resolve().parent
+SKILL = HERE.parent
+sys.path.insert(0, str(HERE))
+
+EMPTY = ("", "—", "-", "－", "なし")
+
+
+def q(s: str) -> str:
+    """Python の文字列の中身に（" と \\ を逃がす）。"""
+    return (s or "").replace("\\", "\\\\").replace('"', '\\"')
+
+
+def items_of(cell: str):
+    """本文の要点のセル → 項目のリスト（／ / ； 改行で分ける。「★」の付いた項目は赤字 {r:…} にする）。
+    「・」では分けない（「眠気・気分・集中」のような並びを1項目に保つ）。"""
+    cell = re.sub(r"<br\s*/?>", "／", cell or "")
+    parts = [p.strip() for p in re.split(r"\s*(?:／|/|；|;)\s*", cell) if p.strip()]
+    return [underline(red(re.sub(r"\s*〔[^〕]*〕", "", p))) for p in parts[:5]]
+
+
+def underline(p: str) -> str:
+    """「PSR B1913+16（下線）」→「{u:PSR B1913+16}」（構成案の下線の印を、骨組みの書き方に）。"""
+    return re.sub(r"((?:[A-Za-z0-9+\-.]+ )*[A-Za-z0-9+\-.]+|[^\sA-Za-z0-9・、：:／/（(]+)（下線）", r"{u:\1}", p)
+
+
+def red(p: str) -> str:
+    """「★」の付いた要点 → 赤字。★が語の前にあれば、そこから次の「・」「、」「（」までだけ（「腕 4 km・★他方は収縮・…」）。
+    ★が頭か終わりにだけあれば、「見出し：説明」の説明の側（無ければ全体）を赤字にする（設計メモで決めた強調を骨組みに残す）。"""
+    if "★" not in p:
+        return p
+    m = re.search(r"★([^・、，,（(）)★]+)", p)
+    core = p.replace("★", "").strip()
+    if m and not p.strip().startswith("★") and m.group(1).strip():
+        seg = m.group(1).rstrip()
+        return (p[:m.start()] + "{r:" + seg + "}" + p[m.start() + 1 + len(seg):]).replace("★", "")
+    h, sep, rest = core.partition("：")
+    return f"{h}：{{r:{rest.strip()}}}" if sep and rest.strip() else f"{{r:{core}}}"
+
+
+def plan(work: Path):
+    """(kind, 題, 行のリスト[{列名: 値}], 手当て {番号: 行})。"""
+    from check_memo import table_rows
+    import check_notes
+    if (work / "memo.md").exists():
+        kind, src, sec = "memo", work / "memo.md", "話の順番"
+    elif (work / "outline.md").exists():
+        kind, src, sec = "outline", work / "outline.md", "構成"
+    elif (work / "answers.md").exists():          # 質問回答デッキ：answers.md の「## 構成」の表（コメント・元の枚の列つき）
+        kind, src, sec = "answers", work / "answers.md", "構成"
+    else:
+        raise SystemExit(f"{work} に outline.md も memo.md も無い（先に構成案・設計メモを作る）")
+    text = src.read_text(encoding="utf-8")
+    rows = table_rows(text, sec)
+    if not rows:
+        raise SystemExit(f"{src.name} に「{sec}」の表が無い")
+    head = [h.strip() for h in rows[0]]
+    out = []
+    for r in rows[1:]:
+        if not r or not r[0].strip().isdigit():
+            continue
+        out.append({h: (r[k].strip() if k < len(r) else "") for k, h in enumerate(head)} | {"#": int(r[0])})
+    m = re.search(r"^#\s+(?:設計メモ|構成案)[^：:]*[：:]\s*(.+?)\s*(?:（[^）]*）)?\s*$", text, re.M)
+    title = m.group(1).strip() if m else work.name
+    care = {}
+    for n, say, terms, line in check_notes.care_items(text):
+        care.setdefault(n, []).append(re.sub(r"^\s*[-*]\s*", "", line))
+    return kind, title, out, care
+
+
+def col(row, *names):
+    for n in names:
+        for k, v in row.items():
+            if isinstance(k, str) and n in k:
+                return v
+    return ""
+
+
+def qs(items):
+    """["a", "b"] の形の文字列（f 文字列の中に \\ を書かないため）。"""
+    return ", ".join('"' + q(p) + '"' for p in items)
+
+
+def form_code(forms: str, pts):
+    """本文の形 → 部品の呼び出しの行（要点を入れておく。TODO を書き換える）。"""
+    out = []
+    keys = [f.strip() for f in re.split(r"[・、,＋+]", forms or "") if f.strip()]
+    allpts = list(pts) or ["TODO 要点"]
+    used = 0
+    for i, k in enumerate(keys or ["箇条"]):
+        pts = allpts[used:] if i else allpts          # 2つ目からの形は、前の形が使わなかった要点だけ
+        if not pts:
+            pts = ["TODO 要点（この形で見せる所）"]
+        used += {"ラベル": 4, "手順": 4, "場合分け": 3, "帰結": 3, "展開": 2, "縦の結論": 2, "問い": 1}.get(k, 4)
+        if k == "帰結":
+            out.append("s.lead([" + qs(pts[:3]) + '], "TODO 帰結の一言（赤字になる）")')
+        elif k == "ラベル":
+            for p in pts[:4]:
+                h, _, rest = p.partition("：") if "：" in p else (p, "", "")
+                out.append(f's.block("{q(h)}：", ["{q(rest) or "TODO 説明"}"])')
+        elif k == "展開":
+            out.append(f's.develop("{q(pts[0])}", "{q(pts[1]) if len(pts) > 1 else "TODO 結果"}")')
+        elif k == "縦の結論":
+            out.append(f's.lead_down("{q(pts[0])}", "{q(pts[-1]) if len(pts) > 1 else "TODO 結論"}")')
+        elif k == "場合分け":
+            out.append("s.cases([" + ", ".join(f'("{q(p)}", "TODO 説明")' for p in pts[:3]) + "])")
+        elif k == "問い":
+            out.append(f's.ask("{q(pts[0])}？", "TODO 確かめた結果")')
+        elif k == "手順":
+            out.append("s.numbered([" + qs(pts[:4]) + "])")
+        elif k == "式の注釈":
+            out.append('# TODO 式と項の注釈：s.peq(...) と s.defs(...)（references/structures.md「式の注釈」）')
+        else:
+            out += [f's.p("{q(p)}")' for p in pts[:4]]
+    return out
+
+
+def build_py(work: Path, kind, title, rows) -> str:
+    try:
+        rel = os.path.relpath(SKILL / "scripts", work).replace("\\", "/")
+    except ValueError:      # Windows でドライブが違う（作業フォルダが C:、スキルが D: など）ときは、絶対パスで
+        rel = (SKILL / "scripts").as_posix()
+    if kind == "memo":
+        course = re.sub(r"_\d{2}$", "", work.name)
+        num = re.search(r"_(\d{2})$", work.name)
+        nn = num.group(1) if num else "01"
+        short_title = q(re.sub(r"^第\d+回\s*", "", title))
+        out_line = f'OUT = HERE.parents[1] / "{q(course)}" / "{nn}_{short_title}_スライド.pptx"'
+    elif kind == "answers":
+        out_line = 'OUT = HERE / "TODO_質問回答_スライド.pptx"   # 元のデッキと同じフォルダ・「<資料名>_質問回答_スライド.pptx」に'
+    else:
+        out_line = f'OUT = HERE.parents[1] / "{q(work.name)}" / "{q(work.name)}_スライド.pptx"   # 発表フォルダ（資料置き場と同じ）。一覧の「出力先」があれば合わせる'
+    L = [f'"""{title}（{kind == "memo" and "設計メモ memo.md" or "構成案 outline.md"} の表から scaffold.py が作った骨組み。TODO を書き換える）。',
+         "",
+         "    python <skill>/scripts/make_deck.py <この作業フォルダ>   # 図→組む→描く→検査を1回で",
+         '"""',
+         "import sys",
+         "from pathlib import Path",
+         "",
+         "HERE = Path(__file__).resolve().parent",
+         f'sys.path.insert(0, str((HERE / "{rel}").resolve()))',
+         "from set_notes import load_notes  # noqa: E402",
+         "from slide_profile import author, deck_options, load_profile  # noqa: E402",
+         "from zemi import Deck  # noqa: E402",
+         "",
+         f'T = "{q(title)}"',
+         'FIG = HERE / "figs"',
+         out_line,
+         "",
+         "P = load_profile(HERE)",
+         'AUTHOR = author(P) or "TODO 名前"',
+         'deck = Deck(workdir=HERE / "build", **deck_options(P))   # テンプレートを選ぶなら deck_options(P, name="テンプレート2") など',
+         ""]
+    if any(col(r, "役割") in ("確認問題", "解答") for r in rows):
+        L += ["",
+              "def qa(s, items, size=20, gap=0.45):",
+              '    """確認問題・解答の本文。items = [(番号, 本文)]。番号は「1-1」の形（原稿HTMLの「1-1 に答える」ボタンになる）"""',
+              "    s.at(1.0, 2.0)",
+              "    for j, (k, txt) in enumerate(items):",
+              '        s.p("{b:" + k + "}　" + txt, size=size, gap=gap if j < len(items) - 1 else 0.2)',
+              ""]
+    for r in rows:
+        n, role = r["#"], col(r, "役割") or "本文"
+        head = col(r, "●見出し")
+        stitle = col(r, "タイトル") if kind == "outline" else ""
+        stitle = stitle if stitle not in EMPTY and "表紙" not in stitle and "区切り" not in stitle else ""
+        summary = col(r, "青帯", "結論")
+        fig = col(r, "図で見せるもの", "図")
+        pts = items_of(col(r, "本文の要点"))
+        L.append(f"# {'-' * 64} {n} {head if head not in EMPTY else role}")
+        if role == "表紙":
+            lines = pts[:1] if pts and kind == "outline" else ["T"]
+            first = f'["{q(lines[0])}"]' if lines != ["T"] else "[T]"
+            L.append(f"deck.title_slide({first}, author=AUTHOR)" if n == 1 else
+                     f'deck.title_slide(["TODO 題名"], subtitle="TODO")   # 論文の表紙など（{q(fig) or "表紙"}）')
+        elif role == "区切り":
+            L.append(f'deck.section({n}, "{q(head or "TODO 章の名前")}")')
+        elif role in ("確認問題", "解答"):
+            L.append("s = deck.slide(T)   # summary なし：帯も●も無い枚になる")
+            L.append(f's.heading("{q(head or role)}")')
+            L.append(f'qa(s, [("TODO 番号", "TODO {role}の本文")])   # 設計メモの6節から')
+        elif role != "本文":
+            L.append(f's = deck.slide("{q(stitle or head or role)}")   # {role}：結論なし（帯も●も無い枚）')
+            L.append('s.p("TODO")')
+        else:
+            first = ('"' + q(stitle) + '"') if stitle else "T"
+            summ = q(summary) if summary not in EMPTY else "TODO 結論の一文"
+            L.append(f's = deck.slide({first}, summary="{summ}")')
+            if head not in EMPTY:
+                L.append(f's.heading("{q(head)}")')
+            L += form_code(col(r, "本文の形"), pts)
+            if fig not in EMPTY and re.match(r"\s*(表|大きな数字)", fig):
+                L.append(f'# TODO {fig[:60]}（画像ではなく s.table か本文の部品で）')
+            elif fig not in EMPTY:
+                L.append(f'# s.figure_beside(FIG / "s{n:02d}.png", caption="（TODO 出典）")   # 図：{fig[:60]}（図は figs/s{n:02d}.png）')
+        L.append("")
+    L += ['NOTES = load_notes(HERE / "notes.md")',
+          "for i, sl in enumerate(deck.slides, 1):",
+          "    if i in NOTES:",
+          "        sl.notes(NOTES[i])",
+          "OUT.parent.mkdir(parents=True, exist_ok=True)",
+          "deck.save(OUT, title=T, author=AUTHOR)"]
+    return "\n".join(L) + "\n"
+
+
+def notes_md(kind, rows, care, minutes=None) -> str:
+    body = [r for r in rows if (col(r, "役割") or "本文") == "本文"]
+    per = f"{minutes * 300 / max(len(body), 1):.0f}字" if minutes else "400字"
+    L = []
+    for r in rows:
+        n, role = r["#"], col(r, "役割") or "本文"
+        note = col(r, "ノートへ", "ノート")
+        hint = [f"目安 {per}前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ）" if role == "本文" else f"{role}の枚"]
+        link = col(r, "前の枚から")
+        if role == "本文" and link not in EMPTY:
+            hint.append(f"前の枚から：{link}（1文目でこの語のつながりを言う）")
+        if note not in EMPTY:
+            hint.append(f"ノートへ：{note}")
+        for c in care.get(n, []):
+            hint.append(f"手当て：{c}")
+        L += [f"## {n}", "<!-- " + " ／ ".join(hint).replace("--", "—") + " -->", "", "TODO", ""]
+    return "\n".join(L)
+
+
+MARK = re.compile(r"^# -{64} (\d+)\b.*$", re.M)
+
+
+def blocks(build_text: str):
+    """build.py の枚ごとの所 {番号: (始め, 終わり)}（印の行の次から、次の印か NOTES = の前まで）。"""
+    marks = list(MARK.finditer(build_text))
+    end_all = build_text.find("\nNOTES = ")
+    end_all = len(build_text) if end_all < 0 else end_all + 1
+    out = {}
+    for k, m in enumerate(marks):
+        a = m.end() + 1
+        b = marks[k + 1].start() if k + 1 < len(marks) else end_all
+        out[int(m.group(1))] = (a, b)
+    return out
+
+
+def note_sections(text: str):
+    """notes.md の {番号: (始め, 終わり)}（「## N」の次の行から、次の「## 」の前まで）。"""
+    heads = list(re.finditer(r"^##\s*(\d+)\s*$", text, re.M))
+    return {int(h.group(1)): (h.end() + 1, heads[k + 1].start() if k + 1 < len(heads) else len(text))
+            for k, h in enumerate(heads)}
+
+
+def cards(work: Path, kind, rows, care, minutes=None, source=None):
+    """本文の枚ごとの書き手のカード（cards.py の writer）。{番号: カード} と {"資料N.md": 抜き出し}。"""
+    import cards as cardmod
+    return cardmod.writer(work, kind, rows, care, minutes, source)
+
+
+def api_lines(forms: str, figure: bool, table: bool):
+    import cards as cardmod
+    return cardmod.api_lines(forms, figure, table)
+
+
+def merge(work: Path):
+    """parts/NN.py・parts/NN.md を build.py・notes.md の N 枚目に戻す。(戻した番号, 青帯が構成案と違って戻さなかった番号) を返す。"""
+    parts = work / "parts"
+    bp, npth = work / "build.py", work / "notes.md"
+    b, nt = bp.read_text(encoding="utf-8"), npth.read_text(encoding="utf-8")
+    done, refused = [], []
+    _, _, rows, _ = plan(work)
+    want = {r["#"]: col(r, "青帯", "結論") for r in rows}
+    for f in sorted(parts.glob("[0-9][0-9].py"), key=lambda p: -int(p.stem)):   # 後ろの枚から（前の位置がずれない）
+        n = int(f.stem)
+        m = re.search(r'summary\s*=\s*"((?:[^"\\]|\\.)*)"', f.read_text(encoding="utf-8"))
+        if m and want.get(n) not in EMPTY and m.group(1).replace('\\"', '"') != want.get(n):
+            print(f"✘ parts/{f.name}：青帯が構成案と違う（「{m.group(1)}」≠「{want.get(n)}」）。戻さなかった。"
+                  "上の段で決めたことは変えない：変えるなら先に構成案（設計メモ）を直してから書き直す")
+            refused.append(n)
+            continue
+        bl = blocks(b)
+        if n not in bl:
+            print(f"・parts/{f.name}：build.py に {n} 枚目の印（# ---- {n}）が無い。戻さなかった")
+            continue
+        a, e = bl[n]
+        body = MARK.sub("", f.read_text(encoding="utf-8")).strip("\n") + "\n\n"
+        b = b[:a] + body + b[e:]
+        done.append(n)
+    for f in sorted(parts.glob("[0-9][0-9].md"), key=lambda p: -int(p.stem)):
+        n = int(f.stem)
+        sec = note_sections(nt)
+        if n not in sec:
+            print(f"・parts/{f.name}：notes.md に「## {n}」が無い。戻さなかった")
+            continue
+        a, e = sec[n]
+        body = re.sub(r"^##\s*\d+\s*\n", "", f.read_text(encoding="utf-8").lstrip()).strip("\n") + "\n\n"
+        nt = nt[:a] + body + nt[e:]
+        done.append(n)
+    bp.write_text(b, encoding="utf-8")
+    npth.write_text(nt, encoding="utf-8")
+    return sorted(set(done)), refused
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv:
+        print(__doc__)
+        return 1
+    work = Path(argv[0]).resolve()
+    force = "--force" in argv
+    if "--merge" in argv:
+        done, refused = merge(work)
+        b = (work / "build.py").read_text(encoding="utf-8")
+        left = [n for n, (x, y) in sorted(blocks(b).items()) if "TODO" in b[x:y]]
+        print(f"戻した：{'・'.join(map(str, done)) or 'なし'}" + (f"。build.py に TODO が残る枚：{'・'.join(map(str, left))}" if left else "")
+              + ("。次は make_deck.py" if not refused else ""))
+        return 1 if refused else 0
+    kind, title, rows, care = plan(work)
+    import check_notes
+    minutes = check_notes.talk_minutes((work / {"memo": "memo.md", "answers": "answers.md"}.get(kind, "outline.md")).read_text(encoding="utf-8"))
+    made = []
+    cd = work / "cards"
+    if force or not cd.exists():
+        cd.mkdir(exist_ok=True)
+        import excerpt
+        src = Path(argv[argv.index("--source") + 1]).resolve() if "--source" in argv else excerpt.find_source(work)
+        for n, text in cards(work, kind, rows, care, minutes, src).items():
+            (cd / (f"{n:02d}.md" if isinstance(n, int) else n)).write_text(text, encoding="utf-8")
+        (work / "parts").mkdir(exist_ok=True)
+        made.append(f"cards/（本文 {len(list(cd.glob('[0-9]*.md')))}枚" + (f"、{src.name} の抜き出しつき）" if src else "。資料の抜き出しなし：--source で渡せる）"))
+    for name, text in (("build.py", build_py(work, "outline" if kind == "answers" else kind, title, rows) if kind != "answers"
+                         else build_py(work, kind, title, rows)), ("notes.md", notes_md(kind, rows, care, minutes))):
+        p = work / name
+        if p.exists() and not force:
+            print(f"・{name} はもうある（作らなかった。作り直すなら --force）")
+            continue
+        p.write_text(text, encoding="utf-8")
+        made.append(name)
+    if made:
+        print(f"作った：{'・'.join(made)}（{len(rows)}枚）。TODO と、コメントにした図の行を書き換えてから make_deck.py")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

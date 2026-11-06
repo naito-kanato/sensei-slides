@@ -1,0 +1,66 @@
+# Codex 用：このスキルの PowerPoint を使うスクリプトだけを、確認なしでサンドボックスの外で動かす。
+#
+# 置き場所：スライドを作るフォルダの .codex/rules/sensei-slides.rules
+#   （Codex は、そのフォルダを「信頼する」にしたときだけ読む）
+#   全部のフォルダで使うなら ~/.codex/rules/ に置く。
+# スキルを .agents/skills/sensei-slides/ に置いた場合の書き方。ほかの場所なら、下のパスを書き換える。
+#
+# PowerPoint はサンドボックスの中からは開けない（80070005 Access is denied）。ここで許すのは次のものだけ：
+#   render_check.ps1（描画の検査）・export_pdf.ps1（PDF の書き出し）・notes_html.py（原稿のページ。中で PDF を書き出す）
+#   と、PowerPoint が無いときの代わりの render_check_lo.py（LibreOffice）、図→組む→描く→検査を1回で行う make_deck.py
+# 「python」「powershell」だけを許すと、どんなプログラムでも外で動くので、そうしない。
+
+RENDER = [
+    ".agents/skills/sensei-slides/scripts/render_check.ps1",
+    ".agents\\skills\\sensei-slides\\scripts\\render_check.ps1",
+    "./.agents/skills/sensei-slides/scripts/render_check.ps1",
+    ".\\.agents\\skills\\sensei-slides\\scripts\\render_check.ps1",
+]
+EXPORT = [
+    ".agents/skills/sensei-slides/scripts/export_pdf.ps1",
+    ".agents\\skills\\sensei-slides\\scripts\\export_pdf.ps1",
+    "./.agents/skills/sensei-slides/scripts/export_pdf.ps1",
+    ".\\.agents\\skills\\sensei-slides\\scripts\\export_pdf.ps1",
+]
+LO = [
+    ".agents/skills/sensei-slides/scripts/render_check_lo.py",
+    ".agents\\skills\\sensei-slides\\scripts\\render_check_lo.py",
+    "./.agents/skills/sensei-slides/scripts/render_check_lo.py",
+    ".\\.agents\\skills\\sensei-slides\\scripts\\render_check_lo.py",
+]
+# スライドを作るフォルダの仮想環境の Python（配布の一式では、仮想環境を有効にせずにこれで動かす）
+PY = [
+    "python", "python.exe", "py",
+    ".venv/Scripts/python", ".venv/Scripts/python.exe", ".venv\\Scripts\\python", ".venv\\Scripts\\python.exe",
+    "./.venv/Scripts/python.exe", ".\\.venv\\Scripts\\python.exe", ".venv/bin/python", "./.venv/bin/python",
+]
+MAKE = [
+    ".agents/skills/sensei-slides/scripts/make_deck.py",
+    ".agents\\skills\\sensei-slides\\scripts\\make_deck.py",
+    "./.agents/skills/sensei-slides/scripts/make_deck.py",
+    ".\\.agents\\skills\\sensei-slides\\scripts\\make_deck.py",
+]
+NOTES = [
+    ".agents/skills/sensei-slides/scripts/notes_html.py",
+    ".agents\\skills\\sensei-slides\\scripts\\notes_html.py",
+    "./.agents/skills/sensei-slides/scripts/notes_html.py",
+    ".\\.agents\\skills\\sensei-slides\\scripts\\notes_html.py",
+]
+
+prefix_rule(
+    pattern = [["powershell", "powershell.exe"], "-ExecutionPolicy", "Bypass", "-File", RENDER + EXPORT],
+    decision = "allow",
+    justification = "sensei-slides：PowerPoint で描画の検査・PDF の書き出しをする（サンドボックスの中では PowerPoint を開けない）",
+)
+
+prefix_rule(
+    pattern = [PY, NOTES + LO + MAKE],
+    decision = "allow",
+    justification = "sensei-slides：原稿のページを作る（中で PowerPoint から PDF を書き出す）",
+)
+
+prefix_rule(
+    pattern = [PY, "-X", "utf8", NOTES + LO + MAKE],
+    decision = "allow",
+    justification = "sensei-slides：原稿のページを作る（中で PowerPoint から PDF を書き出す）",
+)

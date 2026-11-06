@@ -1,0 +1,33 @@
+{
+  "label": "結論タイトル",
+  "structure": "結論タイトル",
+  "palette": "藍",
+  "desc": "上に小さく話題、その下に大きく結論の一文。下の帯は無し（結論を見出しにする形）",
+  "colors": {
+    "TEXT": "333333",
+    "RED": "C00000",
+    "BULLET": "2E75B6",
+    "BAND": "1F4E79",
+    "ARROW": "8FB4D9",
+    "PALE": "DEEBF7",
+    "LIGHT": "F2F2F2",
+    "CONCLUDE": "FBE3D6",
+    "ACCENT": "2E75B6",
+    "TINT": "EAF1FA"
+  },
+  "band_align": "c",
+  "conclusion": "title",
+  "area": {
+    "x": 1.0,
+    "top": 1.6,
+    "right": 12.33,
+    "bottom": 6.9,
+    "heading": [
+      0.6,
+      0.62
+    ],
+    "fig_x": 7.6
+  },
+  "title_color": "gray",
+  "arrow": "thin"
+}

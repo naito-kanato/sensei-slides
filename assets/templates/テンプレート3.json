@@ -1,0 +1,37 @@
+{
+  "label": "細い左帯と副題",
+  "structure": "細い左帯と副題",
+  "palette": "青緑",
+  "desc": "左端に主色の細い帯、大きなタイトルの下に結論の副題の1行。下の帯は無し",
+  "colors": {
+    "TEXT": "333333",
+    "RED": "C62828",
+    "BULLET": "0B7A75",
+    "BAND": "0B4F6C",
+    "ARROW": "5FA8A3",
+    "PALE": "DDEFEE",
+    "LIGHT": "F2F5F5",
+    "CONCLUDE": "FCE4D6",
+    "ACCENT": "0B7A75",
+    "TINT": "E6F2F1"
+  },
+  "band_align": "c",
+  "conclusion": "lead",
+  "area": {
+    "x": 1.15,
+    "top": 1.75,
+    "right": 12.6,
+    "bottom": 6.95,
+    "heading": [
+      0.75,
+      0.98
+    ],
+    "fig_x": 7.7,
+    "lead": [
+      0.75,
+      0.98
+    ]
+  },
+  "title_color": "main",
+  "heading_mark": "■"
+}

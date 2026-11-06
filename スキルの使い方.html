@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="ja" data-mode="course">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>使い方 — sensei-slides</title>
+<style>
+/* 色は意味のある所だけ：濃い青＝見出し・目次・ラベル（スライドの青帯と同じ色相）、オレンジ＝注意、赤＝やってはいけない。
+   文字の色はすべて地に対して 4.5:1 以上を実測（ライト／ダーク）。 */
+:root{
+  --bg:#F4F5F7; --surface:#FFFFFF; --surface-2:#F8F9FA;
+  --border:#DADCE0; --border-strong:#9AA0A6;
+  --text:#1B1D21; --text-2:#45484D; --text-3:#5E6166;
+  --key:#1D5791; --key-pale:#E2ECF6; --label:#3F6E9C;
+  --accent:#B04A12; --accent-line:#DD7A3C; --ban:#B3141B;
+  --note-bg:#FFF5E6;
+  --shadow:0 1px 2px rgba(20,30,40,.06),0 2px 8px rgba(20,30,40,.05);
+  --ease:.4s cubic-bezier(.22,.61,.36,1);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#16191D; --surface:#20252B; --surface-2:#1B2025;
+  --border:#3A424A; --border-strong:#6B747C;
+  --text:#F2F3F5; --text-2:#D0D3D7; --text-3:#9AA0A8;
+  --key:#7FB3E6; --key-pale:#1B2C3F; --label:#8FB8DF;
+  --accent:#F08B55; --accent-line:#E0773F; --ban:#FF9B9B;
+  --note-bg:#2E2414;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#16191D; --surface:#20252B; --surface-2:#1B2025;
+  --border:#3A424A; --border-strong:#6B747C;
+  --text:#F2F3F5; --text-2:#D0D3D7; --text-3:#9AA0A8;
+  --key:#7FB3E6; --key-pale:#1B2C3F; --label:#8FB8DF;
+  --accent:#F08B55; --accent-line:#E0773F; --ban:#FF9B9B;
+  --note-bg:#2E2414;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{interpolate-size:allow-keywords}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;
+  font-size:15px;line-height:1.75;font-feature-settings:"palt" 1}
+code,kbd{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.875em}
+code{background:var(--surface-2);padding:1px 5px;border-radius:4px;color:var(--text)}
+kbd{display:inline-block;min-width:1.6em;text-align:center;padding:0 6px;border-radius:4px;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--text);line-height:1.6}
+a{color:var(--key);text-underline-offset:2px}
+a code{color:inherit}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em}
+
+/* ---- 骨組み：左の欄＋本文 ---- */
+.app{display:flex;min-height:100vh}
+nav.side{width:268px;flex:none;background:var(--surface);border-right:1px solid var(--border);
+  position:sticky;top:0;height:100vh;padding:22px 16px;display:flex;flex-direction:column;gap:4px}
+/* 左上：小さなスライドの印（テンプレート1 の左上の縦棒と、見出しの下の細い線）と、スキルの名前。下に細い線 */
+.brand{display:flex;align-items:center;gap:11px;padding:2px 6px 16px;margin:0 0 14px;border-bottom:1px solid var(--border)}
+/* 左上の印：切り替えボタン・目次と同じ青の角丸の地に、白い線のアイコン（スクリーンと指し棒） */
+.brand .mk{width:34px;height:34px;flex:none;border-radius:9px;background:var(--key);color:var(--surface);display:grid;place-items:center}
+.brand .mk svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.brand b{display:block;font-size:.98rem;line-height:1.2;letter-spacing:.01em;white-space:nowrap}
+.brand span{display:block;font-size:.72rem;color:var(--text-3);line-height:1.3;letter-spacing:.06em}
+/* 目次：番号は地なしの2桁、選んだ章は左の縦棒と淡い地 */
+.nav-btn{position:relative;display:flex;align-items:baseline;gap:12px;width:100%;border:0;background:none;text-align:left;cursor:pointer;
+  padding:7px 10px 7px 14px;border-radius:0 6px 6px 0;font:inherit;font-size:.875rem;color:var(--text-2)}
+.nav-btn:hover{background:var(--surface-2);color:var(--text)}
+.nav-btn .n{flex:none;width:1.6em;font-size:.75rem;font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums}
+.nav-btn[aria-selected="true"]{color:var(--text);font-weight:700;background:var(--key-pale)}
+.nav-btn[aria-selected="true"]::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:2px;background:var(--key)}
+.nav-btn[aria-selected="true"] .n{color:var(--key)}
+.side .toc{display:contents}
+.side .grow{flex:1}
+/* ゼミ発表／講座の切り替え。選んだほうは濃い地。片方だけの部品は only-zemi / only-course で隠す */
+/* 講座／発表の切り替え：どこを押しても反対側へ。選んだ側の濃い地（::before）がすっと滑る */
+.mode{position:relative;display:flex;background:var(--surface-2);border-radius:8px;padding:3px;margin:0 0 14px;cursor:pointer;user-select:none}
+.mode::before{content:"";position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:6px;background:var(--key);
+  box-shadow:0 1px 2px rgba(0,0,0,.12);transition:transform .32s cubic-bezier(.22,.61,.36,1)}
+:root[data-mode="zemi"] .mode::before{transform:translateX(100%)}
+.mode button{position:relative;z-index:1;flex:1;border:0;background:none;font:inherit;font-size:.8125rem;color:var(--text-2);padding:6px 4px;border-radius:6px;cursor:pointer;white-space:nowrap;transition:color .32s}
+.mode:hover button[aria-checked="false"]{color:var(--text)}
+.mode button[aria-checked="true"]{color:var(--surface);font-weight:700}
+/* 切り替えで名前が変わる目次（講座スライドを作る／発表スライドを作る）は、ふわっと出す */
+.nav-btn[data-tab="ask"],.nav-btn[data-tab="course"]{animation:swapin .32s ease-out}   /* 03 だけ。01 はじめには名前が同じなので動かさない */
+@keyframes swapin{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+:root[data-mode="zemi"] .only-course,:root[data-mode="course"] .only-zemi{display:none!important}
+.theme-btn{white-space:nowrap;display:flex;align-items:center;gap:8px;border:1px solid var(--border-strong);background:var(--surface);
+  color:var(--text-2);border-radius:999px;padding:5px 12px;font:inherit;font-size:.8125rem;cursor:pointer;align-self:flex-start}
+.theme-btn:hover{background:var(--surface-2)}
+
+main{flex:1;min-width:0;padding:40px 44px 88px}
+.tab{display:none;max-width:720px;margin:0 auto}  /* カードの中で1行 約44字 */
+.tab.active{display:block;animation:rise .18s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.eyebrow{font-size:.75rem;font-weight:700;color:var(--text-3);letter-spacing:.04em;margin:0 0 2px}
+h1{font-size:1.75rem;line-height:1.35;margin:0 0 6px}
+.lead{color:var(--text-2);margin:0 0 28px}
+.card{background:var(--surface);border-radius:10px;box-shadow:var(--shadow);padding:24px 26px 20px;margin:0 0 18px}
+.card h2{font-size:1.0625rem;margin:0 0 10px;color:var(--key)}
+.card h3{font-size:.9375rem;margin:20px 0 6px;color:var(--text)}
+.card > :last-child{margin-bottom:0}
+p{margin:0 0 12px}
+ul,ol{margin:0 0 12px;padding-left:1.4em}
+li{margin:2px 0}
+
+/* 手順（番号つき） */
+ol.steps{list-style:none;padding:0;counter-reset:st}
+ol.steps > li{counter-increment:st;position:relative;padding:0 0 12px 38px}
+ol.steps > li::before{content:counter(st);position:absolute;left:0;top:2px;width:24px;height:24px;border-radius:50%;
+  background:var(--key-pale);color:var(--key);font-size:.8125rem;font-weight:700;display:grid;place-items:center}
+ol.steps > li > b:first-child{display:block}
+
+/* 2列の表（左＝何の項目か、右＝中身） */
+table.kv{width:100%;border-collapse:collapse;font-size:.875rem;margin:4px 0 12px}
+table.kv th,table.kv td{text-align:left;vertical-align:top;padding:10px 7px;border-bottom:1px solid var(--border)}
+table.kv thead th{font-size:.6875rem;font-weight:700;letter-spacing:.07em;color:var(--text-3);border-bottom:1px solid var(--border-strong)}
+table.kv td:first-child{width:30%;min-width:9em;color:var(--label);font-weight:700}
+table.kv td:first-child code{white-space:nowrap;font-weight:400}
+table.kv tr:last-child td{border-bottom:0}
+@media (max-width:760px){
+  table.kv thead{display:none}
+  table.kv td{display:block;width:auto!important;border:0;padding:2px 0}
+  table.kv tr{display:block;padding:10px 0;border-bottom:1px solid var(--border)}
+  table.kv td:first-child code{white-space:normal}
+}
+
+/* 頼み方の例（話しかける文） */
+.say{display:flex;flex-direction:column;gap:6px;margin:4px 0 12px}
+.say div{background:var(--surface-2);border-radius:6px;padding:7px 12px;font-size:.9375rem}
+.say div::before{content:"「";color:var(--text-3)}
+li .say{display:flex;margin:6px 0 4px}
+li .say span{background:var(--surface-2);border-radius:6px;padding:5px 12px;font-size:.9375rem}
+li .say span::before{content:"「";color:var(--text-3)}li .say span::after{content:"」";color:var(--text-3)}
+.goto{font-weight:600;text-decoration:none}.goto:hover{text-decoration:underline}
+.say div::after{content:"」";color:var(--text-3)}
+
+/* 注意と禁止：カードの左の線だけ（地は塗らない） */
+.caution{border-left:3px solid var(--accent-line);padding:2px 0 2px 14px;margin:10px 0 12px}
+.caution b.h{color:var(--accent)}
+.ban b.h{color:var(--ban)}
+.ban{border-left:3px solid var(--ban);padding:2px 0 2px 14px;margin:10px 0 12px}
+
+/* 流れ図 */
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 14px}
+.feats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:4px 0 14px}
+.feats div{background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--key);border-radius:8px;padding:10px 14px}
+.feats b{display:block;color:var(--key);font-size:.9375rem;margin-bottom:3px}
+.feats p{margin:0;font-size:.8125rem;line-height:1.6;color:var(--text-2)}
+@media (max-width:640px){.feats{grid-template-columns:1fr}}
+.flow .b{background:var(--key-pale);border-radius:6px;padding:6px 10px;font-size:.8125rem;line-height:1.4;text-align:center}
+.flow .b small{display:block;color:var(--text-3);font-size:.6875rem}
+.flow .b.last{background:var(--surface-2);font-weight:700}
+.flow .a{color:var(--text-3);font-size:.875rem}
+
+/* 図（スクリーンショット） */
+figure{margin:8px 0 16px}
+figure img{width:100%;height:auto;display:block;border-radius:6px;border:1px solid var(--border)}
+figcaption{font-size:.8125rem;color:var(--text-3);margin-top:6px}
+figcaption.cap-top{margin:0 0 6px}
+
+/* 開閉：普段は閉じておく補足 */
+details.fold{margin:0 0 12px}
+details.fold > summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;font-weight:700;color:var(--text);padding:2px 0}
+details.fold > summary::-webkit-details-marker{display:none}
+details.fold > summary svg{transition:transform var(--ease);color:var(--text-3)}
+details.fold[open] > summary svg{transform:rotate(90deg)}
+details.fold::details-content{height:0;overflow:clip;overflow-clip-margin:4px;transition:height var(--ease),content-visibility var(--ease) allow-discrete}
+details.fold[open]::details-content{height:auto}
+details.fold .in{padding:6px 0 2px 22px}
+/* 見本の残りのスライド：普段は閉じておき、開くと続きの一覧が出る */
+details.fold.gallery{margin:-4px 0 4px}
+details.fold.gallery > summary{font-size:.875rem;color:var(--key)}
+details.fold.gallery .in{padding:8px 0 0}
+details.fold.gallery figure{margin:0 0 4px}
+.faq details.fold{border-bottom:1px solid var(--border);padding:8px 0;margin:0}
+.faq details.fold:last-child{border-bottom:0}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after,::details-content{animation:none!important;transition:none!important}
+}
+@media (max-width:900px){
+  .app{display:block}
+  nav.side{position:sticky;top:0;z-index:5;width:auto;height:auto;flex-direction:row;align-items:center;gap:4px;
+    overflow-x:auto;padding:8px 10px;border-right:0;border-bottom:1px solid var(--border)}
+  .brand{padding:0 10px 0 0;margin:0 6px 0 0;border-bottom:0;border-right:1px solid var(--border);align-items:center}.brand span{display:none}
+  .nav-btn[aria-selected="true"]::before{left:10px;right:10px;top:auto;bottom:0;width:auto;height:3px}
+  .mode{margin:0 6px 0 0;flex:none}
+  .nav-btn{width:auto;white-space:nowrap}.side .grow{display:none}
+  main{padding:24px 18px 64px}
+}
+@media print{
+  body{background:#fff;color:#000;font-size:10.5pt}
+  nav.side,.theme-btn{display:none}
+  main{padding:0}
+  .tab{display:block!important;max-width:none;page-break-after:always}
+  .card{box-shadow:none;border:1px solid #B8B8BB}
+  details.fold::details-content{height:auto!important;content-visibility:visible!important}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></symbol>
+</svg>
+<div class="app">
+<nav class="side" aria-label="使い方の目次">
+  <div class="brand"><div class="mk" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8.5 20h7M7 8.5h6M7 11.5h3.5"/><path d="M15.5 13.5l2.5-3"/></svg></div><div><b>sensei-slides</b><span>使い方</span></div></div>
+  <div class="mode" role="radiogroup" aria-label="使い方の種類">
+    <button type="button" role="radio" data-mode="course">講座</button>
+    <button type="button" role="radio" data-mode="zemi">発表</button>
+  </div>
+  <div class="toc" role="tablist" aria-label="章">
+  <button class="nav-btn only-course" role="tab" data-tab="intro-course"><span class="n"></span>はじめに</button>
+  <button class="nav-btn only-zemi" role="tab" data-tab="intro-zemi"><span class="n"></span>はじめに</button>
+  <button class="nav-btn" role="tab" data-tab="setup"><span class="n"></span>準備</button>
+  <button class="nav-btn only-course" role="tab" data-tab="course"><span class="n"></span>講座スライドを作る</button>
+  <button class="nav-btn only-zemi" role="tab" data-tab="ask"><span class="n"></span>発表スライドを作る</button>
+  <button class="nav-btn" role="tab" data-tab="template"><span class="n"></span>テンプレート</button>
+  <button class="nav-btn" role="tab" data-tab="notes"><span class="n"></span>原稿とコメント</button>
+  <button class="nav-btn" role="tab" data-tab="answer"><span class="n"></span>質問に答えてもらう</button>
+  <button class="nav-btn" role="tab" data-tab="faq"><span class="n"></span>困ったとき</button>
+  </div>
+  <div class="grow"></div>
+  <button class="theme-btn" id="theme" type="button" aria-label="明るさの切り替え"><svg class="i"><use href="#i-theme"/></svg><span>明るさ：自動</span></button>
+</nav>
+
+<main>
+<!-- ============================================================ 1（講座） -->
+<section class="tab only-course" id="tab-intro-course" role="tabpanel">
+  <p class="eyebrow">使い方</p>
+  <h1>はじめに</h1>
+  <p class="lead">AI が講師になって、あなた専用の連続講座を1回ずつ作ります。</p>
+
+  <div class="card">
+    <h2>できること</h2>
+    <p>テーマを言うか、教科書や論文の PDF を AI エージェント（Codex や Claude Code など）に渡して、「講座を作って」と頼みます。全体の地図（全何回で、何を学ぶか）を決めたあと、
+      1回分ずつスライドと原稿が届きます。</p>
+    <p>原稿のページで疑問点にコメントを書き、確認問題に答えて渡すと、答えのデッキが届きます。つまずいた所は、次の回の冒頭で補われます。</p>
+    <figure><img src="docs/course-notes.jpg" alt="原稿のページ：スライドと読み上げ原稿が横に並ぶ"><figcaption>原稿のページ（スライドと読み上げ原稿を横に並べて読む。コメントと確認問題の答えもここに書く）。見本は同梱の examples/course の AI活用講座 第1回「生成AIは何をしているか」、全15枚。</figcaption></figure>
+    <details class="fold gallery">
+      <summary><svg class="i"><use href="#i-chev"/></svg>見本のスライドを全部見る（15枚）</summary>
+      <div class="in">
+        <figure><figcaption class="cap-top">1〜4枚目（表紙と本文のはじめ）。</figcaption><img src="docs/course-slides-1.jpg" alt="講座の見本の1〜4枚目" loading="lazy"></figure>
+        <figure><figcaption class="cap-top">5〜15枚目：本文の続き（答えが毎回変わるわけ・誤り・確かめ方・頼み方・入れる前に確かめる情報）と、確認問題・解答。確認問題は、原稿のページの「1-1 に答える」ボタンから答えられます。</figcaption><img src="docs/course-slides-2.jpg" alt="講座の見本の5〜15枚目" loading="lazy"></figure>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>あなたが止まる所・事実・文字の組み方・量まで確かめてから渡します</h2>
+    <div class="feats">
+      <div><b>止まる所を埋める（推論距離）</b><p>別の AI があなたの立場で読み、あなたが自分で補う前提を書き出します。結論の理由・意味の書いていない用語・あとで使う前提は、話の流れの中で埋めます。どこまで埋めるかは、あなたの詳しさに合わせます。</p></div>
+      <div><b>事実の裏取り</b><p>数値や事実は、出典を確かめてから使います。出典は、どの資料のどこかを特定できる形で書きます。裏が取れない事実は「要確認」と印を付けて、言い切りにしません。</p></div>
+      <div><b>文字の組み方</b><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、箇条書きだけにせず、そのスライドの中身に合う組み方を1枚ずつ選びます。</p></div>
+      <div><b>量と見た目の検査</b><p>本文は1枚100〜150字、結論の語句は赤字、確認問題は毎回6問（1枚に3問）。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></div>
+    </div>
+    <details class="fold gallery">
+      <summary><svg class="i"><use href="#i-chev"/></svg>文字の組み方の型を見る（型の見本帳から12枚）</summary>
+      <div class="in">
+        <figure><img src="docs/structures.jpg" alt="本文の形と図解の型の見本12枚" loading="lazy"><figcaption>同梱の examples/structures。「前提 ⇒ 帰結」「ラベル＋説明」「横の矢印で展開」「場合分け」「問い → 答え」「手順」「縦の矢印で結論へ」と、並列カード・段違いの順序・循環・前後・2つ並べた図。</figcaption></figure>
+      </div>
+    </details>
+    <p>止まる所や間違いを見つけるのは AI、手当てが全部入ったか・目安に収まったかを確かめるのはプログラムです。検査を通るまでは、AI が「大丈夫そう」と言っても先へ進みません。</p>
+  </div>
+
+  <div class="card">
+    <h2>講座の流れ</h2>
+    <div class="flow">
+      <div class="b">テーマか PDF</div><span class="a">→</span>
+      <div class="b">全体の地図<small>あなたが確認</small></div><span class="a">→</span>
+      <div class="b">第1回のスライドと原稿</div><span class="a">→</span>
+      <div class="b">読む・コメント・答える</div><span class="a">→</span>
+      <div class="b">答えのデッキ</div><span class="a">→</span>
+      <div class="b last">次の回</div>
+    </div>
+    <p>あなたがするのは、地図の確認と、原稿を読んでコメントや答えを書くことだけです。</p>
+  </div>
+
+  <div class="card">
+    <h2>1回ごとに届くもの</h2>
+    <table class="kv">
+      <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td><code>〇〇_スライド.pptx</code></td><td>PowerPoint のスライド。発表者ノートに読み上げ原稿が入っています。</td></tr>
+        <tr><td><code>〇〇_原稿.html</code></td><td>スライドの画像と原稿を横に並べたページ。ダブルクリックでブラウザが開きます。コメントと確認問題の答えもここに書きます。</td></tr>
+        <tr><td><code>〇〇_質問回答_スライド.pptx</code></td><td>コメントと確認問題の答えに返事をするデッキ。コメントを書き出して頼んだときだけ作られます。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ 1（発表） -->
+<section class="tab only-zemi" id="tab-intro-zemi" role="tabpanel">
+  <p class="eyebrow">使い方</p>
+  <h1>はじめに</h1>
+  <p class="lead">1回の発表のスライドを作ります。ゼミ（論文紹介・教科書の輪読）、学会などの研究発表、自分の理解を確かめる「ひとりゼミ」に使えます。</p>
+
+  <div class="card">
+    <h2>できること</h2>
+    <p>資料をフォルダの一番上に入れて、AI エージェント（Codex や Claude Code など）に「スライドにして」と頼みます。読み上げ原稿つきのスライドができあがります。</p>
+    <p>資料は、論文や教科書の PDF のほか、研究発表なら結果の図・前の発表のスライド・メモだけでもかまいません。AI が発表ごとのフォルダの <code>資料/</code> に分けて格納し、
+      目的・各図で見えること・結論がファイルに無ければ、チャットで聞いてから作ります（背景と方法は資料から下書きします）。</p>
+    <p>発表の予定がなくても使えます。資料を人に説明できる形にまとめてみると、自分がどこをわかっていないかが見えてきます（ひとりゼミ）。</p>
+    <figure><img src="docs/zemi-notes.jpg" alt="原稿のページ：スライドと読み上げ原稿が横に並ぶ"><figcaption>原稿のページ（スライドと読み上げ原稿を横に並べて読む。疑問点のコメントもここに書く）。見本は同梱の examples/zemi の論文紹介「重力波の初観測」、全14枚。</figcaption></figure>
+    <details class="fold gallery">
+      <summary><svg class="i"><use href="#i-chev"/></svg>見本のスライドを全部見る（14枚）</summary>
+      <div class="in">
+        <figure><figcaption class="cap-top">1〜4枚目（表紙・背景・論文の表紙）。</figcaption><img src="docs/zemi-slides-1.jpg" alt="発表の見本の1〜4枚目" loading="lazy"></figure>
+        <figure><figcaption class="cap-top">5〜14枚目：検出器の工夫、結果①〜③（2枚ずつ）、考察。論文の図は CC BY 3.0 の条件に従い、出典を付けて使っています（Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)）。</figcaption><img src="docs/zemi-slides-2.jpg" alt="発表の見本の5〜14枚目" loading="lazy"></figure>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>見た目だけでなく、聞き手が止まる所まで確かめてから渡します</h2>
+    <div class="feats">
+      <div><b>止まる所を埋める（推論距離）</b><p>別の AI が聞き手の立場で読み、聞き手が自分で補う前提を書き出します。結論の理由・意味の書いていない用語・あとで使う前提を、聞き手の詳しさに合わせて言い足しで埋めます。</p></div>
+      <div><b>文字の組み方</b><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、そのスライドの中身に合う組み方を1枚ずつ選びます。あなたの過去のデッキの癖にも寄せられます（「テンプレート」の章の「追加する」）。</p></div>
+      <div><b>量と見た目の検査</b><p>本文は1枚100〜150字、結論の語句は赤字。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></div>
+    </div>
+    <details class="fold gallery">
+      <summary><svg class="i"><use href="#i-chev"/></svg>文字の組み方の型を見る（型の見本帳から12枚）</summary>
+      <div class="in">
+        <figure><img src="docs/structures.jpg" alt="本文の形と図解の型の見本12枚" loading="lazy"><figcaption>同梱の examples/structures。「前提 ⇒ 帰結」「ラベル＋説明」「横の矢印で展開」「場合分け」「問い → 答え」「手順」「縦の矢印で結論へ」と、並列カード・段違いの順序・循環・前後・2つ並べた図。</figcaption></figure>
+      </div>
+    </details>
+    <p>止まる所や間違いを見つけるのは AI、手当てが全部入ったか・目安に収まったかを確かめるのはプログラムです。検査を通るまでは、AI が「大丈夫そう」と言っても先へ進みません。</p>
+  </div>
+
+  <div class="card">
+    <h2>流れ</h2>
+    <div class="flow">
+      <div class="b">資料を入れて頼む</div><span class="a">→</span>
+      <div class="b">設定の確認<small>詳しさ・発表時間</small></div><span class="a">→</span>
+      <div class="b">足りない方針を答える<small>研究発表のとき</small></div><span class="a">→</span>
+      <div class="b">構成案<small>あなたが確認</small></div><span class="a">→</span>
+      <div class="b">図とスライド</div><span class="a">→</span>
+      <div class="b">検査とレビュー</div><span class="a">→</span>
+      <div class="b last">受け取る</div>
+    </div>
+    <p>あなたが答えるのは、最初の設定の確認と、構成案の確認の2回だけです（最初の確認では、聞き手がテーマにどのくらい詳しいかを聞かれます。発表時間は任意です。使うモデルによっては、最初にモデルの確認が1回加わります）。
+      構成案の確認は「任せる」と言えば省けます。</p>
+  </div>
+
+  <div class="card">
+    <h2>届くもの</h2>
+    <table class="kv">
+      <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
+      <tbody>
+        <tr><td><code>〇〇_スライド.pptx</code></td><td>PowerPoint のスライド。発表者ノートに読み上げ原稿が入っています。</td></tr>
+        <tr><td><code>〇〇_原稿.html</code></td><td>スライドの画像と原稿を横に並べたページ。ダブルクリックでブラウザが開きます。発表の練習や、読み返しに使えます。</td></tr>
+        <tr><td><code>〇〇_質問回答_スライド.pptx</code></td><td>原稿のページに書いた疑問点に答えるデッキ。コメントを書き出して頼んだときだけ作られます。</td></tr>
+      </tbody>
+    </table>
+    <p>できた原稿を読み、わからない所にコメントしておくと、答えのデッキで理解を固められます。</p>
+  </div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section class="tab" id="tab-setup" role="tabpanel">
+  <p class="eyebrow">使い方</p>
+  <h1>準備</h1>
+  <p class="lead">最初に1回だけ行います。一式を解凍して、はじめに.bat をダブルクリックするだけです。</p>
+
+  <div class="card">
+    <h2>必要なもの</h2>
+    <table class="kv">
+      <thead><tr><th>もの</th><th>何に使うか</th></tr></thead>
+      <tbody>
+        <tr><td>AI エージェント</td><td>スキルを動かす本体です。Codex・Claude Code・Antigravity・GitHub Copilot で、短いデッキを最後まで作れることを確かめています。軽いモデルは図や事実の確認が甘くなるので、標準以上のモデルをおすすめします。</td></tr>
+        <tr><td>Python 3.10 以上</td><td>スライドと図を作るプログラムを動かします。</td></tr>
+        <tr><td>PowerPoint か LibreOffice（どちらか）</td><td>できたスライドを実際に描いて検査するためと、原稿のページを作るために使います。Windows の PowerPoint があればそれを使います。
+          無ければ、無料の LibreOffice で代わりに描けます（検査はやや甘めなので、最後は画像を目で確かめます。Mac・Linux ではまだ試していません）。
+          どちらも無くても、スライド（.pptx）までは作れます。</td></tr>
+        <tr><td>日本語フォント</td><td>Windows は Meiryo・Yu Gothic、Mac はヒラギノ（どちらも最初から入っています）。Linux は Noto Sans CJK を入れます。</td></tr>
+      </tbody>
+    </table>
+    <p>そろっているかどうかは、AI に頼めば表にして返してくれます（初めて使うときは、頼まなくても最初に確かめます）。</p>
+    <div class="say"><div>環境を確かめて</div></div>
+    <details class="fold">
+      <summary><svg class="i"><use href="#i-chev"/></svg>LibreOffice の入れ方</summary>
+      <div class="in">
+        <table class="kv">
+          <tbody>
+            <tr><td>Windows</td><td>公式サイト <a href="https://www.libreoffice.org/download/">libreoffice.org</a> から、または <code>winget install TheDocumentFoundation.LibreOffice</code></td></tr>
+            <tr><td>Mac</td><td>公式サイトから、または <code>brew install --cask libreoffice</code></td></tr>
+            <tr><td>Linux</td><td><code>sudo apt install libreoffice-impress</code></td></tr>
+          </tbody>
+        </table>
+        <p>入れるのはあなたです。AI は入れ方を案内するだけで、あなたが「入れて」と頼んだときだけ、確認してから入れます。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>手順</h2>
+    <ol class="steps">
+      <li><b>一式をダウンロードして解凍する</b>スキル入りの作業フォルダ一式 <code>sensei-slides.zip</code> を、<a href="https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip">最新版のダウンロード</a>（GitHub の Releases）から落として解凍します。
+        フォルダの名前は変えてかまいません（「発表」「講座」など）。</li>
+      <li><b>はじめに.bat をダブルクリックする</b>仮想環境（<code>.venv</code>）を作って部品を入れ、PowerPoint やフォントがそろっているかを確かめます（数分）。
+        Mac・Linux はターミナルで <code>sh はじめに.sh</code>。最初の1回だけです。</li>
+      <li><b>フォルダをエージェントで開いて頼む</b>Codex・Claude Code・Antigravity・VS Code の Copilot でこのフォルダを開き、
+        <span class="only-course">「〇〇の講座を作って」</span><span class="only-zemi">「〇〇.pdf のスライドを作って」</span>と頼みます。
+        開き方：VS Code（Copilot・Codex の拡張）なら「ファイル → フォルダーを開く」でこのフォルダを選び、チャット欄に書きます。
+        Claude Code や Codex をターミナルで使うなら、このフォルダに移動（<code>cd</code>）してから起動します。
+        <small>（慣れた人向け：仮想環境を有効にする操作は要りません。スキルが <code>.venv</code> の Python を自分で使います）</small></li>
+      <li><b>最初の質問に答える</b><span class="only-course">あなたがテーマにどのくらい詳しいか（初学者／多少知っている／かなり知っている）</span><span class="only-zemi">聞き手がテーマにどのくらい詳しいか（初学者／多少知っている／かなり知っている）</span>を聞かれます。
+        これだけは必須で、答えるまで先に進みません<span class="only-zemi">（発表時間は、決まっていれば一緒に答えます）</span>。続けて、スライドに使う資料（PDF・図・前の発表のスライド・メモ）があれば、このフォルダの一番上に入れて伝えます（無ければテーマだけから作ります）。最後に、任意で<span class="only-course">あなたの</span><span class="only-zemi">聞き手の</span>専門・研究テーマ・よく知っていることを聞かれます。
+        書くと、知らない言葉の言い換えと、止まる所の見つけ方がよくなります。答えは、そのスライドの設定の一覧に入ります（スキル全体の共通の設定ファイルはありません）。</li>
+    </ol>
+    <table class="kv">
+      <thead><tr><th>一式の中身</th><th>何のためか</th></tr></thead>
+      <tbody>
+        <tr><td><code>.agents/skills/sensei-slides/</code></td><td>スキル（Codex・Antigravity・VS Code の Copilot が読む）</td></tr>
+        <tr><td><code>.claude/skills/sensei-slides/</code></td><td>同じスキル（Claude Code が読む）</td></tr>
+        <tr><td><code>.codex/rules/sensei-slides.rules</code></td><td>Codex で PowerPoint を使う3つの作業だけを、確認なしで動かす決まり（フォルダを「信頼する」にしたときに読まれる）</td></tr>
+        <tr><td><code>はじめに.bat</code>・<code>はじめに.sh</code>・<code>はじめに.md</code></td><td>準備のスクリプトと、3行の説明</td></tr>
+      </tbody>
+    </table>
+    <p>この説明で <code>references/…</code>・<code>examples/…</code>・<code>scripts/…</code> と書いたものは、<code>.agents/skills/sensei-slides/</code> の中にあります
+      （<code>.agents</code> は名前が「.」で始まるので、エクスプローラーで見えないときは「表示 → 隠しファイル」をオンにします）。</p>
+    <p>GitHub Copilot の CLI で使うときは、<code>.agents/skills/sensei-slides</code> を <code>.github/skills/sensei-slides</code> に写します。
+      スキルを新しくするときは、新しい一式の <code>.agents</code>・<code>.claude</code>・<code>.codex</code> で置き換えます（作ったスライドと、その設定の一覧はそのまま）。</p>
+    <details class="fold">
+      <summary><svg class="i"><use href="#i-chev"/></svg>自分のフォルダにスキルだけ入れるとき</summary>
+      <div class="in">
+        <p>今あるフォルダで使うなら、このリポジトリのフォルダを、使うツールの場所に <code>sensei-slides</code> という名前のまま置きます。
+          フォルダ名を変えると読み込まないツールがあります。</p>
+        <table class="kv">
+          <thead><tr><th>ツール</th><th>置く場所（スライドを作るフォルダの中）</th></tr></thead>
+          <tbody>
+            <tr><td>Codex</td><td><code>.agents/skills/sensei-slides/</code></td></tr>
+            <tr><td>Claude Code</td><td><code>.claude/skills/sensei-slides/</code></td></tr>
+            <tr><td>Antigravity</td><td><code>.agents/skills/sensei-slides/</code></td></tr>
+            <tr><td>GitHub Copilot</td><td><code>.github/skills/sensei-slides/</code>（VS Code なら <code>.agents/skills/</code> でも可）</td></tr>
+          </tbody>
+        </table>
+        <p>そのあと、スライドを作るフォルダで仮想環境を作って部品を入れます（Windows のコマンドプロンプト）。</p>
+        <p><code>python -m venv .venv</code><br>
+          <code>.venv\Scripts\python -m pip install -r .agents\skills\sensei-slides\requirements.txt</code></p>
+        <p>2行目の場所は、スキルを置いた場所に合わせて変えます（例は Codex の場所）。Mac / Linux では <code>python3 -m venv .venv</code> と
+          <code>.venv/bin/python -m pip install -r .agents/skills/sensei-slides/requirements.txt</code>。
+          一式の <code>はじめに.bat</code> をこのフォルダに写してダブルクリックしても同じです。</p>
+      </div>
+    </details>
+    <details class="fold">
+      <summary><svg class="i"><use href="#i-chev"/></svg>仮想環境を使わないとき</summary>
+      <div class="in">
+        <p>仮想環境を使わずに、ふだんの Python に <code>pip install -r requirements.txt</code> で入れても動きます（<code>.venv</code> が無ければ、スキルはふだんの Python を使います）。</p>
+      </div>
+    </details>
+    <details class="fold">
+      <summary><svg class="i"><use href="#i-chev"/></svg>使うツールやモデルを変えたいとき</summary>
+      <div class="in">
+        <p>手順書は、特定のエージェントに頼らない中立の言葉（【上位モデル】【標準モデル】【質問】【別のエージェント】など）で書いてあります。
+          エージェントは最初に <code>references/agents.md</code> の対応表を読み、使っているツールの道具とモデルに読み替えます。</p>
+        <p>使うモデルを自分で決めたいときは、頼むときに言います（「レビューは〇〇で」）。言ったものが対応表より優先されます。</p>
+        <p>別のエージェントにレビューさせる機能が無いツールでは、レビューのときに「新しい会話を開いて、この雛形を貼ってください」と頼まれることがあります。</p>
+        <p>コマンドのたびに許可を求められるのが手間なら、<code>references/agents.md</code> の「許可リスト」にある行を、エージェントの設定の許可リストに登録します。<code>python</code> だけ、のような広い登録はしません（どんなプログラムでも確認なしで動くようになるため）。</p>
+        <p><b>Codex では</b>、PowerPoint を使うスクリプトがサンドボックスの中では動きません。一式には決まり（<code>.codex/rules/sensei-slides.rules</code>）が入っているので、Codex でそのフォルダを「信頼する」にしておくと、描画の検査・PDF の書き出し・原稿のページ作りの3つだけが、確認なしでサンドボックスの外で動きます（自分のフォルダにスキルだけ入れたときは、<code>assets/codex/sensei-slides.rules</code> をそのフォルダの <code>.codex/rules/</code> に写します。全部のフォルダで使うなら <code>~/.codex/rules/</code>）。Codex が画面操作で PowerPoint を開こうとしたら（画面全体の表示が変わる）、止めてかまいません。</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ============================================================ course -->
+<section class="tab only-course" id="tab-course" role="tabpanel">
+  <p class="eyebrow">使い方</p>
+  <h1>講座スライドを作る</h1>
+  <p class="lead">テーマか PDF を渡すだけです。1回分ずつ進み、前の回でつまずいた所が次の回に反映されます。</p>
+
+  <div class="card">
+    <h2>頼み方の例</h2>
+    <div class="say">
+      <div>生成 AI の使い方を一から教えて</div>
+      <div>この教科書（textbook.pdf）の3章で、全5回の講座を作って</div>
+      <div>半導体の講座を作って。1回だけでいい</div>
+      <div>次の回を作って</div>
+    </div>
+    <p>手元の資料（自分の卒論など）を「参考に」と添えると、講座の中で「卒論の式(2-4)は…」のように、あなたの資料とつなげて説明してくれます。</p>
+  </div>
+
+  <div class="card">
+    <h2>頼んだあとに起きること</h2>
+    <ol class="steps">
+      <li><b>短い質問に答える</b>範囲・あなたの背景・ゴール・回数などを聞かれます。すでにわかっていることは聞かれません。答えなかった項目は既定の値で進み、どの値にしたかを知らせてきます。</li>
+      <li><b>全体の地図を確認する</b>回ごとの題と「この回で言えるようになること」の表が出ます。回数や順番を直すならここで言います。</li>
+      <li><b>第1回が届く</b>スライドと原稿のページが届きます。届くまでに、事実の裏取りと、別の AI（レビュー担当）によるレビューが済んでいます。本文が10〜15枚に収まっているか、出典から資料を特定できるかも、設計の段階でプログラムが確かめています。</li>
+      <li><b>読んで、コメントと答えを書く</b>原稿のページで、わからない所にコメントし、確認問題に答えます。</li>
+      <li><b>「コメントした」と伝える</b>答えのデッキが届きます。そのあと「次の回を作って」と頼むと、つまずいた所を冒頭で補った次の回が作られます。</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>テーマだけのときと、PDF があるとき</h2>
+    <table class="kv">
+      <thead><tr><th>渡すもの</th><th>中身の出どころ</th></tr></thead>
+      <tbody>
+        <tr><td>テーマだけ</td><td>AI が調べて書きます。数値・式・定義は1つずつ出典を確かめ、確かめられないものは「要確認」と書きます。</td></tr>
+        <tr><td>PDF（教科書・論文）</td><td>PDF が土台です。地図は PDF の章立てを元に、あなたに合わせて並べ直します。PDF にない補足は「資料外」と分けて書きます。</td></tr>
+        <tr><td>テーマ＋手元の資料</td><td>中身は一般の文献から書きます。手元の資料は、あなたの研究とつなげる橋渡しに使います。資料は読むだけで、書き換えません。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>原稿は「AI講義モード」</h2>
+    <p>講座の原稿は、講師の AI があなたに話しかける形で書かれます。</p>
+    <ul>
+      <li>あなたを「あなた」と呼び、ときどき問いかけます（「どちらだと思いますか」）</li>
+      <li>あなたの専門の言葉に置き換えて説明します（正確に対応するものだけ）</li>
+      <li>確認問題は「あなたならどう答えますか」。答えの添削は「あなたは〜と答えました」から始まります</li>
+    </ul>
+    <p>研究室の後輩など、ほかの人にも見せるなら、そう伝えてください。「あなたの卒論」のような言い方をやめて、受講者全員に向けた原稿になります。</p>
+  </div>
+
+  <div class="card">
+    <h2>講座のフォルダ</h2>
+    <p>講座ごとにフォルダができ、その中に各回のファイルと、講座のメモ（<code>00_README.md</code>）が入ります。</p>
+    <table class="kv">
+      <thead><tr><th>メモの中身</th><th>何に使うか</th></tr></thead>
+      <tbody>
+        <tr><td>全体の地図</td><td>回ごとの題と、その回で言えるようになること。回を足すと更新されます。</td></tr>
+        <tr><td>講座ID・保存先</td><td>コメントのファイルを講座ごとに片づけるための2行（「質問に答えてもらう」の章）。</td></tr>
+        <tr><td>決め事</td><td>記号・図の向き・呼び方。全部の回でそろえるために使います。</td></tr>
+        <tr><td>つまずき一覧</td><td>確認問題で取り違えたこと。次の回の冒頭で補い、数回あとに言い換えた問題でもう一度解きます。</td></tr>
+      </tbody>
+    </table>
+    <p>見本は <code>examples/course/AI活用講座/00_README.md</code> です。</p>
+  </div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section class="tab only-zemi" id="tab-ask" role="tabpanel">
+  <p class="eyebrow">使い方</p>
+  <h1>発表スライドを作る</h1>
+  <p class="lead">論文や教科書を1デッキにまとめます。資料の場所と範囲を言うだけです。「PowerPoint」と言わなくても伝わります。</p>
+
+  <div class="card">
+    <h2>頼み方の例</h2>
+    <div class="say">
+      <div>教科書.pdf の 3.2 節をスライドにして</div>
+      <div>論文紹介の発表資料を作って。論文は入れた</div>
+      <div>学会の発表を作りたい。結果の図と、前の発表のスライドを入れた</div>
+      <div>この講義メモをいつもの形式でスライドに</div>
+      <div>この論文を自分の理解のためにまとめたい。発表はしない</div>
+    </div>
+    <p>資料はフォルダの一番上に入れて頼みます（どれを使うかはファイル名で言ってもかまいません）。教科書のスキャン PDF でも、論文の PDF でも、図や前のスライドだけでも作れます。研究発表で目的・各図で見えること・いちばん言いたい結論がファイルに無いときは、AI がチャットで聞きます（背景と方法は、前のスライドや要旨から下書きします）。答えたことはそのまま <code>資料/方針.md</code> に残り、そろうまで構成案には進みません。</p>
+  </div>
+
+  <div class="card">
+    <h2>頼んだあとに起きること</h2>
+    <ol class="steps">
+      <li><b>設定の表が出る</b>聞き手の詳しさ・発表時間・原稿の書き方などの今の値が表で出ます。必須の項目が決まっていなければ聞かれます。
+        そのままでよければ「このまま進める」を選びます。</li>
+      <li><b>資料が格納される</b>AI が中身を確かめてから、使う資料を発表ごとのフォルダの <code>資料/</code>（図・過去のスライド・その他）に写します。元のファイルはそのまま残ります。
+        研究発表で目的・各図で見えること・結論がファイルに無ければ、ここで聞かれます。</li>
+      <li><b>構成案を確かめる</b>全スライドの見出しと「そのスライドの結論の一文」を並べた表が出ます。別の AI（レビュー担当）のレビューを済ませた版です。
+        枚数が発表時間に合っているか、聞き手が止まる所に手当てがあるかも、この段階でプログラムが確かめています。直したい所を言うか、OK を出します。</li>
+      <li><b>待つ</b>AI が図を描き、スライドを組み、PowerPoint で描いて検査します。最後に、別の AI（レビュー担当）がスライドの画像をもう一度レビューします。</li>
+      <li><b>受け取る</b>スライドと原稿のページが届きます。描画の検査・原稿・レビューの記録がそろっているかを確かめてから渡されます。どれが AI の描いた図か、資料と照らして確かめてほしい点はどこかも、一緒に知らせてきます。</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>変えられる設定</h2>
+    <p>頼むときに言えば変わります（「発表時間は15分で」「主要な結果に絞って」）。決まった値は、そのスライドの設定の一覧（構成案の冒頭）に残ります。</p>
+    <table class="kv">
+      <thead><tr><th>設定</th><th>選べるもの（太字が既定）</th></tr></thead>
+      <tbody>
+        <tr><td>原稿の書き方</td><td><b>発表</b>（あなたが聞き手に話す原稿）／AI講義（AI があなたに教える原稿）</td></tr>
+        <tr><td>発表時間</td><td>15分・20分・30分など。原稿の長さと枚数の目安がこれで決まります（1枚 1.5〜2分）。</td></tr>
+        <tr><td>枚数が少ないとき</td><td><b>足さない</b>（ただし発表時間÷2分を下回るなら、抜けている話が無いか見直す）／説明を厚くする</td></tr>
+        <tr><td>丁寧さ</td><td>聞き手が止まる所をどこまで埋めるか（1枚に残してよい「あとで使う前提」の飛びの数。その枚の結論の理由と知らない用語はいつも埋める）。0＝入門向け（全部埋める）／<b>1</b>＝専門外の聞き手／2＝同じ分野の人</td></tr>
+        <tr><td>テンプレート</td><td><b>テンプレート1</b>／テンプレート2〜8（構造が違う。見やすさの順）／自分で追加したもの（「テンプレート」の章）</td></tr>
+        <tr><td>色</td><td><b>テンプレートの標準の色</b>／青・紺とオレンジ・生成りと山吹・藍・青緑・珊瑚・墨と山吹・深緑・グレーと赤・墨と藍</td></tr>
+        <tr><td>範囲</td><td><b>全部の結果</b>／主要な結果に絞る</td></tr>
+        <tr><td>議論のスライド</td><td><b>入れない</b>／入れる（疑問点・限界・自分の研究との関係を1枚）</td></tr>
+        <tr><td>構成案の確認</td><td><b>見せる</b>／任せる（見せずに完成まで進める）</td></tr>
+      </tbody>
+    </table>
+    <p>途中で「オプションを見せて」と言うと、そのときの値の表がもう一度出ます。</p>
+  </div>
+
+  <div class="card">
+    <h2>できたあとに直す</h2>
+    <div class="say">
+      <div>5枚目の図のラベルが線に重なっているので直して</div>
+      <div>8枚目を2枚に分けて</div>
+      <div>原稿をもう少し短く</div>
+    </div>
+    <p>直したあとも、描いて検査するところからやり直してから渡されます。</p>
+  </div>
+</section>
+
+<!-- ============================================================ テンプレート -->
+<section class="tab" id="tab-template" role="tabpanel">
+  <p class="eyebrow">使い方</p>
+  <h1>テンプレート</h1>
+  <p class="lead">スライドの見た目（色・帯・タイトルの位置・見出しの印）を決めます。中身はそのままで、見た目だけを変えられます。</p>
+
+  <div class="card">
+    <h2>一覧</h2>
+    <p>構造（タイトルの置き方・結論の置き場・本文の場所）の違う8つを同梱しています。どれにも標準の色があり、色は言えば変えられます。名前を言わなければ テンプレート1 が使われます。構造の名前（「結論の囲み」など）でも選べます。</p>
+    <figure><img src="docs/templates.jpg" alt="テンプレート1〜8 で、同じスライドを組んだもの" loading="lazy">
+      <figcaption>同じスライドを、テンプレート1〜8（標準の色）で組んだもの。</figcaption></figure>
+    <figure><img src="docs/colors.jpg" alt="上の帯の構造に配色を当てたもの" loading="lazy">
+      <figcaption>色だけを変えたもの（上の帯の構造に配色を当てたもの）。</figcaption></figure>
+    <table class="kv">
+      <thead><tr><th>名前</th><th>構造</th></tr></thead>
+      <tbody>
+        <tr><td>テンプレート1（既定）</td><td>結論ヘッダー：上に小さく話題と見出し、その下に大きく結論の一文（左に主色の短い縦棒）、細い線で本文と分ける。下の帯は無く、本文が一番広い（標準の色：墨と藍）</td></tr>
+        <tr><td>テンプレート2</td><td>結論タイトル：上に小さく話題、その下に大きく結論の一文。下の帯は無し（結論を見出しにする形）（標準の色：藍）</td></tr>
+        <tr><td>テンプレート3</td><td>細い左帯と副題：左端に主色の細い帯、大きなタイトルの下に結論の副題の1行。下の帯は無し（標準の色：青緑）</td></tr>
+        <tr><td>テンプレート4</td><td>下の帯：左上の縦棒とタイトル、下の帯に結論の1行（ゼミの基本の形）（標準の色：青）</td></tr>
+        <tr><td>テンプレート5</td><td>上の帯：上の濃い帯にタイトル、下に「まとめ」の札つきの淡い帯（標準の色：紺とオレンジ）</td></tr>
+        <tr><td>テンプレート6</td><td>章のナビ：上に章の並び（今の章を主色に）、その下にタイトル、下に線で挟んだ結論の1行（長い発表）（標準の色：墨と山吹）</td></tr>
+        <tr><td>テンプレート7</td><td>結論の囲み：上に淡い帯（タイトルは中央）、下の帯は無く、結論は淡い色の囲みに（学会発表）（標準の色：生成りと山吹）</td></tr>
+        <tr><td>テンプレート8</td><td>左の淡い柱：左の 34% の淡い柱にタイトル・結論・短い要点、右に図を大きく（図が主役の枚）（標準の色：珊瑚）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>選ぶ</h2>
+    <div class="say"><div>テンプレートはテンプレート3で、色は深緑</div></div>
+    <p>選んだテンプレートと色は、そのスライドの設定の一覧に入ります。続きもの（次の回・次の節）は前の回と同じものを使います。自分で追加したテンプレートも、名前で同じように選べます。</p>
+  </div>
+
+  <div class="card">
+    <h2 id="add-template">追加する（手持ちのスライドから）</h2>
+    <ol class="steps">
+      <li><b>元になるスライドを置く</b>使いたい見た目のデッキを1つ（研究室で使っている発表のスライドなど）。大きさは 16:9 にします。
+        中にスライドが入っていてかまいません。作業フォルダの <code>スライドテンプレート/</code> に入れるか、場所を AI に伝えます。</li>
+      <li><b>頼む</b><span class="say"><span>このスライドからテンプレを作って。名前は「研究室」</span></span></li>
+      <li><b>分析の表を見る</b>AI ではなくプログラムが、元のスライドを約50項目にわたって分析します。どの AI に頼んでも同じ結果になります。
+        大きさ・使われたレイアウト・タイトルの位置と色・見出しの印（● ■ など）と色・本文の大きさ・強調の色・下の帯・表の塗り・余白・図の置き方などと、
+        研究発表のデザインの手引きにある目安が並びます。目安から外れている所は知らせてくるだけで、勝手には直されません。</li>
+      <li><b>3つだけ答える</b>本文に使うレイアウト、下のまとめの帯（元のまま／描き足す／無し）、強調の色。ほかは表のとおりに作られます。</li>
+      <li><b>試しに組んだものを見る</b>見本の論文紹介の数枚を、新しいテンプレートで組んだ画像が届きます。テンプレート1 で組んだものと並べて見比べます。</li>
+      <li><b>直す</b>色・見出しの印・帯の寄せは、言えば直ります。
+        <span class="say"><span>見出しの印を■に、色は濃い緑で</span></span>
+        タイトルの位置やロゴ・帯の形を変えたいときは、元のスライドのスライドマスターを PowerPoint で直して置き直し、「研究室のテンプレを作り直して」と頼みます。</li>
+    </ol>
+    <p>作ったテンプレートは、作業フォルダの <code>スライドテンプレート/</code> に、テンプレート・見た目の設定・分析の表の3つで残ります。</p>
+  </div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section class="tab" id="tab-notes" role="tabpanel">
+  <p class="eyebrow">使い方</p>
+  <h1>原稿とコメント</h1>
+  <p class="lead"><code>〇〇_原稿.html</code> で原稿を読み、わからないところにその場でコメントを付けます。</p>
+
+  <div class="card">
+    <h2>原稿を読む</h2>
+    <p>ファイルをダブルクリックすると、ブラウザで開きます。左にスライド、右に原稿が並びます。1つのファイルで完結しているので、
+      ネットにつながっていなくても開けますし、人に渡しても開けます。</p>
+    <figure class="only-course"><img src="docs/course-notes.jpg" alt="原稿のページ。左にスライド、右に原稿"><figcaption>講座の見本の原稿のページ。左に線のある灰色の行は、読み上げない補足です（確かめてほしい点は橙で出ます）。</figcaption></figure>
+    <figure class="only-zemi"><img src="docs/zemi-notes.jpg" alt="原稿のページ。左にスライド、右に原稿"><figcaption>発表の見本の原稿のページ。左に線のある灰色の行は、読み上げない補足です（確かめてほしい点は橙で出ます）。</figcaption></figure>
+    <table class="kv">
+      <thead><tr><th>操作</th><th>やり方</th></tr></thead>
+      <tbody>
+        <tr><td>次・前のスライド</td><td><kbd>→</kbd> <kbd>←</kbd> か <kbd>j</kbd> <kbd>k</kbd>。上の番号を押すとそのスライドへ飛びます。</td></tr>
+        <tr><td>PDF にする</td><td>ブラウザの印刷で「PDF に保存」。1枚ずつページが分かれます。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>コメントを付ける</h2>
+    <p>上の「コメント」ボタンか <kbd>C</kbd> キーで、コメントモードにします（もう一度 <kbd>C</kbd> か <kbd>Esc</kbd> で終わります）。
+      <span class="only-course">付け方は3つあります。</span><span class="only-zemi">付け方は2つあります。</span></p>
+
+    <h3>原稿の文章に付ける</h3>
+    <p>わからない文章をドラッグで選ぶと、入力欄が出ます。書いて「保存」（<kbd>Ctrl</kbd>+<kbd>Enter</kbd>）を押します。</p>
+    <figure><img src="docs/guide/comment-text.jpg" alt="原稿の文章を選んでコメントを書いているところ"><figcaption>選んだ文章が、入力欄の上に出ます。</figcaption></figure>
+
+    <h3>スライドの範囲に付ける</h3>
+    <p>スライドの上をドラッグして範囲を囲むと、その範囲へのコメントになります。図や式の一部を指したいときに使います。</p>
+    <figure><img src="docs/guide/comment-slide.jpg" alt="スライドの図を点線で囲んでコメントを書いているところ"><figcaption>囲んだ範囲は、AI が読むときに切り抜いた画像になって届きます。</figcaption></figure>
+    <p class="only-zemi">原稿を通して読み、「ここを聞かれたら答えられない」と思った所にコメントしておくのがおすすめです。</p>
+
+    <div class="only-course">
+    <h3>確認問題に答える</h3>
+    <p>講座の確認問題のスライドでは、原稿の下に「1-1 に答える」のようなボタンが出ます。押して答えを書くと、まとめて添削してもらえます。
+      コメントモードにしなくても使えます。</p>
+    <figure><img src="docs/guide/answer.jpg" alt="確認問題のスライドで、1-5 に答えを書いているところ"><figcaption>問題文が入力欄の上に出ます。</figcaption></figure>
+    </div>
+
+    <h3>付けたコメントを直す</h3>
+    <p>色の付いた文章か、囲んだ枠を押すと、入力欄が開いて直せます。消すときは入力欄の「削除」を押します。</p>
+  </div>
+
+  <div class="card">
+    <h2>コメントの一覧</h2>
+    <p>右上の「一覧」か <kbd>L</kbd> キーで開きます。一覧のコメントを押すと、その場所へ移動して光ります。</p>
+    <figure><img src="docs/guide/comment-list.jpg" alt="右側に開いたコメントの一覧"><figcaption>番号・スライド・選んだ文章・コメントが並びます。</figcaption></figure>
+    <table class="kv">
+      <thead><tr><th>ボタン</th><th>何が起きるか</th></tr></thead>
+      <tbody>
+        <tr><td>書き出し</td><td>コメント<span class="only-course">と答え</span>を1つのファイル（<code>〇〇_コメント.json</code>）にして、ダウンロードフォルダに保存します。AI に渡すのはこのファイルです。</td></tr>
+        <tr><td>文章でコピー</td><td>コメントを文章にしてコピーします。チャットに貼り付けて渡すこともできます。</td></tr>
+        <tr><td>保存先フォルダを登録</td><td>しなくてもよい設定です。一度フォルダを選ぶと、以後の書き出しはダウンロードを通さず、そのフォルダへ直接保存されます（使えないブラウザもあります）。
+          AI があとでファイルを移す「書き出しの保存先」（「質問に答えてもらう」の章）とは別の設定です。</td></tr>
+        <tr><td>読み込み</td><td>書き出したファイルを読み込んで、コメントを戻します。別のパソコンで続きを書くときに使います。</td></tr>
+        <tr><td>全部消す</td><td>このページのコメントを全部消します。</td></tr>
+      </tbody>
+    </table>
+    <div class="caution"><b class="h">コメントはブラウザの中に保存されます。</b>
+      書いた途中で閉じても消えませんが、別のブラウザや別のパソコンでは見えません。書き終えたら「書き出し」でファイルにしてください。</div>
+    <div class="ban"><b class="h">「全部消す」の前に、必ず書き出す。</b> 消したコメントは戻せません。</div>
+  </div>
+</section>
+
+<!-- ============================================================ 5 -->
+<section class="tab" id="tab-answer" role="tabpanel">
+  <p class="eyebrow">使い方</p>
+  <h1>質問に答えてもらう</h1>
+  <p class="lead">コメントを書き出して「コメントした」と伝えると、答えのデッキが届きます。</p>
+
+  <div class="card">
+    <h2>流れ</h2>
+    <div class="flow">
+      <div class="b">原稿にコメント</div><span class="a">→</span>
+      <div class="b">書き出し</div><span class="a">→</span>
+      <div class="b">「コメントした」と伝える</div><span class="a">→</span>
+      <div class="b last">答えのデッキ</div>
+    </div>
+    <ol class="steps">
+      <li><b>書き出す</b>原稿のページで「書き出し」を押します。ファイルはダウンロードフォルダに入ります。</li>
+      <li><b>伝える</b>エージェントに「コメントした」と言います。ファイルの場所を言わなくても、ダウンロードフォルダから新しいものを探してくれます。</li>
+      <li><b>受け取る</b><code>〇〇_質問回答_スライド.pptx</code> と <code>〇〇_質問回答_原稿.html</code> が届きます。
+        質問ごとに1〜2枚（同じ点への質問はまとめて1枚）で、どのスライドのどこへの質問かが本文の1行目に書いてあります。</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>答えのデッキでわかること</h2>
+    <ul>
+      <li>質問ごとの答え（資料にない話は「資料外」と分けて書かれます）</li>
+      <li class="only-course">確認問題の答えの添削（○・△・× と、足りない点）。元の問題文も一緒に載ります</li>
+      <li>元のスライドや原稿に誤りがあったときは、元のデッキをどう直したか</li>
+    </ul>
+    <p>答えのデッキにもコメントできます。続きの質問は、同じ答えのデッキの最後に足されます（新しいデッキは増えません）。</p>
+  </div>
+
+  <div class="card">
+    <h2>コメントのファイルの片づけ</h2>
+    <p class="only-course">講座のメモ（<code>00_README.md</code>）には、次の2行が最初から書いてあります。このおかげで、コメントのファイルは講座ごとに分けて片づけられます。あなたが何かをする必要はありません。</p>
+    <p class="only-zemi">しなくてもよい設定です。スライドと原稿のページがあるフォルダにメモ（<code>00_README.md</code> など）を置き、次の2行を書いておくと、
+      コメントのファイルがそのフォルダへ片づけられます。講座ID は、メモを書いたあとに原稿のページを作り直すと、ファイル名に付きます。</p>
+    <table class="kv">
+      <thead><tr><th>書く行</th><th>意味</th></tr></thead>
+      <tbody>
+        <tr><td><code>- 書き出しの保存先: このフォルダ</code></td><td>AI がコメントを読むときに、ダウンロードフォルダからこのフォルダへ移します
+          （原稿のページの「保存先フォルダを登録」とは別の設定）。</td></tr>
+        <tr><td><code>- 講座ID: AI</code></td><td>書き出すファイル名の頭に付く英字（<span class="only-course"><code>AI01_〇〇_コメント.json</code></span><span class="only-zemi"><code>AI_〇〇_コメント.json</code></span>）。<span class="only-course">講座ごとに別の英字にします。</span><span class="only-zemi">名前は「講座ID」ですが、ゼミの資料のフォルダでもこのまま使えます。</span>同じ英字のコメントだけがまとめて移されます。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+<!-- ============================================================ 7 -->
+<section class="tab" id="tab-faq" role="tabpanel">
+  <p class="eyebrow">使い方</p>
+  <h1>困ったとき</h1>
+  <p class="lead">よくある質問です。押すと開きます。</p>
+
+  <div class="card faq">
+    <details class="fold only-course"><summary><svg class="i"><use href="#i-chev"/></svg>講座を全部まとめて作れる？</summary>
+      <div class="in"><p>「まとめて作って」と言えば、続けて作ります。ただし前の回のつまずきを次の回に入れられないので、ふだんは1回ずつがおすすめです。</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>トークンをどのくらい使う？</summary>
+      <div class="in"><p>少なくはありません。資料の読み込み・図の描き直し・描画の検査のやり直し・別の AI（レビュー担当）によるレビューを、1デッキごとに行うからです。
+          目安は、レビュー担当1人分で約4万〜12.5万トークン、約50頁の論文をまるごと読ませると約18万トークンです。</p>
+        <p>自分の使い方で何本作れるかは、ツールと時期で変わります。1デッキ作ったあとに、ツールの使用量の画面で割合を見て判断してください。</p>
+        <p>使用量を減らすコツは4つです。スライドを組む役を【標準モデル】（対応表で、使うツールのモデルに読み替えます）にする。1回のデッキを本文10〜15枚に収める。資料は使う章だけ読ませる。続きものは同じ会話で作る。
+          上限に近づいて作業を区切っても、作業フォルダに途中の状態が残るので、あとで「続きを作って」と頼めば続けられます。</p></div></details>
+    <details class="fold only-zemi"><summary><svg class="i"><use href="#i-chev"/></svg>論文や教科書の図を載せて大丈夫？</summary>
+      <div class="in"><p>研究室のゼミ（授業での利用）と自分の勉強（私的使用）なら、ふつうは大丈夫です。スキルは切り出した図に、必ず出典を付けます。</p>
+        <p>スライドや原稿のページ（スライドの画像が入っています）をネットに上げる・研究室の外に配る・学会や会社で使うときは、
+          論文のライセンス（CC BY など。論文の最初か最後のページに書いてあります）か、出版社の許可を確かめてください。</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>Mac で使える？</summary>
+      <div class="in"><p>スライド（.pptx）と図までは作れます。描いて検査する部分と原稿のページ作りは、Windows の PowerPoint で確かめています。LibreOffice があれば Mac でも描けるはずですが、まだ試していません。</p>
+        <p>LibreOffice を使わないときは、できたスライドを PowerPoint で開いて目で確かめ、PDF に書き出してください。原稿のページは、その PDF を渡せば作れます
+          （<code>python scripts/notes_html.py 〇〇_スライド.pptx --pdf 〇〇.pdf</code>）。</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>図の文字が四角や別の字体になる</summary>
+      <div class="in"><p>日本語フォント（Meiryo か Yu Gothic）が見つかっていないときに起きます。Windows 以外では、日本語フォントを入れてから図を描き直してください。</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>直したはずの所が、画像では直っていない</summary>
+      <div class="in"><p>PowerPoint が古い版を開いていることがあります（クラウド同期のフォルダで起きやすい）。描き直しても続くときは、
+        画面に出ていない PowerPoint が残っていないかタスクマネージャーで確かめてください。</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>書いたコメントが見えなくなった</summary>
+      <div class="in"><p>コメントはブラウザごとに保存されます。書いたときと同じブラウザで開いてください。
+        書き出したファイルがあれば、一覧の「読み込み」で戻せます。</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>原稿を直したら、コメントの印が消えた</summary>
+      <div class="in"><p>選んだ文章が原稿から無くなると、一覧に「原稿が変わって、選んだ文章が見つかりません」と出ます。コメントそのものは残っているので、そのまま書き出せます。</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>スライドの文字が多い・図が小さいと感じる</summary>
+      <div class="in"><p>そのまま伝えてください（「3枚目の文字を減らして」）。目安は1枚100〜150字、1行は図の横なら20字（図がなければ25字）、図の中の文字は14ptです。
+        スキルはこの目安に寄せて作りますが、気になる所は言えば直してくれます。</p></div></details>
+  </div>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+  /* ---- 発表／講座の切り替えとタブ。URL の # には入れず、?mode=&tab= を replaceState で残す ---- */
+  var root=document.documentElement;
+  var tabs=[].slice.call(document.querySelectorAll('.nav-btn'));
+  var modeBtns=[].slice.call(document.querySelectorAll('.mode button'));
+  var PAIR={'intro-zemi':'intro-course','intro-course':'intro-zemi','ask':'course','course':'ask'};
+  var EYEBROW={zemi:'発表の使い方',course:'講座の使い方'};
+  var mode='course',cur='';
+  function visible(b){return getComputedStyle(b).display!=='none'}
+  function save(){try{history.replaceState(null,'','?mode='+mode+'&tab='+cur)}catch(e){}}
+  function show(name,keep){
+    var btn=tabs.filter(function(b){return b.dataset.tab===name&&visible(b)})[0];
+    if(!btn)btn=tabs.filter(visible)[0];
+    cur=btn.dataset.tab;
+    tabs.forEach(function(b){b.setAttribute('aria-selected',b===btn)});
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active',t.id==='tab-'+cur)});
+    try{btn.scrollIntoView({inline:'nearest',block:'nearest'})}catch(e){}
+    save();if(!keep)window.scrollTo(0,0);
+  }
+  function setMode(m,tab){
+    mode=(m==='zemi')?'zemi':'course';root.setAttribute('data-mode',mode);store('slide_skill_mode',mode);
+    modeBtns.forEach(function(b){b.setAttribute('aria-checked',b.dataset.mode===mode)});
+    document.querySelectorAll('.eyebrow').forEach(function(e){e.textContent=EYEBROW[mode]});
+    var n=0;tabs.forEach(function(b){if(visible(b))b.querySelector('.n').textContent=String(++n).padStart(2,'0')});
+    var want=tab||cur;
+    var el=tabs.filter(function(b){return b.dataset.tab===want})[0];
+    if(el&&!visible(el)&&PAIR[want])want=PAIR[want];
+    show(want||'intro-'+mode);
+  }
+  tabs.forEach(function(b){b.setAttribute('aria-controls','tab-'+b.dataset.tab);b.addEventListener('click',function(){show(b.dataset.tab)})});
+  /* どこを押しても反対側へ（キーボードでは、ボタンにフォーカスして Enter・Space でも切り替わる） */
+  document.querySelector('.mode').addEventListener('click',function(){setMode(mode==='course'?'zemi':'course')});
+  document.querySelectorAll('[data-goto]').forEach(function(a){a.addEventListener('click',function(e){
+    e.preventDefault();show(a.dataset.goto,true);
+    var t=document.getElementById(a.dataset.target);if(t)t.scrollIntoView({block:'start'});else window.scrollTo(0,0);
+  })});
+  var qm=(location.search.match(/[?&]mode=([a-z]+)/)||[])[1];
+  var qt=(location.search.match(/[?&]tab=([a-z-]+)/)||[])[1];
+  setMode(qm||store('slide_skill_mode')||'course',qt||('intro-'+(qm||store('slide_skill_mode')||'course')));
+
+  /* ---- 明るさ：自動（OS に従う）→ 明るい → 暗い ---- */
+  var themeBtn=document.getElementById('theme'),label=themeBtn.querySelector('span');
+  var modes=['auto','light','dark'],names={auto:'自動',light:'明るい',dark:'暗い'};
+  function apply(m){if(m==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',m);label.textContent='明るさ：'+names[m]}
+  var theme=store('slide_skill_theme')||'auto';if(modes.indexOf(theme)<0)theme='auto';apply(theme);
+  themeBtn.addEventListener('click',function(){theme=modes[(modes.indexOf(theme)+1)%3];store('slide_skill_theme',theme);apply(theme)});
+
+  /* ---- 開いた中身を押しても閉じる（文字を選んでいる途中は閉じない） ---- */
+  document.querySelectorAll('details.fold .in').forEach(function(el){
+    el.style.cursor='pointer';
+    el.addEventListener('click',function(e){
+      if(e.target.closest('a,button,code'))return;
+      var s=window.getSelection();if(s&&!s.isCollapsed)return;
+      el.closest('details').open=false;
+    });
+  });
+})();
+</script>
+</body>
+</html>

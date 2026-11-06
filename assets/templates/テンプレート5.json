@@ -1,0 +1,32 @@
+{
+  "label": "上の帯",
+  "structure": "上の帯",
+  "palette": "紺とオレンジ",
+  "desc": "上の濃い帯にタイトル、下に「まとめ」の札つきの淡い帯",
+  "colors": {
+    "TEXT": "3C3C3C",
+    "RED": "C8102E",
+    "BULLET": "E8772E",
+    "BAND": "1F3A5F",
+    "ARROW": "F0A46E",
+    "PALE": "FBE7D8",
+    "LIGHT": "F4F2EF",
+    "CONCLUDE": "FBE7D8",
+    "ACCENT": "E8772E",
+    "TINT": "F5EFE6"
+  },
+  "band_align": "l",
+  "conclusion": "band",
+  "area": {
+    "x": 1.0,
+    "top": 1.9,
+    "right": 12.33,
+    "bottom": 6.62,
+    "heading": [
+      0.55,
+      1.14
+    ],
+    "fig_x": 7.6
+  },
+  "title_color": "white"
+}

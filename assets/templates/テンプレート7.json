@@ -1,0 +1,32 @@
+{
+  "label": "結論の囲み",
+  "structure": "結論の囲み",
+  "palette": "生成りと山吹",
+  "desc": "上に淡い帯（タイトルは中央）、下の帯は無く、結論は淡い色の囲みに（学会発表）",
+  "colors": {
+    "TEXT": "333333",
+    "RED": "D62D20",
+    "BULLET": "D9A21B",
+    "BAND": "2F4B66",
+    "ARROW": "9AAFC4",
+    "PALE": "E3ECF5",
+    "LIGHT": "F3F3F3",
+    "CONCLUDE": "FBE3D6",
+    "ACCENT": "D9A21B",
+    "TINT": "FFF4D6"
+  },
+  "band_align": "c",
+  "conclusion": "box",
+  "area": {
+    "x": 1.0,
+    "top": 1.9,
+    "right": 12.33,
+    "bottom": 6.1,
+    "heading": [
+      0.55,
+      1.14
+    ],
+    "fig_x": 7.6
+  },
+  "title_color": "main"
+}
