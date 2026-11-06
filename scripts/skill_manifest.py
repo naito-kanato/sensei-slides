@@ -19,7 +19,7 @@ def targets(root: Path = SKILL):
     """指紋を取るファイル：scripts/ と assets/ の中身（キャッシュと MANIFEST.txt 自身は除く）。"""
     out = []
     for d in ("scripts", "assets"):
-        for p in sorted((root / d).rglob("*")):
+        for p in sorted((root / d).rglob("*"), key=lambda q: q.relative_to(root).as_posix()):   # 文字の順（Windows の Path は大文字小文字を区別せずに並べる）
             if p.is_file() and "__pycache__" not in p.parts and p.name != MANIFEST.name and not p.name.startswith("~$"):
                 out.append(p)
     return out
