@@ -70,7 +70,7 @@ def steps_for(work: Path):
     plan = work / {"memo": "memo.md", "outline": "outline.md", "answers": "answers.md"}[kind]
     if not plan.exists():
         add(False, "構成案", "outline.md が無い")
-        return out, ("手順2：構成案（outline.md）を作る。SKILL.md「2. 構成案」。講座なら references/course.md の手順4（設計メモ memo.md）")
+        return out, ("手順2：構成案（outline.md）を作る。`guide.py steps 2`。講座なら references/course.md の手順4（設計メモ memo.md）")
     if kind == "outline":
         import check_outline
         bad = _fails(check_outline.check(plan))
@@ -90,7 +90,7 @@ def steps_for(work: Path):
         if bad and not nxt:
             nxt = f"references/course.md 手順4：check_memo の ✘ を直す（python {SKILL}/scripts/check_memo.py {plan.as_posix()}）"
         if not rv.exists() and not nxt:
-            nxt = "references/course.md 手順4：設計メモを【別のエージェント】（【上位モデル】）にレビューさせ、結果を memo_review.md に残し、9節に手当てを書く"
+            nxt = "references/course.md 手順4：設計メモを【別のエージェント】にレビューさせ、結果を memo_review.md に残し、9節に手当てを書く"
     else:
         add(True, "答えの下書き（answers.md）")
     # 2. 図
@@ -98,7 +98,7 @@ def steps_for(work: Path):
     pngs = list((work / "figs").glob("*.png")) if (work / "figs").is_dir() else []
     fig_ok = figs.exists() and pngs and max(p.stat().st_mtime for p in pngs) >= figs.stat().st_mtime - 1
     if add(bool(fig_ok), "図（figs.py → figs/）", "" if fig_ok else ("figs.py が無い" if not figs.exists() else "figs.py を直したあと描き直していない")) is False and not nxt:
-        nxt = ("手順3〜5（SKILL.md「使用量を抑える進め方」の役割）：python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、"
+        nxt = ("手順3〜5（SKILL.md「役割を分ける」）：python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、"
                    "図の担当が figs.py、書き手がカードを1枚ずつ読んで parts/NN.py・parts/NN.md を書き、scaffold.py <work> --merge で戻して、"
                    "python <skill>/scripts/make_deck.py <work> で組んで検査する")
     # 3. ビルド
@@ -111,7 +111,7 @@ def steps_for(work: Path):
         add(False, "スライド（*_スライド.pptx）", "まだ組んでいない")
         if not nxt:
             nxt = ("手順4：python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、カードを1枚ずつ読んで parts/NN.py・parts/NN.md を書き、"
-                   "scaffold.py <work> --merge で戻して、python <skill>/scripts/make_deck.py <work> で組んで検査する（SKILL.md「4. ビルド」）")
+                   "scaffold.py <work> --merge で戻して、python <skill>/scripts/make_deck.py <work> で組んで検査する（`guide.py steps 4`）")
         return out, nxt
     add(_newer(pptx, build) and (not notes.exists() or _newer(pptx, notes)), "スライド", f"{pptx.name}" + ("" if _newer(pptx, build) else "（build.py より古い。組み直す）"))
     # 4. 描画の検査
@@ -122,11 +122,11 @@ def steps_for(work: Path):
     # 5. 完成後のレビュー
     review = work / "review.md"
     if add(review.exists(), "完成後のレビュー（review.md）") is False and not nxt:
-        nxt = "手順5b：一覧の画像（render/grid-*.jpg）を空の会話の【別のエージェント】（【上位モデル】）にレビューさせ、review.md に判定・指摘と採否・直した点を書く（references/final-review.md）"
+        nxt = "手順5b：一覧の画像（render/grid-*.jpg）を空の会話の【別のエージェント】に、final-review.md の「指摘の型」とあわせてレビューさせ、review.md に判定・指摘と採否・直した点を書く（references/final-review.md）"
     # 6. 原稿のページ
     html = pptx.with_name(pptx.name.replace("_スライド.pptx", "_原稿.html"))
     if add(_newer(html, pptx), "原稿のページ（*_原稿.html）", "" if _newer(html, pptx) else ("無い" if not html.exists() else "pptx より古い")) is False and not nxt:
-        nxt = f"手順6：python {SKILL}/scripts/notes_html.py で原稿のページを作る（SKILL.md「6. 原稿HTML」）"
+        nxt = f"手順6：python {SKILL}/scripts/notes_html.py で原稿のページを作る（`guide.py steps 6`）"
     # 7. 渡す前の確認
     if not nxt:
         nxt = f"手順7：python {SKILL}/scripts/check_done.py \"{pptx.as_posix()}\" を走らせる。「渡してよい」が出たらユーザーに渡す（✘ があれば直す）"

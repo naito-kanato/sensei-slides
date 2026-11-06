@@ -2,7 +2,7 @@
 
     python <skill>/scripts/guide.py course              # references/course.md の見出しの一覧（節の名前と字数）
     python <skill>/scripts/guide.py course 4            # 「4.」で始まる節（その下の小見出しも含む）
-    python <skill>/scripts/guide.py skill 4 5 5b        # SKILL.md の手順4・5・5b
+    python <skill>/scripts/guide.py steps 4 5 5b        # references/steps.md の手順4・5・5b（手順の中身）
     python <skill>/scripts/guide.py skill コマンドの書き方 # 見出しにその語を含む節
 
 ファイルの名前：skill（SKILL.md）か、references の名前（course・figures・style-guide・structures・final-review・
