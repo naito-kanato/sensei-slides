@@ -338,7 +338,8 @@ def _font(kind: str):
         _FONTS[kind] = None
         for path, index in _FONT_FILES["ea" if kind not in _FONT_FILES else kind]:
             try:
-                _FONTS[kind] = ImageFont.truetype(str(path), 100, index=index)
+                # 幅を測るだけなので、文字の配置は簡単な方式で（Linux の Pillow の raqm は文字によって raqm_layout() で止まる）
+                _FONTS[kind] = ImageFont.truetype(str(path), 100, index=index, layout_engine=ImageFont.Layout.BASIC)
                 break
             except OSError:
                 continue
@@ -357,7 +358,10 @@ def text_width_pt(runs: list[Run], size: float) -> float:
         for ch in r.text:
             kind = "ea" if _is_ea(ch) else ("latin_i" if r.i else ("latin_b" if r.b else "latin"))
             f = _font(kind)
-            cw = f.getlength(ch) / 100.0 if f else (1.0 if kind == "ea" else 0.55)
+            try:
+                cw = f.getlength(ch) / 100.0 if f else (1.0 if kind == "ea" else 0.55)
+            except (RuntimeError, OSError):     # 測れない文字は、全角 1・半角 0.55 の目安で
+                cw = 1.0 if kind == "ea" else 0.55
             w += cw * size * scale
     return w
 
