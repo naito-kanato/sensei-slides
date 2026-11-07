@@ -950,6 +950,25 @@ class Slide:
         self.cur_x, self.cur_y = x, a.bottom + gap
         return Box(x, y, max(q.right, a.right) - x, a.bottom - y)
 
+    def qa_pairs(self, pairs, x: float | None = None, y: float | None = None, size: float = 20,
+                 indent: float = 0.35, gap: float = 0.7) -> Box:
+        """想定質問の枚：1枚に質問と回答を2組。pairs = [(番号, 質問, 回答), …]（2組まで。改行は文字列の中の \\n）。
+        質問は太字のラベル（「Q1　…」）、回答はその下に字下げして「⇒ …」。2組の間は gap（in）あけて細い線を引く（帯なしの枚は、全体を上下の中ほどに寄せる）。
+        戻るとよい枚はスライドに書かず、原稿に書く。"""
+        x, y = self._xy(x, y)
+        top, bottom = y, y
+        for j, (k, q, a) in enumerate(list(pairs)[:2]):
+            yy = top if j == 0 else bottom + gap
+            if j:
+                self.line(x, yy - gap / 2, SLIDE_W - x, yy - gap / 2, color="BFBFBF", width=0.75)
+            qb = self.text(x, yy, self._label(f"{k}　{q}"), size=size, name="想定質問")
+            head, *rest = a.split("\n")
+            ab = self.text(x + indent, qb.bottom + 0.05, "⇒ " + head + "".join("\n　 " + t for t in rest),
+                           size=size, name="回答")   # 2行目からは矢印の後ろにそろえる
+            bottom = ab.bottom
+        self.cur_x, self.cur_y = x, bottom + 0.35
+        return Box(x, top, SLIDE_W - 2 * x, bottom - top)
+
     def develop(self, left, right, x: float | None = None, y: float | None = None, size: float = 20,
                 gap: float = 0.35, arrow_w: float = 0.6, after: float = 0.35) -> Box:
         """横の矢印で展開：左に条件・前の状態、右に結果・次の状態。left/right は文字列か (ラベル, [行])。

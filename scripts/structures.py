@@ -221,7 +221,8 @@ def check_plan(text: str, kind: str, body_no: list, where: str, folder=None):
 # ---- 枚の役割（構成案・設計メモの「役割」の列。AI はこの語から選ぶ。スクリプトが結論の列とスライドに突き合わせる）
 # 質問待機：発表の最後に、質問を待つあいだ映す枚（「質疑応答」「ご清聴ありがとうございました」）。
 # 聞かれそうな質問に答える予備の枚は、中身があるので「本文」（結論の一文あり）
-ROLES = ("表紙", "本文", "区切り", "目次", "確認問題", "解答", "参考文献", "謝辞", "質問待機")
+# 想定質問：発表の最後（質問待機のあと）に、聞かれそうな質問と回答案を1枚に2組ずつ載せる枚（構成案の「## 想定質問」の表から）
+ROLES = ("表紙", "本文", "区切り", "目次", "確認問題", "解答", "参考文献", "謝辞", "質問待機", "想定質問")
 NO_CONCLUSION_ROLES = tuple(r for r in ROLES if r != "本文")   # 結論の一文を置かない枚（組むときに帯も●も無い枚になる）
 
 
@@ -322,6 +323,57 @@ def check_quiz_plan(text: str, kind: str = "memo"):
 
 QUIZ_Q_TAG = re.compile(r"〔\s*ゴール\s*(\d+)\s*[・、,]\s*(\d+)\s*枚目?\s*〕")
 QUIZ_A_TAG = re.compile(r"〔\s*要素\s*[：:]\s*([^〕]+)〕")
+
+
+QA_TOTAL = 4        # 発表の想定質問の数（固定）
+QA_PER_SLIDE = 2    # 1枚に載せる組の数。想定質問の枚は 2枚
+
+
+def expected_qa(text: str):
+    """構成案の「## 想定質問」の表 → [(番号, 質問, 回答の要点, 戻る枚 int|None)]。表が無ければ None。"""
+    from check_memo import table_rows
+    rows = table_rows(text, "想定質問")
+    if not rows:
+        return None
+    head = rows[0]
+
+    def at(r, key, default):
+        k = next((i for i, h in enumerate(head) if key in h), default)
+        return r[k].strip() if k is not None and k < len(r) else ""
+    out = []
+    for r in rows[1:]:
+        if not r or not any(c.strip() for c in r):
+            continue
+        back = re.search(r"\d+", at(r, "戻る", None))
+        out.append((at(r, "番号", 0) or f"Q{len(out) + 1}", at(r, "質問", 1), at(r, "回答", 2), int(back.group(0)) if back else None))
+    return out
+
+
+def check_expected_qa(text: str, kind: str = "outline"):
+    """[(印, 項目, 説明)]：発表の構成案の想定質問（4問、1枚に2組で2枚、各問に戻る枚）。講座の設計メモには当てない（確認問題がある）。"""
+    if kind != "outline":
+        return []
+    items = expected_qa(text)
+    roles = plan_roles(text, kind) or {}
+    n_sl = sum(r == "想定質問" for r in roles.values())
+    if items is None and not n_sl:
+        return [("△", "想定質問", f"「## 想定質問」の表が無い。発表のあと聞かれそうな質問を {QA_TOTAL}問（番号｜質問｜回答の要点｜戻る枚）、"
+                 f"表の最後に役割「想定質問」の行を {QA_TOTAL // QA_PER_SLIDE}枚（1枚に {QA_PER_SLIDE}組）")]
+    bad = []
+    if len(items or []) != QA_TOTAL:
+        bad.append(f"質問が {len(items or [])}問（{QA_TOTAL}問にする）")
+    if n_sl != QA_TOTAL // QA_PER_SLIDE:
+        bad.append(f"役割「想定質問」の枚が {n_sl}枚（{QA_TOTAL // QA_PER_SLIDE}枚。1枚に {QA_PER_SLIDE}組）")
+    body = {n for n, r in roles.items() if r == "本文"}
+    noback = [k for k, _, _, b in (items or []) if b is None or (body and b not in body)]
+    if noback:
+        bad.append(f"戻る枚が無いか、本文の枚でない：{'・'.join(noback)}（答えるときに戻ると説明しやすい本文の枚の番号）")
+    noans = [k for k, _, a, _ in (items or []) if not a]
+    if noans:
+        bad.append(f"回答の要点が空：{'・'.join(noans)}")
+    if bad:
+        return [("△", "想定質問", "。".join(bad))]
+    return [("✔", "想定質問", f"{QA_TOTAL}問を {QA_PER_SLIDE}組ずつ {n_sl}枚、どれにも回答の要点と戻る枚")]
 
 
 def quiz_items(text: str):

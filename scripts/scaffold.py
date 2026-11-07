@@ -185,6 +185,7 @@ def build_py(work: Path, kind, title, rows) -> str:
               "    for j, (k, txt) in enumerate(items):",
               '        s.p("{b:" + k + "}　" + txt, size=size, gap=gap if j < len(items) - 1 else 0.2)',
               ""]
+    qa_slices = qa_split(work, kind, rows)
     for r in rows:
         n, role = r["#"], col(r, "役割") or "本文"
         head = col(r, "●見出し")
@@ -201,6 +202,13 @@ def build_py(work: Path, kind, title, rows) -> str:
                      f'deck.title_slide(["TODO 題名"], subtitle="TODO")   # 論文の表紙など（{q(fig) or "表紙"}）')
         elif role == "区切り":
             L.append(f'deck.section({n}, "{q(head or "TODO 章の名前")}")')
+        elif role == "想定質問":
+            L.append("s = deck.slide(T)   # summary なし：帯も●も無い枚になる")
+            L.append('s.heading("想定質問")')
+            pairs = [(k, qq, re.sub(r"\s*〔[^〕]*〕", "", a)) for k, qq, a, _ in qa_slices.get(n, [])]   # 〔出どころ〕はスライドに出さない
+            L.append("s.at(1.0, 1.9)")
+            L.append("s.qa_pairs([" + ", ".join(f'("{q(k)}", "{q(qq)}", "{q(a)}")' for k, qq, a in pairs)
+                     + "])   # 1行25字までに \\n を入れて折る（回答は2〜3行）。戻る枚は原稿に")
         elif role in ("確認問題", "解答"):
             L.append("s = deck.slide(T)   # summary なし：帯も●も無い枚になる")
             L.append(f's.heading("{q(head or role)}")')
@@ -227,6 +235,17 @@ def build_py(work: Path, kind, title, rows) -> str:
           "OUT.parent.mkdir(parents=True, exist_ok=True)",
           "deck.save(OUT, title=T, author=AUTHOR)"]
     return "\n".join(L) + "\n"
+
+
+def qa_split(work: Path, kind, rows):
+    """{想定質問の枚の番号: [(番号, 質問, 回答, 戻る枚), …]}：構成案の「## 想定質問」の表を、役割「想定質問」の枚に2組ずつ割り振る。"""
+    if kind != "outline":
+        return {}
+    import structures
+    items = structures.expected_qa((work / "outline.md").read_text(encoding="utf-8")) or []
+    slides = [r["#"] for r in rows if col(r, "役割") == "想定質問"]
+    k = structures.QA_PER_SLIDE
+    return {n: items[i * k:(i + 1) * k] for i, n in enumerate(slides)}
 
 
 def notes_md(kind, rows, care, minutes=None) -> str:

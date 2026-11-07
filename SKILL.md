@@ -22,7 +22,7 @@ description: 資料やテーマから、スライド（PowerPoint .pptx）・読
 |---|---|---|---|
 | 0 | 聞き手の詳しさ（必須）と設定の一覧。資料は「資料の受け取り」 | check_env・check_outline／check_memo（必須の抜けは ✘） | 0・資料の受け取り |
 | 1 | 資料を読む（構成案レビュー担当に先読みさせる） | — | 1 |
-| 2 | outline.md（講座は memo.md）：**話の筋** → 見出し・結論の一文・前の枚から・図・本文の要点〔出どころ〕・本文の形・役割 | check_outline（講座は check_memo） | 2、story.md、講座は course.md 手順4 |
+| 2 | outline.md（講座は memo.md）：**話の筋** → 見出し・結論の一文・前の枚から・図・本文の要点〔出どころ〕・本文の形・役割。発表は最後に**想定質問**4問（1枚に2組） | check_outline（講座は check_memo） | 2、story.md、講座は course.md 手順4 |
 | 2b | outline_review.md（講座は memo_review.md）＋「引っかかりへの手当て」 | 同上 | outline-review.md |
 | 3〜5 | **scaffold.py** で骨組みとカード → 図 → 1枚ずつ本文と原稿（parts/）→ `scaffold.py --merge` → `<資料名>_スライド.pptx`・render/ | **make_deck.py**（図→組む→描く→検査を1回で） | 3・4・5、下の「役割を分ける」 |
 | 5b | review.md（【別のエージェント】のレビュー。一覧の画像 render/grid-*.jpg と「指摘の型」） | — | final-review.md |

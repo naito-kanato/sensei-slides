@@ -54,11 +54,15 @@ def body_rows(text: str):
     head = rows[0]
     i_h = next((k for k, h in enumerate(head) if "見出し" in h), None)
     i_t = next((k for k, h in enumerate(head) if "タイトル" in h), None)
+    i_r = next((k for k, h in enumerate(head) if h.strip() == "役割"), None)
     out = []
     for r in rows[1:]:
         h = r[i_h] if i_h is not None and len(r) > i_h else ""
         t = r[i_t] if i_t is not None and len(r) > i_t else ""
+        role = r[i_r].strip() if i_r is not None and len(r) > i_r else ""
         if "表紙" in t or "表紙" in h or h.strip() in ("", "—", "-", "－"):
+            continue
+        if role and role != "本文":      # 想定質問・確認問題・質問待機などは本文の枚に数えない
             continue
         out.append(h)
     return out
@@ -187,13 +191,16 @@ def flows(text: str, folder=None):
     rows = table_rows(text, "構成") or []
     i_h = next((k for k, h in enumerate(rows[0]) if "見出し" in h), 3) if rows else 3
     body_no = [int(r[0]) for r in rows[1:] if r and r[0].strip().isdigit() and len(r) > i_h and r[i_h].strip() not in ("", "—", "-")]
+    import structures as _st
+    _roles = _st.plan_roles(text, "outline") or {}
+    body_no = [n for n in body_no if _roles.get(n, "本文") == "本文"]   # 想定質問・確認問題などは本文の枚に数えない
     mark, msg = figplan.flow_check(figplan.flow_count(plan, body_no), len(body_no), text, "構成案")
     nf = figplan.no_figure(plan, body_no)
     import structures
     roles = structures.check_roles(text, "outline", "構成案")
     if roles is None:
         roles = [("✘", "役割", "構成案の" + f"表に「役割」の列が無い。枚ごとに {'・'.join(structures.ROLES)} から選んで書く（結論の一文を置くのは本文だけ）")]
-    return structures.check_plan(text, "outline", body_no, "構成案", folder) + roles + [(mark or "△", "流れ図の数", msg),
+    return structures.check_plan(text, "outline", body_no, "構成案", folder) + roles + structures.check_expected_qa(text, "outline") + [(mark or "△", "流れ図の数", msg),
             ("✘" if nf else "✔", "図の無いスライド",
              f"「図で見せるもの」が「なし」・無い本文のスライド：{'・'.join(map(str, nf))}。{figplan.NO_FIGURE_HINT}" if nf
              else "本文のスライドすべてに図で見せるものがある")]

@@ -256,7 +256,7 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     plan = figplan.plan_from_text(src.read_text(encoding="utf-8"), "memo" if src.name == "memo.md" else "outline") if src and not qa else None
     if plan is not None:
         skip = {1} | {i for i, s in enumerate(prs.slides, 1)
-                     if any(sh.name == "見出し" and sh.has_text_frame and re.search(r"問題|解答", sh.text_frame.text) for sh in s.shapes)}
+                     if any(sh.name == "見出し" and sh.has_text_frame and re.search(r"問題|解答|想定質問", sh.text_frame.text) for sh in s.shapes)}
         bad_plan = figplan.mismatches(prs, plan, skip)
         res.append(("✘" if bad_plan else "✔", "図の案どおりか",
                     "；".join(f"[{i}] {m}" for i, m in bad_plan[:6]) + "（案どおり描くか、案を直して理由を書く）" if bad_plan

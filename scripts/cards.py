@@ -183,6 +183,8 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         out[n] = "\n".join(L)
     if kind == "memo":
         out.update(quiz_cards(work, rows, text, blocks(skel), skel))
+    if kind == "outline":
+        out.update(qa_cards(work, rows, blocks(skel), skel))
     return out
 
 
@@ -210,6 +212,26 @@ def answer_lines(work: Path, r) -> list:
           "- 原稿の1文目は「あなたは N枚目の『…』について、…と聞きましたね」（発表のモードなら「N枚目の『…』への質問です」）。※行にコメント番号と元の枚を残す",
           "- 元のスライドや原稿の誤りを突くコメントなら、答えにそれを書き、迷った所として返す（元のデッキを直すのはメイン）"]
     return L
+
+
+def qa_cards(work: Path, rows, code: dict, skel: str):
+    """発表の想定質問の枚のカード（構成案の「## 想定質問」の表から。1枚に2組）。"""
+    from scaffold import col, qa_split
+    bands = {r["#"]: col(r, "青帯", "結論") for r in rows}
+    out = {}
+    for n, pairs in qa_split(work, "outline", rows).items():
+        L = [f"# {n}枚目のカード（想定質問、{work.name}）", "",
+             f"書くもの：`parts/{n:02d}.py`（下の骨組みの質問と回答に \\n を入れて折る）と `parts/{n:02d}.md`（この枚の原稿）。", ""]
+        for k, qq, a, back in pairs:
+            L += [f"## {k}", f"- 質問：{qq}", f"- 回答の要点：{a}",
+                  f"- 戻る枚：{back}枚目（青帯「{bands.get(back, '')}」）" if back else "- 戻る枚：（構成案に無い）", ""]
+        L += ["## 目安",
+              "- スライド：質問は1〜2行、回答は2〜3行。1行25字まで。回答は体言止めか短い言い切り。数値・固有名詞は構成案のとおり",
+              "- 原稿：質問ごとに、回答を話し言葉で2〜4文。最後に「詳しくは N枚目に戻ると、…が見られます」と、戻る枚とそこで見せるものを1文"
+              "（戻る枚はスライドには書かない）",
+              "", "## 骨組み", "```python", skel[code[n][0]:code[n][1]].rstrip() if n in code else "", "```", ""]
+        out[n] = "\n".join(L)
+    return out
 
 
 def quiz_cards(work: Path, rows, text: str, code: dict, skel: str):

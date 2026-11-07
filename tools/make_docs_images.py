@@ -27,8 +27,37 @@ JOBS = [  # (出力, 描画のフォルダ, スライド番号, 列の数, 全�
     ("course-slides-1.jpg", COURSE, range(1, 5), 2, 1648),
     ("course-slides-2.jpg", COURSE, range(5, 16), 3, 1654),
     ("zemi-slides-1.jpg", ZEMI, range(1, 5), 2, 1648),
-    ("zemi-slides-2.jpg", ZEMI, range(5, 15), 3, 1654),
+    ("zemi-slides-2.jpg", ZEMI, range(5, 17), 3, 1654),
 ]
+# README の一番上の動く画像（講座と発表の見本を交互に）：(描画のフォルダ, スライド番号, 上の帯の文字)
+DEMO = [(COURSE, 1, "講座：AI が講師の連続講座"), (COURSE, 3, "講座：結論の一文と図"), (COURSE, 6, "講座：数値はグラフで"),
+        (COURSE, 12, "講座：確認問題"), (ZEMI, 1, "発表：論文紹介"), (ZEMI, 8, "発表：論文の図と数値"),
+        (ZEMI, 13, "発表：結果と赤丸"), (ZEMI, 15, "発表：想定質問と回答案")]
+
+
+def demo_gif(out: Path, width: int = 800, bar: int = 40, ms: int = 1800):
+    """DEMO の枚を、上に短い帯を付けて GIF にする（大きさは 2〜3 MB 以内を目安に、幅 800）。"""
+    h = round(width * 9 / 16)
+    try:
+        font = ImageFont.truetype("C:/Windows/Fonts/YuGothB.ttc", 22)
+    except OSError:
+        font = ImageFont.load_default()
+    frames = []
+    for folder, n, label in DEMO:
+        f = folder / f"slide-{n:02d}.png"
+        if not f.exists():
+            continue
+        im = Image.new("RGB", (width, h + bar), "white")
+        d = ImageDraw.Draw(im)
+        d.rectangle([0, 0, width, bar], fill=(31, 56, 100))
+        d.text((16, bar // 2), label, fill="white", font=font, anchor="lm")
+        sl = Image.open(f).convert("RGB").resize((width, h), Image.LANCZOS)
+        im.paste(sl, (0, bar))
+        d.rectangle([0, bar, width - 1, bar + h - 1], outline=(200, 200, 200))
+        frames.append(im.convert("P", palette=Image.ADAPTIVE, colors=128))
+    if frames:
+        frames[0].save(out, save_all=True, append_images=frames[1:], duration=ms, loop=0, optimize=True)
+
 
 
 def tile(folder: Path, nums, cols: int, width: int) -> Image.Image:
@@ -110,6 +139,9 @@ def main():
     out = ROOT / "docs" / "structures.jpg"
     labeled(STRUCT, STRUCT_TILES).save(out, quality=88)
     print(out.relative_to(ROOT))
+    out = ROOT / "docs" / "demo.gif"
+    demo_gif(out)
+    print(out.relative_to(ROOT), f"{out.stat().st_size / 1e6:.1f} MB")
     notes_shots()
 
 

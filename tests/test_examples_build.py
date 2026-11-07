@@ -17,7 +17,7 @@ def test_zemi_example_builds(built):
     pptx = built / "examples" / "zemi" / "重力波の初観測_スライド.pptx"
     prs = Presentation(pptx)
     items = nh.slide_texts(prs)
-    assert len(items) == 14                                          # 表紙＋本文13
+    assert len(items) == 16                                          # 表紙＋本文13＋想定質問2
     assert items[1][1] == "重力波"                                   # ●見出し
     assert items[1][2] == "重力波は予言から100年、直接の観測がなかった"  # 青帯
     assert "アインシュタイン" in items[1][3]                         # notes.md が発表者ノートに入っている

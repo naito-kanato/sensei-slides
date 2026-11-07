@@ -44,4 +44,4 @@ def test_export_pdf(built, tmp_path):
     import pymupdf as fitz
     pptx = built / "examples" / "zemi" / "重力波の初観測_スライド.pptx"
     pdf = lo.export_pdf(pptx, tmp_path / "slides.pdf")
-    assert fitz.open(pdf).page_count == 14
+    assert fitz.open(pdf).page_count == 16

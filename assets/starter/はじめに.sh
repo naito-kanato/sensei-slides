@@ -2,6 +2,12 @@
 # sensei-slides の準備：仮想環境 .venv を作って、スライド作りの部品を入れる（Mac・Linux）。
 #   ターミナルでこのフォルダに移って  sh はじめに.sh
 cd "$(dirname "$0")" || exit 1
+# uv が入っていれば uv で作る（速い。Python が無くても 3.12 を取ってくる）。無ければ下の python と pip で
+if command -v uv >/dev/null 2>&1; then
+  { [ -x .venv/bin/python ] || uv venv --seed --python 3.12 .venv; } &&
+  uv pip install --python .venv/bin/python -q -r .agents/skills/sensei-slides/requirements.txt || {
+    echo "部品を入れられませんでした。上のメッセージを確かめてください。"; exit 1; }
+else
 PY=$(command -v python3 || command -v python)
 if [ -z "$PY" ] || ! "$PY" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; then
   echo "Python 3.10 以上が見つかりませんでした（入っていないか、版が古い）。"
@@ -16,6 +22,7 @@ fi
 [ -x .venv/bin/python ] || "$PY" -m venv .venv || exit 1
 .venv/bin/python -m pip install --disable-pip-version-check -q -r .agents/skills/sensei-slides/requirements.txt || {
   echo "部品を入れられませんでした。上のメッセージを確かめてください。"; exit 1; }
+fi
 echo
 .venv/bin/python .agents/skills/sensei-slides/scripts/check_env.py
 echo

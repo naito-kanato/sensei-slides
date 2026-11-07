@@ -4,6 +4,15 @@ cd /d "%~dp0"
 echo.
 echo sensei-slides の準備をします。仮想環境 .venv を作って、スライド作りの部品を入れます（数分かかります）。
 echo.
+rem uv が入っていれば uv で作る（速い。Python が無くても 3.12 を取ってくる）。無ければ下の python と pip で
+where uv > nul 2> nul
+if errorlevel 1 goto findpy
+if not exist ".venv\Scripts\python.exe" uv venv --seed --python 3.12 .venv
+if not exist ".venv\Scripts\python.exe" goto findpy
+uv pip install --python ".venv\Scripts\python.exe" -q -r ".agents\skills\sensei-slides\requirements.txt"
+if errorlevel 1 goto pipfail
+goto ready
+:findpy
 set "PY="
 where py > nul 2> nul
 if %errorlevel%==0 set "PY=py -3"
@@ -20,6 +29,7 @@ if errorlevel 1 goto nopython
 :install
 ".venv\Scripts\python.exe" -m pip install --disable-pip-version-check -q -r ".agents\skills\sensei-slides\requirements.txt"
 if errorlevel 1 goto pipfail
+:ready
 echo.
 ".venv\Scripts\python.exe" ".agents\skills\sensei-slides\scripts\check_env.py"
 echo.

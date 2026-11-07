@@ -146,7 +146,7 @@ def is_qa_slide(items):
     """確認問題・解答・実際のやり取りのスライド（●見出しで判定）。文字量と行の長さの目安は当てない（要素を削らない）。"""
     for s in items:
         t = (s.get("text") or "").strip()
-        if (s.get("name") == "見出し" or t.startswith("●")) and any(k in t for k in ("問題", "解答", "やり取り", "添削")):
+        if (s.get("name") == "見出し" or t.startswith("●")) and any(k in t for k in ("問題", "解答", "やり取り", "添削", "想定質問")):
             return True
     return False
 
