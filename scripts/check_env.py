@@ -115,7 +115,7 @@ def main():
         for t in todo:
             print(f"  - {t}")
         if not ppt and not lo:
-            print("  入れないなら「今回は検査なしで pptx だけ」もできる（描画の検査をしていないこと・原稿のページが無いことを伝えて渡す）")
+            print("  入れなくても、pptx だけは作れる（make_deck.py --no-render。描画の検査と原稿のページは、LibreOffice を入れればあとから）")
     else:
         print("\n全部そろっている")
     return 1 if (miss or not py_ok) else 0
