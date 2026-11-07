@@ -99,8 +99,8 @@ def steps_for(work: Path):
     fig_ok = figs.exists() and pngs and max(p.stat().st_mtime for p in pngs) >= figs.stat().st_mtime - 1
     if add(bool(fig_ok), "図（figs.py → figs/）", "" if fig_ok else ("figs.py が無い" if not figs.exists() else "figs.py を直したあと描き直していない")) is False and not nxt:
         nxt = ("手順3〜5（SKILL.md「役割を分ける」）：python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、"
-                   "図の担当が figs.py、書き手がカードを1枚ずつ読んで parts/NN.py・parts/NN.md を書き、scaffold.py <work> --merge で戻して、"
-                   "python <skill>/scripts/make_deck.py <work> で組んで検査する")
+                   "制作役1人に丸ごと頼む：figs.py で図、カードを1枚ずつ読んで parts/NN.py・parts/NN.md、scaffold.py <work> --merge で戻して、"
+                   "python <skill>/scripts/make_deck.py <work> で組んで検査し、原稿HTMLまで")
     # 3. ビルド
     build = work / "build.py"
     notes = work / "notes.md"
