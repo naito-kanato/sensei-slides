@@ -75,12 +75,15 @@ def test_answer_position_default_and_option():
     assert story.answer_position("## オプション\n\n| オプション | 値 |\n|---|---|\n| 答えの位置 | 後 |\n", "outline") == "後"
 
 
-def _outline(answer_slide: int, position: str = ""):
+def _outline(answer_slide: int, position: str = "", comp="壁", ask="どうやって", comp_slide=3, typed=True):
     opt = f"## オプション\n\n| オプション | 値 |\n|---|---|\n| 答えの位置 | {position} |\n\n" if position else ""
     rows = "\n".join(f"| {n} | 見出し{n} | {'—' if n == 2 else 'そして（次へ）' if n % 3 else 'しかし（壁）'} | 青帯{n}の一文 | 本文 |"
                      for n in range(2, 14))
-    return (opt + f"## 話の筋\n\n| 筋 | 一文 | 枚 |\n|---|---|---|\n| 状況 | 今 | 2 |\n| 複雑化 | しかし | 3 |\n"
-            f"| 問い | なぜか？ | 3 |\n| 答え | こうだ | {answer_slide} |\n\n"
+    t = (lambda v: f" {v} |") if typed else (lambda v: "")
+    story_rows = (f"| 筋 |{t('型')} 一文 | 枚 |\n|---|{'---|' if typed else ''}---|---|\n| 状況 |{t('—')} 今 | 2 |\n"
+                  f"| 複雑化 |{t(comp)} しかし | {comp_slide} |\n| 問い |{t(ask)} どうやって取るか？ | 3 |\n"
+                  f"| 答え |{t('—')} こうだ | {answer_slide} |\n")
+    return (opt + "## 話の筋\n\n" + story_rows + "\n"
             "## 構成\n\n| 番号 | ●見出し | 前の枚から | 青帯（結論） | 役割 |\n|---|---|---|---|---|\n"
             "| 1 | 表紙 | — | — | 表紙 |\n" + rows + "\n")
 
@@ -96,6 +99,23 @@ def test_answer_first_for_presentations():
     assert mark == "△" and "答えの位置「先」" in msg
     assert _story_mark(_outline(12, "後"))[0] == "✔"               # 後にすれば後ろで回収してよい
     assert _story_mark(_outline(4, "後"))[0] == "△"
+
+
+def test_story_types_complication_and_question():
+    mark, msg = _story_mark(_outline(4))
+    assert mark == "✔" and "複雑化（壁）" in msg and "どうやって" in msg
+    assert story.story_types(_outline(4)) == {"状況": "—", "複雑化": "壁", "問い": "どうやって", "答え": "—"}
+    old = _outline(4, typed=False)                                    # 型の列が無い古い書き方
+    assert story.story_table(old)["問い"] == ("どうやって取るか？", 3) and story.story_types(old) is None
+    mark, msg = _story_mark(old)
+    assert mark == "△" and "「型」の列が無い" in msg and "| 筋 | 型 | 一文 | 枚 |" in msg
+    mark, msg = _story_mark(_outline(4, comp="", ask="いつ"))          # 型が無い・選択肢に無い
+    assert mark == "△" and "複雑化「空」" in msg and "問い「いつ」" in msg
+    mark, msg = _story_mark(_outline(4, comp="意外"))                 # 3枚目は しかし（壁）なので合わない
+    assert mark == "△" and "複雑化の枚 3" in msg and "しかし（意外）" in msg
+    mark, msg = _story_mark(_outline(4, comp_slide=4))                # 4枚目は そして（次へ）
+    assert mark == "△" and "複雑化の枚 4" in msg
+    assert _story_mark(_outline(4, comp="意外", comp_slide=2))[0] == "✔"   # 本文の最初の枚なら見ない
 
 
 def test_scaffold_refuses_work_inside_course_folder(tmp_path, capsys):
