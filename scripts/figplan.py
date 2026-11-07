@@ -49,8 +49,52 @@ def menu_name(desc: str):
     return None
 
 
+# 図の目的の選択肢と、目的ごとのおすすめの図（先頭がいちばんのおすすめ）。図の案は「目的：種類：中身」で書く
+FIG_PURPOSES = [
+    # (目的, 何をしたいとき, おすすめの種類)
+    ("比べる", "2〜8個の値を比べる・順位", ("棒グラフ", "比較", "表")),
+    ("推移", "時間・条件で値が変わる", ("折れ線", "概略グラフ")),
+    ("傾向", "関数形・傾向を見せる（数値なし）", ("概略グラフ",)),
+    ("内訳", "全体の中の割合", ("帯グラフ", "大きな数字")),
+    ("時期", "いつ何が起きたか・時代の区切り", ("年表",)),
+    ("仕組み", "仕組み・構造・配置・縮尺", ("模式図", "資料の図")),
+    ("流れ", "手順・因果・分類の枝分かれ", ("流れ図",)),
+    ("観点", "項目×観点で整理する", ("表",)),
+    ("違い", "2つの状態・方法の違い", ("前後", "比較")),
+    ("並び", "同格の要素を並べる", ("カード",)),
+    ("階層", "上下関係・分類の木", ("ツリー",)),
+    ("印象", "1つの値・結論を印象づける（1回に1〜2枚）", ("大きな数字",)),
+    ("柱", "答えを支える柱の一覧（答えの位置「先」の答えの枚）", ("カード", "ツリー")),
+    ("実物", "資料の図・実物をそのまま見せる", ("資料の図", "写真")),
+]
+PURPOSE_NAMES = [p for p, _, _ in FIG_PURPOSES]
+REASON_WORDS = re.compile(r"外す理由[：:]|おすすめ外の理由[：:]")
+
+
+def parse_fig(cell: str):
+    """図の案のセル → (目的 or None, 種類 or None)。「目的：種類：中身」の形なら、種類は2つ目の区切りの中だけで探す
+    （中身の文の「発表」の「表」などを種類と取り違えない）。目的が無い古い書き方は、文全体から種類を探す。"""
+    d = (cell or "").strip()
+    parts = [x.strip() for x in d.split("：")]
+    if len(parts) >= 2 and parts[0] in PURPOSE_NAMES:
+        return parts[0], menu_name(parts[1])
+    return None, menu_name(d)
+
+
+PPT_KINDS = ("表", "大きな数字", "流れ図", "比較", "前後", "カード", "ツリー")   # 画像でなく PowerPoint の部品で組む種類
+
+
+def pptx_part(cell: str):
+    """図の案が PowerPoint の部品で組む種類なら、その部品（s.table など）。画像（figs/sNN.png）なら None。"""
+    _, k = parse_fig(cell)
+    if k is None:
+        k = "表" if re.match(r"\s*表", cell or "") else "大きな数字" if re.match(r"\s*大きな数字", cell or "") else None
+    return next((x[2] for x in FIG_MENU if x[0] == k), None) if k in PPT_KINDS else None
+
+
 def check_menu(text: str, kind: str, body_no: list):
-    """本文の枚の「図で見せるもの」が、図の種類の選択肢から選んであるか [(印, 項目, 説明)]。"""
+    """本文の枚の「図で見せるもの」が「目的：種類：中身」で書かれ、種類がその目的のおすすめか [(印, 項目, 説明)]。
+    おすすめ以外の種類にするなら、中身に「外す理由：…」を書く。"""
     import structures
     rows = structures._plan_table(text, kind)
     if not rows:
@@ -59,16 +103,32 @@ def check_menu(text: str, kind: str, body_no: list):
     i = next((k for k, h in enumerate(head) if "図で見せる" in h), None)
     if i is None:
         return []
-    bad = []
+    nopurpose, nokind, offmenu = [], [], []
     for r in rows[1:]:
-        if r and r[0].strip().isdigit() and int(r[0]) in body_no and len(r) > i:
-            d = r[i].strip()
-            if d not in ("", "—", "-", "－", "なし") and not menu_name(d):
-                bad.append(f"[{r[0]}]「{d[:16]}」")
-    if bad:
-        return [("△", "図の種類", "図の種類の選択肢に無い：" + "・".join(bad[:6])
-                 + "（目的から選んで先頭に書く：" + "・".join(n for n, *_ in FIG_MENU) + "。references/figures.md 1b）")]
-    return [("✔", "図の種類", "本文の図の案は、どれも図の種類の選択肢から選んである")]
+        if not (r and r[0].strip().isdigit() and int(r[0]) in body_no and len(r) > i):
+            continue
+        d = r[i].strip()
+        if d in ("", "—", "-", "－", "なし"):
+            continue
+        purpose, k = parse_fig(d)
+        if purpose is None:
+            nopurpose.append(f"[{r[0]}]「{d[:14]}」")
+        elif k is None:
+            nokind.append(f"[{r[0]}]「{d[:14]}」")
+        else:
+            rec = next(x[2] for x in FIG_PURPOSES if x[0] == purpose)
+            if k not in rec and not REASON_WORDS.search(d):
+                offmenu.append(f"[{r[0]}] {purpose}に{k}（おすすめ：{'・'.join(rec)}）")
+    notes = []
+    if nopurpose:
+        notes.append("目的が無い：" + "・".join(nopurpose[:6]) + "（先頭に目的：" + "・".join(PURPOSE_NAMES) + "）")
+    if nokind:
+        notes.append("種類が選択肢に無い：" + "・".join(nokind[:6]) + "（" + "・".join(n for n, *_ in FIG_MENU) + "）")
+    if offmenu:
+        notes.append("目的のおすすめでない図：" + "；".join(offmenu[:6]) + "（おすすめにするか、中身に「外す理由：…」）")
+    if notes:
+        return [("△", "図の目的と種類", "。".join(notes) + "。書き方は「目的：種類：中身」（references/figures.md 1b）")]
+    return [("✔", "図の目的と種類", "本文の図の案は、どれも目的と、そのおすすめの種類で書いてある")]
 
 
 def flow_limit(n_body: int) -> int:
@@ -81,6 +141,9 @@ def planned_kind(desc: str):
     d = (desc or "").strip()
     if d in ("", "—", "-", "－", "なし"):
         return None
+    purpose, k = parse_fig(d)
+    if purpose is not None and k is not None:
+        return k if k in ("大きな数字", "比較", "流れ図", "表") else "図"
     if "大きな数字" in d:
         return "大きな数字"
     if re.search(r"並べて比べ|比較", d) and not TABLE_WORDS.search(d):

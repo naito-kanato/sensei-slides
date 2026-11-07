@@ -160,8 +160,8 @@ def check(text: str, kind: str, body_no: list, where: str):
                     rows = structures._plan_table(text, kind) or []
                     i_fig = next((k for k, h in enumerate(rows[0]) if "図で見せる" in h), None) if rows else None
                     cell = next((r[i_fig] for r in rows[1:] if i_fig is not None and r and r[0].strip() == str(an) and len(r) > i_fig), None)
-                    if cell is not None and figplan.menu_name(cell) not in ("カード", "ツリー", "流れ図", "表"):
-                        notes.append(f"答えの枚 {an} の図が柱の一覧になっていない（答えの位置「先」：答えを支える柱2〜4個を「カード：…」で並べる）")
+                    if cell is not None and figplan.parse_fig(cell)[1] not in ("カード", "ツリー", "流れ図", "表"):
+                        notes.append(f"答えの枚 {an} の図が柱の一覧になっていない（答えの位置「先」：答えを支える柱2〜4個を「柱：カード：…」で並べる）")
                 if pos == "先" and (an not in head or an < qn):
                     notes.append(f"答えの枚 {an} が前のほうに無い（答えの位置「先」：問いの枚か、そのすぐ後の本文 {head[0]}〜{head[-1]} 枚目で答えを言い、"
                                  "あとの枚はその根拠を順に。答えを後ろで回収するなら一覧の「答えの位置」を「後」に）")

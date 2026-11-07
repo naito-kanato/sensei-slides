@@ -166,3 +166,15 @@ def test_new_figure_parts_draw(tmp_path):
     timeline(ax, 1990, 2020, eras=[("x", 1990, 2005)], events=[(2000, "e")], highlight=0)
     save(f, tmp_path / "t.png")
     assert all((tmp_path / n).exists() for n in ("b.png", "s.png", "t.png"))
+
+
+def test_figure_purpose_and_recommended_kind():
+    import figplan
+    assert figplan.parse_fig("比べる：棒グラフ：発表の数") == ("比べる", "棒グラフ")   # 中身の「発表」の「表」を拾わない
+    assert figplan.parse_fig("論文 Fig. 2") == (None, "資料の図")
+    rows = ("## 構成\n\n| 番号 | ●見出し | 図で見せるもの | 役割 |\n|---|---|---|---|\n"
+            "| 2 | a | 比べる：棒グラフ：x | 本文 |\n| 3 | b | 比べる：年表：y | 本文 |\n| 4 | c | 棒グラフ：z | 本文 |\n"
+            "| 5 | d | 時期：表：w（外す理由：年が2つだけ） | 本文 |\n")
+    mark, _, msg = figplan.check_menu(rows, "outline", [2, 3, 4, 5])[0]
+    assert mark == "△" and "[3] 比べるに年表" in msg and "目的が無い：[4]" in msg and "[5]" not in msg
+    assert figplan.planned_kind("観点：表：推定値") == "表" and figplan.planned_kind("比べる：棒グラフ：x") == "図"

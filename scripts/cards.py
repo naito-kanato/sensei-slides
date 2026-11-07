@@ -63,6 +63,7 @@ def api_lines(forms: str, figure: bool, table: bool):
 def writer(work: Path, kind, rows, care, minutes=None, source=None):
     """{番号: カードの文}（本文の枚だけ）。source（資料の PDF・テキスト）があれば、範囲の所を抜き出して入れる。"""
     import excerpt
+    import figplan
     import story
     from scaffold import EMPTY, blocks, build_py, col
     src_text = excerpt.load(source) if source else ""
@@ -95,7 +96,7 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         a, b = code.get(n, (0, 0))
         q_, a_ = st.get("問い", ("", None)), st.get("答え", ("", None))
         fig_cell = col(r, "図で見せるもの", "図") or "なし"
-        not_image = fig_cell in EMPTY or bool(re.match(r"\s*(表|大きな数字)", fig_cell))
+        not_image = fig_cell in EMPTY or figplan.pptx_part(fig_cell) is not None
         L = [f"# {n}枚目のカード（{work.name}）",
              "",
              "このカードと、下の「資料」の所だけを見て、この1枚を書く。ほかの枚・SKILL.md 全体・scripts の中身（zemi.py など）は読まない。試しに組まない（仕上げ役が組む）。",
