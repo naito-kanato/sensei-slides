@@ -262,7 +262,7 @@ def quiz_cards(work: Path, rows, text: str, code: dict, skel: str):
             if k not in items:
                 continue
             qtext, goal, slide, atext, els = items[k]
-            qclean = structures.QUIZ_Q_TAG.sub("", qtext).strip()
+            qclean = structures.QUIZ_TYPE_TAG.sub("", structures.QUIZ_Q_TAG.sub("", qtext)).strip()
             aclean = structures.QUIZ_A_TAG.sub("", atext).strip()
             L.append(f"## {k}")
             L.append(f"- 問題：{qclean}（確かめるゴール {goal}、根拠の枚 {slide}枚目）")

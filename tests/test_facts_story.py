@@ -138,3 +138,31 @@ def test_body_form_slots():
     got = dict(S.assign(["ラベル", "展開"], ["図の読み方：横軸は時刻", "始まり 35 Hz → 250 Hz", "ひずみ 1e-21"]))
     assert got["展開"] == ["始まり 35 Hz → 250 Hz"] and got["ラベル"] == ["図の読み方：横軸は時刻"] and got["余り"] == ["ひずみ 1e-21"]
     assert dict(S.assign(["ラベル"], ["波形：35→150 Hz で最大"]))["ラベル"]           # 見出しの中の「→」は展開にしない
+
+
+def test_figure_menu_and_question_types():
+    import figplan
+    import structures as S
+    assert figplan.menu_name("棒グラフ：認定率") == "棒グラフ" and figplan.menu_name("論文 Fig. 2（右）") == "資料の図"
+    assert figplan.menu_name("光のパワーの段階") is None
+    memo = MEMO.replace("## 4. 用語", "## 6. 確認問題\n\n### 問題\n1-1. a〔ゴール1・2枚目〕〔型：定義〕\n1-2. b〔型：定義〕\n"
+                        "1-3. c〔型：仕組み〕\n\n### 解答\n1-1. x\n\n## 4. 用語")
+    mark, _, msg = S.check_quiz_types(memo)[0]
+    assert mark == "△" and "2種類" in msg
+    ok = memo.replace("1-3. c〔型：仕組み〕", "1-3. c〔型：誤り指摘〕\n1-4. d〔型：仕組み〕")
+    assert S.check_quiz_types(ok)[0][0] == "✔"
+
+
+def test_new_figure_parts_draw(tmp_path):
+    from figkit import fig, save
+    from figlib import bars, share_bar, timeline
+    f, ax = fig(5, 2.5)
+    bars(ax, ["a", "b"], [3, 1], highlight=0, unit="%")
+    save(f, tmp_path / "b.png")
+    f, ax = fig(5, 1.5)
+    share_bar(ax, [("a", 3), ("b", 7)])
+    save(f, tmp_path / "s.png")
+    f, ax = fig(6, 2.4)
+    timeline(ax, 1990, 2020, eras=[("x", 1990, 2005)], events=[(2000, "e")], highlight=0)
+    save(f, tmp_path / "t.png")
+    assert all((tmp_path / n).exists() for n in ("b.png", "s.png", "t.png"))

@@ -433,11 +433,62 @@ def check_quiz_plan(text: str, kind: str = "memo"):
     if not res:
         res.append(("✔", "確認問題", f"{QUIZ_TOTAL}問を {QUIZ_PER_SLIDE}問ずつ、確認問題 {QUIZ_SLIDES}枚・解答 {QUIZ_SLIDES}枚"))
     res += quiz_links(text, kind)
+    res += check_quiz_types(text)
     return res
 
 
 QUIZ_Q_TAG = re.compile(r"〔\s*ゴール\s*(\d+)\s*[・、,]\s*(\d+)\s*枚目?\s*〕")
 QUIZ_A_TAG = re.compile(r"〔\s*要素\s*[：:]\s*([^〕]+)〕")
+
+
+# ---- 問いの型の選択肢（確認問題・想定質問）。型を選んでから書くと、同じ型ばかりにならない
+QUIZ_TYPES = ("定義", "仕組み", "誤り指摘", "当てはめ", "比べる", "計算")   # 確認問題：〔型：仕組み〕
+QUIZ_TYPE_MIN = 3                                                       # 6問で3種類以上
+QA_TYPES = ("疑い", "なぜ", "数値の意味", "限界", "今後", "使い道")        # 想定質問：表の「型」の列
+QA_TYPE_MIN = 2                                                         # 4問で2種類以上（3種類以上が望ましい）
+QUIZ_TYPE_TAG = re.compile(r"〔\s*型\s*[：:]\s*([^〕]+)〕")
+
+
+def check_quiz_types(text: str):
+    """[(印, 項目, 説明)]：講座の確認問題の型（6節の問題の〔型：…〕）が選択肢から選んであり、3種類以上か。"""
+    sec = re.search(r"^##\s*6\.[^\n]*\n(.*?)(?=^##\s|\Z)", text, re.S | re.M)
+    q = re.search(r"^###\s*問題\s*\n(.*?)(?=^###|\Z)", sec.group(1), re.S | re.M) if sec else None
+    if not q:
+        return []
+    lines = [l for l in q.group(1).splitlines() if re.match(r"\s*\S+-\d+[.．]", l)]
+    types = [(m.group(1).strip() if (m := QUIZ_TYPE_TAG.search(l)) else "") for l in lines]
+    miss = [l.split(".")[0].strip() for l, t in zip(lines, types) if t not in QUIZ_TYPES]
+    kinds = sorted(set(t for t in types if t in QUIZ_TYPES), key=QUIZ_TYPES.index)
+    notes = []
+    if miss:
+        notes.append(f"型が無いか選択肢に無い：{'・'.join(miss)}（問題の後ろに〔型：…〕。{'・'.join(QUIZ_TYPES)}）")
+    if len(kinds) < QUIZ_TYPE_MIN:
+        notes.append(f"型が {len(kinds)}種類（{'・'.join(kinds) or 'なし'}）。{QUIZ_TYPE_MIN}種類以上を混ぜる")
+    if notes:
+        return [("△", "確認問題の型", "。".join(notes))]
+    return [("✔", "確認問題の型", f"{len(kinds)}種類（{'・'.join(kinds)}）")]
+
+
+def check_qa_types(text: str):
+    """[(印, 項目, 説明)]：発表の想定質問の「型」の列が選択肢から選んであり、2種類以上か。"""
+    from check_memo import table_rows
+    rows = table_rows(text, "想定質問")
+    if not rows:
+        return []
+    i = next((k for k, h in enumerate(rows[0]) if h.strip() == "型"), None)
+    if i is None:
+        return [("△", "想定質問の型", f"想定質問の表に「型」の列が無い（{'・'.join(QA_TYPES)} から1つずつ選び、{QA_TYPE_MIN}種類以上を混ぜる）")]
+    types = [r[i].strip() if len(r) > i else "" for r in rows[1:] if r and any(c.strip() for c in r)]
+    bad = [t or "空" for t in types if t not in QA_TYPES]
+    kinds = sorted(set(t for t in types if t in QA_TYPES), key=QA_TYPES.index)
+    notes = []
+    if bad:
+        notes.append(f"選択肢に無い型：{'・'.join(bad)}（{'・'.join(QA_TYPES)}）")
+    if len(kinds) < QA_TYPE_MIN:
+        notes.append(f"型が {len(kinds)}種類。{QA_TYPE_MIN}種類以上（できれば3種類）を混ぜる")
+    if notes:
+        return [("△", "想定質問の型", "。".join(notes))]
+    return [("✔", "想定質問の型", f"{len(kinds)}種類（{'・'.join(kinds)}）")]
 
 
 QA_TOTAL = 4        # 発表の想定質問の数（固定）
@@ -487,8 +538,8 @@ def check_expected_qa(text: str, kind: str = "outline"):
     if noans:
         bad.append(f"回答の要点が空：{'・'.join(noans)}")
     if bad:
-        return [("△", "想定質問", "。".join(bad))]
-    return [("✔", "想定質問", f"{QA_TOTAL}問を {QA_PER_SLIDE}組ずつ {n_sl}枚、どれにも回答の要点と戻る枚")]
+        return [("△", "想定質問", "。".join(bad))] + check_qa_types(text)
+    return [("✔", "想定質問", f"{QA_TOTAL}問を {QA_PER_SLIDE}組ずつ {n_sl}枚、どれにも回答の要点と戻る枚")] + check_qa_types(text)
 
 
 def quiz_items(text: str):
