@@ -215,11 +215,14 @@ PowerPoint が無いときは、無料の **LibreOffice** で代わりに描け�
 
 ### 1. 一式をダウンロードして解凍する
 
-スキルを入れ終わったスライド作業フォルダ **`sensei-slides.zip`** を解凍します。**[最新版をダウンロード](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)**（[Releases](https://github.com/naito-kanato/sensei-slides/releases) の一覧から、前の版も選べます。リポジトリからは `python tools/make_starter.py` で作れます）。
+スキルを入れ終わった作業フォルダの一式 **`sensei-slides.zip`** を解凍します。**[最新版をダウンロード](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)**（[Releases](https://github.com/naito-kanato/sensei-slides/releases) の一覧から、前の版も選べます。リポジトリからは `python tools/make_starter.py` で作れます）。
 フォルダの名前は変えてかまいません（「発表」「講座」など）。中身はこうです。
 
+解凍すると `sensei-slides` フォルダができ、その中にそのまま入っています（解凍ツールで「ここに展開」を選ぶと、いまのフォルダに広がるので、先にフォルダを作ってから）。
+
 ```
-スライド作業フォルダ/
+sensei-slides/
+  スキルの使い方.html                使い方のページ（ダブルクリックでブラウザが開く）
   .agents/skills/sensei-slides/      スキル（Codex・Antigravity・VS Code の Copilot が読む）
   .claude/skills/sensei-slides/      同じスキル（Claude Code が読む）
   .codex/rules/sensei-slides.rules   Codex で PowerPoint を使う3つの作業だけを、確認なしで動かす決まり
@@ -237,7 +240,7 @@ Codex・Claude Code・Antigravity・VS Code の Copilot でこのフォルダを
 仮想環境を「有効」にしてから起動しなくてかまいません。スキルが、そのフォルダの `.venv` の Python を使います。
 Codex では、そのフォルダを「信頼する」にします（`.codex/rules/` の決まりが読まれ、描画の検査・PDF の書き出し・原稿のページ作りの3つだけがサンドボックスの外で動きます）。
 GitHub Copilot の CLI で使うときは、`.agents/skills/sensei-slides` を `.github/skills/sensei-slides` に写します。
-スキルを新しくするときは、新しい一式の `.agents`・`.claude`・`.codex` で置き換えます（`_work/`・作ったスライドはそのまま）。
+スキルを新しくするときは、新しい一式の `.agents`・`.claude`・`.codex` と `スキルの使い方.html` で置き換えます（`_work/`・作ったスライドはそのまま）。
 
 手順書は、特定のエージェントに頼らない中立の言葉（【質問】【別のエージェント】など）で書いてあります。
 ツールごとに何に当たるかは、`references/agents.md` の**対応表**にまとめてあり、エージェントは最初にそれを読みます。

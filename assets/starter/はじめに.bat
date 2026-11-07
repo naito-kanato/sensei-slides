@@ -33,7 +33,8 @@ if errorlevel 1 goto pipfail
 echo.
 ".venv\Scripts\python.exe" ".agents\skills\sensei-slides\scripts\check_env.py"
 echo.
-echo 準備ができました。
+echo 準備ができました。使い方のページ（スキルの使い方.html）をブラウザで開きます。
+start "" "スキルの使い方.html"
 echo このフォルダを Codex・Claude Code・Antigravity・VS Code などで開いて、
 echo 「〇〇の講座を作って」「〇〇.pdf のスライドを作って」と頼みます（くわしくは はじめに.md）。
 echo.

@@ -23,18 +23,23 @@ def test_starter_zip_has_everything(tmp_path):
     import make_starter
     z = zipfile.ZipFile(make_starter.build(tmp_path))
     names = set(z.namelist())
-    top = make_starter.TOP
+    assert not any("スライド作業フォルダ" in n for n in names)              # フォルダで包まない（解凍で二重にならない）
     for d in (".agents/skills", ".claude/skills"):
-        assert f"{top}/{d}/sensei-slides/SKILL.md" in names
-        assert f"{top}/{d}/sensei-slides/scripts/zemi.py" in names
-        assert f"{top}/{d}/sensei-slides/scripts/MANIFEST.txt" in names
-        assert not any(n.startswith(f"{top}/{d}/sensei-slides/tools/") for n in names)   # 配る側の道具は入れない
-    assert f"{top}/.codex/rules/sensei-slides.rules" in names
+        assert f"{d}/sensei-slides/SKILL.md" in names
+        assert f"{d}/sensei-slides/scripts/zemi.py" in names
+        assert f"{d}/sensei-slides/scripts/MANIFEST.txt" in names
+        assert not any(n.startswith(f"{d}/sensei-slides/tools/") for n in names)   # 配る側の道具は入れない
+    assert f".codex/rules/sensei-slides.rules" in names
     for f in ("はじめに.bat", "はじめに.sh", "はじめに.md"):
-        assert f"{top}/{f}" in names
-    assert b"\r\n" in z.read(f"{top}/はじめに.bat")                     # bat は CRLF
-    assert (z.getinfo(f"{top}/はじめに.sh").external_attr >> 16) & 0o111   # sh は実行できる
+        assert f"{f}" in names
+    assert b"\r\n" in z.read(f"はじめに.bat")                     # bat は CRLF
+    assert (z.getinfo(f"はじめに.sh").external_attr >> 16) & 0o111   # sh は実行できる
     # はじめに.bat が呼ぶ場所が、一式の中にある
-    bat = z.read(f"{top}/はじめに.bat").decode("utf-8")
+    bat = z.read(f"はじめに.bat").decode("utf-8")
     for p in (r".agents\skills\sensei-slides\requirements.txt", r".agents\skills\sensei-slides\scripts\check_env.py"):
-        assert p in bat and f"{top}/" + p.replace("\\", "/") in names
+        assert p in bat and p.replace("\\", "/") in names
+    # 一番上の使い方のページは、画像を .agents の中の docs から読む
+    guide = z.read("スキルの使い方.html").decode("utf-8")
+    assert 'src="docs/' not in guide and 'src=".agents/skills/sensei-slides/docs/course-notes.jpg"' in guide
+    assert ".agents/skills/sensei-slides/docs/course-notes.jpg" in names
+    assert "スキルの使い方.html" in bat                                   # 準備のあとに開く

@@ -26,5 +26,6 @@ fi
 echo
 .venv/bin/python .agents/skills/sensei-slides/scripts/check_env.py
 echo
-echo "準備ができました。このフォルダを Codex・Claude Code・Antigravity・VS Code などで開いて、"
+echo "準備ができました。使い方は スキルの使い方.html（ブラウザで開く）。このフォルダを Codex・Claude Code・Antigravity・VS Code などで開いて、"
+if [ "$(uname)" = "Darwin" ]; then open "スキルの使い方.html"; elif command -v xdg-open >/dev/null 2>&1; then xdg-open "スキルの使い方.html" >/dev/null 2>&1 & fi
 echo "「〇〇の講座を作って」「〇〇.pdf のスライドを作って」と頼みます（くわしくは はじめに.md）。"
