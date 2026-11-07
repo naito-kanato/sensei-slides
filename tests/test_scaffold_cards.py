@@ -60,9 +60,11 @@ def test_table_slide_gets_no_figure_file(work):
     assert "1行は20字まで" in c
 
 
-def test_second_form_does_not_repeat_points(work):
-    c = (work / "cards" / "09.md").read_text(encoding="utf-8")
-    assert 's.develop("TODO' in c
+def test_points_go_to_the_slots_of_each_form(work):
+    c = (work / "cards" / "09.md").read_text(encoding="utf-8")   # ラベル・展開：「→」の要点は展開へ、「見出し：」の要点はラベルへ
+    assert 's.develop("始まり 35 Hz", "{r:250 Hz まで上昇}")' in c
+    assert 's.block("図の読み方："' in c
+    assert not any("35 Hz" in line for line in c.splitlines() if line.startswith("s.block"))   # 同じ要点を2つの形に入れない
 
 
 def test_cards_share_excerpt_files(root, tmp_path):

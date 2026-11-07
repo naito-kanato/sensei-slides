@@ -177,6 +177,118 @@ def detect_forms(slide) -> set:
     return found
 
 
+# ---- 本文の形の「入れる所」（スロット）。構成案・設計メモの「本文の要点」は、形の入れる所の書き方で書く。
+# 形を選ぶと、要点を入れる所が決まる（展開なら左と右の2か所）。1か所に入る事実は0個のことも、2個以上のこともある。
+# 要点は「 / 」で区切り、各要点の後ろに出どころ〔…〕。scaffold.py がこの書き方から部品の呼び出しを組む。
+SLOTS = {
+    "帰結":     dict(slots="前提（1〜3）／帰結（1）", write="「前提 / 前提 / ⇒ 帰結」（帰結は ⇒ の後ろ）", pat=r"⇒", need=1),
+    "縦の結論": dict(slots="前提（1〜3）／結論（1）", write="「前提 / 前提 / ⇒ 結論」", pat=r"⇒", need=1),
+    "ラベル":   dict(slots="見出し＋説明（1〜4組。最後に帰結を付けてよい）", write="「見出し：説明」（説明の後ろに「⇒ 帰結」も可）", pat=r"^[^：→⇒]{1,24}：", need=1),
+    "場合分け": dict(slots="条件＋説明（2〜3組）", write="「条件：説明」を2つ以上", pat=r"^[^：→⇒]{1,24}：", need=2),
+    "展開":     dict(slots="左（条件・前の状態）／右（結果・次の状態）", write="「左 → 右」", pat=r"→", need=1),
+    "問い":     dict(slots="問い／確かめた結果（1〜3組）", write="「〜ではないか？⇒ 確かめた結果」", pat=r"[？?]\s*⇒", need=1),
+    "手順":     dict(slots="段（2〜5）", write="「1. 段 2. 段 3. 段」（1つの要点に番号で並べる）", pat=r"[1１][.．](?![0-9])\s*\S.*[2２][.．](?![0-9])", need=1),
+    "式の注釈": dict(slots="式／記号と意味", write="「式（＝を含む）」と「記号：意味」", pat=r"[=＝]", need=1),
+    "箇条":     dict(slots="項目（2〜4）", write="短い項目を並べる", pat=None, need=0),
+}
+COLON_FORMS = ("ラベル", "場合分け")   # 「：」の要点を分け合う形
+
+
+def point_texts(cell: str):
+    """本文の要点のセル → 要点の文字列（出どころ〔…〕・★・下線の印を外す）。"""
+    cell = re.sub(r"<br\s*/?>", "／", cell or "")
+    parts = [p.strip() for p in re.split(r"\s+/\s+|／|；|;", cell) if p.strip()]
+    return [re.sub(r"\s*〔[^〕]*〕", "", p).replace("★", "").strip() for p in parts]
+
+
+def slot_kind(point: str, keys=None):
+    """要点1つが、どの形の入れる所の書き方か（問い・展開・手順・式の注釈・コロン・帰結・None）。
+    keys（その枚で選んだ形）があれば、その形の書き方だけを探す（見出しの中の「→」を展開と取り違えない）。"""
+    keys = list(keys) if keys else list(SLOTS)
+    for k in ("問い", "展開", "手順", "式の注釈"):
+        if k in keys and re.search(SLOTS[k]["pat"], point):
+            return k
+    if any(k in keys for k in COLON_FORMS) and re.search(SLOTS["ラベル"]["pat"], point):
+        return "コロン"
+    if re.search(SLOTS["帰結"]["pat"], point):
+        return "帰結"
+    return None
+
+
+def slot_problems(forms, points):
+    """形の入れる所の書き方で書かれていない形の一覧 [(形, 書き方)]。"""
+    keys = [k for k in forms if isinstance(k, str) and k in SLOTS]
+    kinds = [slot_kind(p, keys) for p in points]
+    out = []
+    colon_need = sum(SLOTS[k]["need"] for k in keys if k in COLON_FORMS)
+    for k in keys:
+        if k in COLON_FORMS:
+            if kinds.count("コロン") < colon_need:
+                out.append((k, SLOTS[k]["write"]))
+        elif k in ("帰結", "縦の結論"):
+            if not any(re.search(r"⇒", p) and kinds[i] != "問い" for i, p in enumerate(points)):
+                out.append((k, SLOTS[k]["write"]))
+        elif SLOTS[k]["need"] and kinds.count(k) < SLOTS[k]["need"]:
+            out.append((k, SLOTS[k]["write"]))
+    return out
+
+
+def check_slots(text: str, kind: str, body_no: list, where: str):
+    """本文の要点が、選んだ本文の形の入れる所の書き方になっているか [(印, 項目, 説明)]。"""
+    from check_memo import table_rows
+    rows = table_rows(text, "話の順番") if kind == "memo" else table_rows(text, "構成")
+    if not rows:
+        return []
+    head = rows[0]
+    i_f = next((k for k, h in enumerate(head) if "本文の形" in h), None)
+    i_p = next((k for k, h in enumerate(head) if "要点" in h), None)
+    if i_f is None or i_p is None:
+        return []
+    bad = []
+    for r in rows[1:]:
+        if not (r and r[0].strip().isdigit()) or int(r[0]) not in body_no or len(r) <= max(i_f, i_p):
+            continue
+        for k, how in slot_problems(form_key(r[i_f]), point_texts(r[i_p])):
+            bad.append(f"[{r[0]}] {k}なら{how}")
+    if bad:
+        return [("△", "本文の形の入れる所", "要点が形の入れる所の書き方になっていない：" + "；".join(bad[:6])
+                 + "（形を選ぶと入れる所が決まる。事実はその所に入れる。references/structures.md 1節の「入れる所」）")]
+    return [("✔", "本文の形の入れる所", "本文の要点が、選んだ形の入れる所の書き方になっている")]
+
+
+def assign(forms, points):
+    """[(形, [要点])]：要点を、書き方から形の入れる所に割り振る（scaffold.py が部品の呼び出しを組むのに使う）。
+    どの形の入れる所の書き方でもない要点は、最後の ("余り", [...]) に（帰結・縦の結論・箇条があれば、その前提・項目に入れる）。"""
+    keys = [k for k in forms if isinstance(k, str)] or ["箇条"]
+    pool = {k: [] for k in keys}
+    rest = []
+    colon = [k for k in keys if k in COLON_FORMS]
+    colon_pts = []
+    for p in points:
+        sk = slot_kind(p, keys)
+        if sk == "コロン" and colon:
+            colon_pts.append(p)
+        elif sk in pool and sk != "帰結":
+            pool[sk].append(p)
+        elif sk == "帰結" and ("帰結" in pool or "縦の結論" in pool):
+            pool["帰結" if "帰結" in pool else "縦の結論"].append(p)
+        else:
+            rest.append(p)
+    if len(colon) == 2:   # ラベルと場合分け：後ろの2つ以上を場合分けに
+        n = max(2, len(colon_pts) - 1) if len(colon_pts) > 2 else len(colon_pts)
+        pool["場合分け"] += colon_pts[-n:]
+        pool["ラベル"] += colon_pts[:-n]
+    elif colon:
+        pool[colon[0]] += colon_pts
+    else:
+        rest = colon_pts + rest
+    tgt = next((k for k in ("帰結", "縦の結論", "箇条") if k in pool), None)
+    if rest and tgt:   # どの書き方でもない要点：帰結・縦の結論があれば前提に（箇条ならそのまま）
+        pool[tgt] = rest + pool[tgt]
+        rest = []
+    return [(k, pool[k]) for k in keys] + ([("余り", rest)] if rest else [])
+
+
 RUN_LIMIT = 4   # 同じ本文の形だけの枚が続いてよい枚数（スライドの型の MAX_RUN と同じ）
 
 
@@ -213,6 +325,7 @@ def check_plan(text: str, kind: str, body_no: list, where: str, folder=None):
     if not res:
         used = sorted({k for i in body_no for k in plan.get(i, []) if isinstance(k, str)}, key=FORM_KEYS.index)
         res.append(("✔", "本文の形", f"本文 {len(body_no)}枚に形がある（使う形：{'・'.join(used) or 'なし'}）"))
+    res += check_slots(text, kind, body_no, where)
     if folder is not None:
         res += compat(plan, body_no, template_of(folder, text))
     return res

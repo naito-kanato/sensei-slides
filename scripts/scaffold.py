@@ -108,36 +108,60 @@ def qs(items):
 
 
 def form_code(forms: str, pts):
-    """本文の形 → 部品の呼び出しの行（要点を入れておく。TODO を書き換える）。"""
+    """本文の形 → 部品の呼び出しの行。要点は、形の入れる所の書き方（structures.SLOTS）から入れる所に割り振る。
+    入れる所が空なら TODO（書き手が埋める）。"""
+    import structures
     out = []
-    keys = [f.strip() for f in re.split(r"[・、,＋+]", forms or "") if f.strip()]
-    allpts = list(pts) or ["TODO 要点"]
-    used = 0
-    for i, k in enumerate(keys or ["箇条"]):
-        pts = allpts[used:] if i else allpts          # 2つ目からの形は、前の形が使わなかった要点だけ
-        if not pts:
-            pts = ["TODO 要点（この形で見せる所）"]
-        used += {"ラベル": 4, "手順": 4, "場合分け": 3, "帰結": 3, "展開": 2, "縦の結論": 2, "問い": 1}.get(k, 4)
-        if k == "帰結":
-            out.append("s.lead([" + qs(pts[:3]) + '], "TODO 帰結の一言（赤字になる）")')
+    keys = [k for k in structures.form_key(forms or "") if isinstance(k, str)]
+    for k, ps in structures.assign(keys, list(pts)):
+        ps = ps or []
+        if k in ("帰結", "縦の結論"):
+            pre, then = [], ""
+            for p in ps:
+                if "⇒" in p and not then:
+                    a, _, b = p.partition("⇒")
+                    if a.strip():
+                        pre.append(a.strip())
+                    then = b.strip()
+                else:
+                    pre.append(p)
+            pre = pre or ["TODO 前提"]
+            then = then or "TODO 帰結の一言（赤字になる）"
+            if k == "帰結":
+                out.append("s.lead([" + qs(pre[:3]) + f'], "{q(then)}")')
+            else:
+                out.append(f's.lead_down("{q(chr(10).join(pre[:3]))}", "{q(then)}")')
         elif k == "ラベル":
-            for p in pts[:4]:
-                h, _, rest = p.partition("：") if "：" in p else (p, "", "")
-                out.append(f's.block("{q(h)}：", ["{q(rest) or "TODO 説明"}"])')
-        elif k == "展開":
-            out.append(f's.develop("{q(pts[0])}", "{q(pts[1]) if len(pts) > 1 else "TODO 結果"}")')
-        elif k == "縦の結論":
-            out.append(f's.lead_down("{q(pts[0])}", "{q(pts[-1]) if len(pts) > 1 else "TODO 結論"}")')
+            for p in (ps or ["TODO 見出し：説明"])[:4]:
+                h, _, rest = p.partition("：")   # 半角の「:」は文字の書式 {r:…} に使うので、全角の「：」だけで分ける
+                body, _, then = rest.partition("⇒")
+                then_arg = f', then="{q(then.strip())}"' if then.strip() else ""
+                out.append(f's.block("{q(h.strip())}：", ["{q(body.strip()) or "TODO 説明"}"]{then_arg})')
         elif k == "場合分け":
-            out.append("s.cases([" + ", ".join(f'("{q(p)}", "TODO 説明")' for p in pts[:3]) + "])")
+            pairs = [p.partition("：")[::2] for p in ps] or [("TODO 条件", "TODO 説明")]
+            out.append("s.cases([" + ", ".join(f'("{q(c.strip())}", "{q(d.strip()) or "TODO 説明"}")' for c, d in pairs[:3]) + "])")
+        elif k == "展開":
+            p = ps[0] if ps else "TODO 左 → TODO 右"
+            a, _, b = p.partition("→")
+            out.append(f's.develop("{q(a.strip())}", "{q(b.strip()) or "TODO 結果"}")')
+            out += [f's.p("{q(x)}")   # TODO 展開に入らなかった要点（入れる所を決める）' for x in ps[1:]]
         elif k == "問い":
-            out.append(f's.ask("{q(pts[0])}？", "TODO 確かめた結果")')
+            for p in (ps or ["TODO 問い？⇒ TODO 確かめた結果"])[:3]:
+                a, _, b = p.partition("⇒")
+                out.append(f's.ask("{q(a.strip())}", "{q(b.strip()) or "TODO 確かめた結果"}")')
         elif k == "手順":
-            out.append("s.numbered([" + qs(pts[:4]) + "])")
+            steps = []
+            for p in ps:
+                chunks = re.split(r"(?<![0-9])[0-9０-９][.．](?![0-9])\s*", p)
+                steps += [x.strip() for x in (chunks[1:] if len(chunks) > 1 else chunks) if x.strip()]   # 「1.」の前（見出し）は外す
+            out.append("s.numbered([" + qs((steps or ["TODO 段1", "TODO 段2"])[:5]) + "])")
         elif k == "式の注釈":
-            out.append('# TODO 式と項の注釈：s.peq(...) と s.defs(...)（references/structures.md「式の注釈」）')
+            out.append('# TODO 式と項の注釈：s.peq(...) と s.defs(...)（references/structures.md「式の注釈」）'
+                       + (f'  要点：{"／".join(ps)[:80]}' if ps else ""))
+        elif k == "余り":
+            out += [f's.p("{q(p)}")   # TODO 形の入れる所の書き方でない要点（入れる所に移すか、ノートへ）' for p in ps]
         else:
-            out += [f's.p("{q(p)}")' for p in pts[:4]]
+            out += [f's.p("{q(p)}")' for p in (ps or ["TODO 要点"])[:4]]
     return out
 
 

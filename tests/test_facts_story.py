@@ -127,3 +127,14 @@ def test_brief_refuses_misplaced_work(tmp_path):
     w.mkdir(parents=True)
     with pytest.raises(SystemExit):
         brief.build("仕上げ役", str(w))
+
+
+def test_body_form_slots():
+    import structures as S
+    assert S.slot_problems(["展開"], ["条件A だと結果B"]) == [("展開", S.SLOTS["展開"]["write"])]
+    assert S.slot_problems(["帰結"], ["前提", "⇒ 結論"]) == []
+    assert S.slot_problems(["場合分け"], ["高い：x"])                       # 場合分けは2つ以上
+    assert S.slot_problems(["ラベル", "場合分け"], ["名前：説明", "高い：x", "低い：y"]) == []
+    got = dict(S.assign(["ラベル", "展開"], ["図の読み方：横軸は時刻", "始まり 35 Hz → 250 Hz", "ひずみ 1e-21"]))
+    assert got["展開"] == ["始まり 35 Hz → 250 Hz"] and got["ラベル"] == ["図の読み方：横軸は時刻"] and got["余り"] == ["ひずみ 1e-21"]
+    assert dict(S.assign(["ラベル"], ["波形：35→150 Hz で最大"]))["ラベル"]           # 見出しの中の「→」は展開にしない
