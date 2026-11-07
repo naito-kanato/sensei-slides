@@ -146,7 +146,9 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
                 names.append(f"`cards/{shared[key]}`（{tok}）")
             L += ["", "## 資料",
                   f"- 範囲：{src}。抜き出し：{'・'.join(names) or 'なし'}。**前の枚で同じ抜き出しを読んだなら、読み直さない**",
-                  f"- 数値・式・固有名詞は抜き出しのとおりに写す。資料のファイル {source.name} は、抜き出しに無いことが要るときだけ開く"]
+                  f"- 数値・式・固有名詞は抜き出しのとおりに写す。資料のファイル {source.name} は、抜き出しに無いことが要るときだけ開く",
+                  f"- 要点の数値・事実が抜き出しに無いときは、資料外と決めつけず {source.name} を開いて探す（あれば資料の値。無いときだけ ※（資料外の補足））。"
+                  "「出典を確かめて」のような作業のメモは原稿に書かず、返答に書く"]
             if miss:
                 L.append(f"- 抜き出せなかった範囲：{'・'.join(miss)}（{source.name} でその所だけを読む）")
         elif src not in EMPTY:

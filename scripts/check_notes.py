@@ -33,6 +33,8 @@ NOTE_MIN_COURSE = 240    # 講座で、これより少ない枚は △（見本�
 EMPTY_LINK = re.compile(r"^(では|それでは|続いて|次に|次は)?[、,]?\s*(次の(スライド|ページ)(です|に(進みます|行きます|移ります))|次に(進みます|行きます|移ります)|"
                         r"次のスライドをご覧ください|では次に|それでは次に)[。．]?$")
 QUOTE = re.compile(r"「([^「」]{2,})」")
+# 読み上げる原稿に残った作業のメモ（書き手が迷った所は返答に書く。※の行も聞き手に見える）
+WORK_MEMO = re.compile(r"TODO|ノートへ[:：]|抜き出し|出典を確かめ|確かめてから話して|確認できていません|仕上げ(役|段階)|書き手|カードの")
 
 
 def _norm(s: str) -> str:
@@ -120,6 +122,10 @@ def check(work: Path, plan_text: str | None = None, slide_texts: dict | None = N
                     + "（notes.md のその枚に、その言い回し・用語の説明を入れる。言い方を変えたなら、手当ての行も直す）"))
     elif items:
         res.append(("✔", "原稿の手当て", f"原稿に回した手当て {len(items)}件が、原稿に入っている"))
+    memo = [(n, m.group(0)) for n, t in notes.items() for m in [WORK_MEMO.search(t)] if m]
+    if memo:
+        res.append(("✘", "原稿の作業メモ", "読み上げる原稿に作業のメモが残っている：" + "、".join(f"[{n}] 「{w}」" for n, w in memo[:6])
+                    + "（迷った所・確かめたい所は原稿から消し、返答に書く。資料にあるかは資料を開いて確かめる）"))
     long = [(n, len(s)) for n, t in notes.items() for s in sentences(t) if len(s) > SENT_MAX]
     if long:
         res.append(("△", "原稿の1文の長さ", f"{SENT_MAX}字を超える文：" + "、".join(f"[{n}] {k}字" for n, k in long[:6]) + "（読み上げで息が続かない。2文に分ける）"))

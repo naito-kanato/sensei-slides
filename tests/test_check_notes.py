@@ -52,3 +52,12 @@ def test_long_sentence_and_empty_link_are_flagged(tmp_path):
 def test_length_is_compared_with_the_talk_time(tmp_path):
     notes = "## 2\n四重極モーメントが時間とともに変わる質量の分布です。\n\n## 4\n2つの天体が重力波を出しながら近づきます。\n"
     assert marks(check_notes.check(_work(tmp_path, notes, mins=20)))["原稿の長さ"] == "△"   # 20分に数十字は少なすぎる
+
+
+
+def test_work_memo_left_in_notes(tmp_path):
+    bad = "## 2\nこの値は今の抜き出しでは確認できていません。出典を確かめてから話してください。\n"
+    res = check_notes.check(_work(tmp_path, bad))
+    assert marks(res)["原稿の作業メモ"] == "✘"
+    ok = "## 2\n答えは、確かめてから使う、です。重力波は時空のゆがみが伝わる波です。\n※（出典）Abbott et al. 2016\n"
+    assert "原稿の作業メモ" not in marks(check_notes.check(_work(tmp_path, ok)))
