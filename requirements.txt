@@ -5,4 +5,4 @@ PyMuPDF>=1.24.3
 Pillow
 matplotlib
 numpy
-scipy
+# scipy は figkit.random_network（ガラスの網目の図）だけが使う。要るときだけ入れる

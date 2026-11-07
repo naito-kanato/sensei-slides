@@ -6,7 +6,8 @@
   1. Python の版（3.10 以上）と部品（python-pptx・PyMuPDF・Pillow・matplotlib・numpy・lxml）
   2. 描画の検査と原稿のページに使うもの：Windows の PowerPoint、無ければ LibreOffice（どちらか1つあればよい）
   3. 図の日本語フォント（Meiryo・Yu Gothic・ヒラギノ・Noto Sans CJK など）
-足りないものがあれば、OS ごとの入れ方を出す。入れるのはユーザー（エージェントは、ユーザーに頼まれたときだけ、確認を出してから入れる）。
+足りないものがあれば、入れ方を出す。Python の部品は、エージェントが【質問】で聞いて許可をもらってから、作業フォルダの .venv に入れる。
+PC 全体に入るもの（Python 本体・LibreOffice・フォント）は、入れるのはユーザー（頼まれたときだけ、確認を出してから入れる）。
 終了コード：部品が足りなければ 1（スライドが作れない）。描画のもの・フォントが無いだけなら 0（スライドまでは作れる）。
 """
 import importlib
@@ -25,6 +26,11 @@ PACKAGES = [("pptx", "python-pptx"), ("pymupdf", "PyMuPDF"), ("PIL", "Pillow"), 
             ("numpy", "numpy"), ("lxml", "lxml")]
 OS = platform.system()
 
+INSTALL_PY = {
+    "Windows": "winget install -e --id Python.Python.3.12（または https://www.python.org/downloads/ から。入れたら新しいターミナルで）",
+    "Darwin": "brew install python@3.12（または https://www.python.org/downloads/ から）",
+    "Linux": "sudo apt install python3 python3-venv（Fedora などは sudo dnf install python3）",
+}
 INSTALL_LO = {
     "Windows": "winget install TheDocumentFoundation.LibreOffice（または https://www.libreoffice.org/download/ から）",
     "Darwin": "brew install --cask libreoffice（または https://www.libreoffice.org/download/ から）",
@@ -84,10 +90,12 @@ def main():
     rows, todo = [], []
     py_ok = sys.version_info >= (3, 10)
     rows.append(("✔" if py_ok else "✘", "Python", platform.python_version() + ("" if py_ok else "（3.10 以上にする）")))
+    if not py_ok:
+        todo.append("Python 3.10 以上を入れる：" + INSTALL_PY.get(OS, INSTALL_PY["Linux"]))
     miss = check_packages()
     rows.append(("✘" if miss else "✔", "Python の部品", "足りない：" + "・".join(miss) if miss else "そろっている"))
     if miss:
-        todo.append("部品を入れる：pip install -r <skill>/requirements.txt（仮想環境を有効にしてから）")
+        todo.append("部品を入れる（エージェントが聞いて、許可があれば .venv に入れる）：python -m venv .venv → .venv の python -m pip install -r <skill>/requirements.txt（Windows は .venv\\Scripts\\python、Mac・Linux は .venv/bin/python）")
     ppt = has_powerpoint()
     lo = libreoffice()
     rows.append(("✔" if ppt else "－", "PowerPoint", "あり（描画の検査と原稿のページはこれで）" if ppt else "なし"))
@@ -103,7 +111,7 @@ def main():
     for mark, item, msg in rows:
         print(f"{mark} {item}：{msg}")
     if todo:
-        print("\n足りないもの（入れるのはユーザー。エージェントは頼まれたときだけ、確認を出してから入れる）：")
+        print("\n足りないもの（部品は、聞いて許可をもらってから .venv に入れる。PC 全体に入るものは、入れるのはユーザー）：")
         for t in todo:
             print(f"  - {t}")
         if not ppt and not lo:

@@ -276,7 +276,10 @@ def random_network(pts, margin=1.0, iters=300):
     """乱れた点配置のボロノイ図から3配位の連続ランダム網目（ザッカリアセン流の2D網目）を作り、
     ばねで辺の長さをそろえる。戻り値 (頂点 V, 辺 E[(i,j)])、辺の長さ≈1 に規格化。
     頂点＝網目形成イオン（Si など、2Dでは3配位）、辺の中点＝架橋酸素として描く。"""
-    from scipy.spatial import Voronoi
+    try:
+        from scipy.spatial import Voronoi
+    except ImportError as e:
+        raise ImportError("random_network には scipy が要る：.venv の python -m pip install scipy") from e
     v = Voronoi(pts)
     V = v.vertices.copy()
     lo, hi = pts.min(0) + margin, pts.max(0) - margin

@@ -3,8 +3,14 @@
 #   ターミナルでこのフォルダに移って  sh はじめに.sh
 cd "$(dirname "$0")" || exit 1
 PY=$(command -v python3 || command -v python)
-if [ -z "$PY" ]; then
-  echo "Python 3.10 以上が見つかりませんでした。https://www.python.org/downloads/ から入れて、もう一度実行してください。"
+if [ -z "$PY" ] || ! "$PY" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null; then
+  echo "Python 3.10 以上が見つかりませんでした（入っていないか、版が古い）。"
+  if [ "$(uname)" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+    printf "Homebrew で入れられます：brew install python@3.12。いま入れますか？ [y/N] "
+    read -r ANS
+    if [ "$ANS" = "y" ] || [ "$ANS" = "Y" ]; then brew install python@3.12 && echo "入れ終わったら、もう一度 sh はじめに.sh を実行してください。"; exit 1; fi
+  fi
+  echo "https://www.python.org/downloads/ から入れて（Linux は sudo apt install python3 python3-venv など）、もう一度実行してください。"
   exit 1
 fi
 [ -x .venv/bin/python ] || "$PY" -m venv .venv || exit 1

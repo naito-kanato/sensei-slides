@@ -12,6 +12,8 @@ if not defined PY (
   if not errorlevel 1 set "PY=python"
 )
 if not defined PY goto nopython
+%PY% -c "import sys; sys.exit(sys.version_info < (3, 10))" > nul 2> nul
+if errorlevel 1 goto nopython
 if exist ".venv\Scripts\python.exe" goto install
 %PY% -m venv .venv
 if errorlevel 1 goto nopython
@@ -28,8 +30,21 @@ echo.
 pause
 exit /b 0
 :nopython
-echo Python 3.10 以上が見つかりませんでした。https://www.python.org/downloads/ から入れて
-echo （入れるときに「Add python.exe to PATH」に印を付ける）、もう一度 はじめに.bat をダブルクリックしてください。
+echo Python 3.10 以上が見つかりませんでした（入っていない・版が古い・Microsoft Store の入口だけ、のどれか）。
+where winget > nul 2> nul
+if errorlevel 1 goto manualpy
+echo.
+echo winget で Python 3.12 を入れられます：winget install -e --id Python.Python.3.12
+set /p ANS=いま入れますか？ [y/N] 
+if /i not "%ANS%"=="y" goto manualpy
+winget install -e --id Python.Python.3.12
+echo.
+echo 入れ終わったら、この窓を閉じて、もう一度 はじめに.bat をダブルクリックしてください。
+pause
+exit /b 1
+:manualpy
+echo https://www.python.org/downloads/ から入れて（入れるときに「Add python.exe to PATH」に印を付ける）、
+echo もう一度 はじめに.bat をダブルクリックしてください。
 pause
 exit /b 1
 :pipfail
