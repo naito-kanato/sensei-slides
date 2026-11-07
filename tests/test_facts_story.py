@@ -103,3 +103,27 @@ def test_scaffold_refuses_work_inside_course_folder(tmp_path, capsys):
     w.mkdir(parents=True)
     assert "講座フォルダ X講座/ の中" in scaffold.misplaced(w, "memo")
     assert scaffold.misplaced(tmp_path / "_work" / "X講座_01", "memo") == ""
+
+
+def test_brief_fills_template_and_keeps_kind_lines(tmp_path, monkeypatch):
+    import brief
+    monkeypatch.chdir(tmp_path)
+    w = _work(tmp_path)
+    for role in brief.roles():
+        text = brief.build(role, "X講座" if role in brief.NO_WORK else str(w))
+        assert "{" not in text and "[発表]" not in text and "[講座]" not in text, role
+        assert "ユーザーには質問しません" in text and "10行まで" in text
+    t = brief.build("直しの担当", str(w))
+    assert "_work/X講座_01/memo_review.md" in t and "facts_diff.md" in t and "outline.md" not in t
+    p = tmp_path / "_work" / "論文"
+    p.mkdir()
+    assert "outline_review.md" in brief.build("直しの担当", str(p))
+
+
+def test_brief_refuses_misplaced_work(tmp_path):
+    import brief
+    import pytest
+    w = tmp_path / "X講座" / "_work" / "X講座_01"
+    w.mkdir(parents=True)
+    with pytest.raises(SystemExit):
+        brief.build("仕上げ役", str(w))

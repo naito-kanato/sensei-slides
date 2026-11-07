@@ -34,7 +34,7 @@ HOWTO = """# 裏取り（{name}・{k}/{n}）
 - **時とともに変わる事実**（制度の版・統計・法令・料金・数）は、最新の版を先に探す（検索語に今年の年と「最新」「改定」を入れ、
   公式のページで版と改定日を確かめてから値を拾う）。出典に版か年（「Ver.3.0（2023年4月）」「2026年3月31日現在」）を書く
 - **確認**：○＝出典で確かめた／△＝出典どうしで値が違う・諸説あり（違いを値の欄に）／×＝確かめられなかった
-- **要点と合うか**：設計の担当が置いた値・言い方（主張と値の欄の今の中身）と合うか。「合う」か「違う：〈何がどう違うか〉」。
+- **要点と合うか**：設計の担当が置いた値・言い方（主張と値の欄の今の中身）と、使う枚の青帯（表の下）が言っていることに合うか。「合う」か「違う：〈何がどう違うか〉」。
   違うときは、表の値は確かめた値に直す（直しの担当が、その行を使う枚の青帯と筋を直す）
 - 行に無いが、使う枚の話に要る新しい事実（新しい版がある、など）を見つけたら、番号を「+」にして表の最後に足す
 - PDF は要る頁だけ読む。検索の結果を全部覚えておかない（表に要る所だけ拾う）
@@ -82,6 +82,13 @@ def unchecked(row, i_ok) -> bool:
     return v in ("", "-", "—") or "未確認" in v
 
 
+def headlines(memo: str) -> dict:
+    """{枚の番号: 青帯}：2節の表から。"""
+    import structures
+    rows = structures._plan_table(memo, "memo") or []
+    return {k: c for k, c in (structures._conclusion_cells(rows) or {}).items() if c and c not in ("—", "-")}
+
+
 def split(work: Path, n: int):
     memo = (work / "memo.md").read_text(encoding="utf-8")
     _, head, rows = memo_facts(memo)
@@ -106,6 +113,11 @@ def split(work: Path, n: int):
         for no, r in part:
             r = (r + [""] * 4)[:4]
             lines.append("| " + " | ".join([str(no), *r, "・".join(map(str, use.get(no, []))) or "—", ""]) + " |")
+        used = sorted({s for no, _ in part for s in use.get(no, [])})
+        if used:
+            heads = headlines(memo)
+            lines += ["", "## 使う枚の青帯（その事実で何を言うか。合うかを決める手がかり）", ""]
+            lines += [f"- {s}枚目：{heads.get(s, '（青帯なし）')}" for s in used]
         p.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
         out.append(p)
         print(f"{p.name}：{len(part)} 行（事実 {part[0][0]}〜{part[-1][0]}）")
