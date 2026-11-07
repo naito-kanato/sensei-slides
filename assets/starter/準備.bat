@@ -50,12 +50,12 @@ set /p ANS=いま入れますか？ [y/N]
 if /i not "%ANS%"=="y" goto manualpy
 winget install -e --id Python.Python.3.12
 echo.
-echo 入れ終わったら、この窓を閉じて、もう一度 はじめに.bat をダブルクリックしてください。
+echo 入れ終わったら、この窓を閉じて、もう一度 準備.bat をダブルクリックしてください。
 pause
 exit /b 1
 :manualpy
 echo https://www.python.org/downloads/ から入れて（入れるときに「Add python.exe to PATH」に印を付ける）、
-echo もう一度 はじめに.bat をダブルクリックしてください。
+echo もう一度 準備.bat をダブルクリックしてください。
 pause
 exit /b 1
 :pipfail

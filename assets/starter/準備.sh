@@ -1,6 +1,6 @@
 #!/bin/sh
 # sensei-slides の準備：仮想環境 .venv を作って、スライド作りの部品を入れる（Mac・Linux）。
-#   ターミナルでこのフォルダに移って  sh はじめに.sh
+#   ターミナルでこのフォルダに移って  sh 準備.sh
 cd "$(dirname "$0")" || exit 1
 # uv が入っていれば uv で作る（速い。Python が無くても 3.12 を取ってくる）。無ければ下の python と pip で
 if command -v uv >/dev/null 2>&1; then
@@ -14,7 +14,7 @@ if [ -z "$PY" ] || ! "$PY" -c 'import sys; sys.exit(sys.version_info < (3, 10))'
   if [ "$(uname)" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
     printf "Homebrew で入れられます：brew install python@3.12。いま入れますか？ [y/N] "
     read -r ANS
-    if [ "$ANS" = "y" ] || [ "$ANS" = "Y" ]; then brew install python@3.12 && echo "入れ終わったら、もう一度 sh はじめに.sh を実行してください。"; exit 1; fi
+    if [ "$ANS" = "y" ] || [ "$ANS" = "Y" ]; then brew install python@3.12 && echo "入れ終わったら、もう一度 sh 準備.sh を実行してください。"; exit 1; fi
   fi
   echo "https://www.python.org/downloads/ から入れて（Linux は sudo apt install python3 python3-venv など）、もう一度実行してください。"
   exit 1

@@ -165,7 +165,7 @@ AI は操作のたびに会話をまるごと読み直すので、メインが�
 | `references/course.md`・`answer-deck.md`・`series.md`・`templates.md`・`agents.md` | 講座／質問回答／続きもの／テンプレート／道具の対応表と許可リスト |
 
 依存：`<skill>/requirements.txt`。`No module named 'pptx'` などと出たら、`.venv` の Python でなく `python` のまま動かした可能性が高い。
-`.venv` が無ければ、ユーザーに配布の一式の `はじめに.bat`（Mac・Linux は `はじめに.sh`）を走らせてもらうか、`pip install` を案内する。
+`.venv` が無く部品が足りなければ、手順0のとおり聞いてから `.venv` を作って入れる（配布の一式なら、ユーザーが `準備.bat`・`準備.sh` を走らせても入る）。
 
 ### PowerPoint の決まり
 
