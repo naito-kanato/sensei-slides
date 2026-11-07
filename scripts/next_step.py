@@ -99,8 +99,8 @@ def steps_for(work: Path):
     fig_ok = figs.exists() and pngs and max(p.stat().st_mtime for p in pngs) >= figs.stat().st_mtime - 1
     if add(bool(fig_ok), "図（figs.py → figs/）", "" if fig_ok else ("figs.py が無い" if not figs.exists() else "figs.py を直したあと描き直していない")) is False and not nxt:
         nxt = ("手順3〜5（SKILL.md「役割を分ける」）：python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、"
-                   "制作役1人に丸ごと頼む：figs.py で図、カードを1枚ずつ読んで parts/NN.py・parts/NN.md、scaffold.py <work> --merge で戻して、"
-                   "python <skill>/scripts/make_deck.py <work> で組んで検査し、原稿HTMLまで")
+                   "制作役1人が figs.py で図、カードを1枚ずつ読んで parts/NN.py・parts/NN.md、scaffold.py <work> --merge で戻す。"
+                   "そのあと仕上げ役1人が python <skill>/scripts/make_deck.py <work> で組んで検査して直し、原稿HTMLまで")
     # 3. ビルド
     build = work / "build.py"
     notes = work / "notes.md"
@@ -118,7 +118,7 @@ def steps_for(work: Path):
     shapes = work / "render" / "shapes.json"
     rend = _newer(shapes, pptx)
     if add(rend, "描画（render/shapes.json）", "" if rend else "今の pptx をまだ描いていない") is False and not nxt:
-        nxt = f"手順5（制作役）：python {SKILL}/scripts/make_deck.py {work.as_posix()} を走らせ、出た所をまとめて直す"
+        nxt = f"手順5（仕上げ役）：python {SKILL}/scripts/make_deck.py {work.as_posix()} を走らせ、出た所をまとめて直す"
     # 5. 完成後のレビュー
     review = work / "review.md"
     if add(review.exists(), "完成後のレビュー（review.md）") is False and not nxt:
