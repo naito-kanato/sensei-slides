@@ -198,3 +198,30 @@ def test_figure_purpose_and_recommended_kind():
     mark, _, msg = figplan.check_menu(rows, "outline", [2, 3, 4, 5])[0]
     assert mark == "△" and "[3] 比べるに年表" in msg and "目的が無い：[4]" in msg and "[5]" not in msg
     assert figplan.planned_kind("観点：表：推定値") == "表" and figplan.planned_kind("比べる：棒グラフ：x") == "図"
+
+
+def _arc_outline(links, arc, position="後", answer=None):
+    rows = "\n".join(f"| {n} | 見出し{n} | {l} | 青帯{n}の一文 | 本文 |" for n, l in enumerate(links, start=2))
+    an = answer or (len(links) + 1)
+    return (f"## オプション\n\n| オプション | 値 |\n|---|---|\n| 答えの位置 | {position} |\n\n"
+            "## 話の筋\n\n| 筋 | 型 | 一文 | 枚 |\n|---|---|---|---|\n| 状況 | — | 今 | 2 |\n| 複雑化 | 壁 | しかし | 3 |\n"
+            f"| 問い | どうやって | どうするか？ | 3 |\n| 答え | — | こうする | {an} |\n\n話の型：{arc}\n\n"
+            "## 構成\n\n| 番号 | ●見出し | 前の枚から | 青帯（結論） | 役割 |\n|---|---|---|---|---|\n| 1 | 表紙 | — | — | 表紙 |\n" + rows + "\n")
+
+
+def _arc_mark(text):
+    return {i: (m, msg) for m, i, msg in story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")}.get("話の型")
+
+
+def test_story_arc_both_positions():
+    late = ["—", "しかし（壁）", "そして（詳しく）", "だから（手段）", "そして（次へ）", "しかし（疑い）", "だから（帰結）", "しかし（限り）"]
+    assert _arc_mark(_arc_outline(late, "論文紹介（問題から）", "後"))[0] == "✔"
+    mark, msg = _arc_mark(_arc_outline(late, "論文紹介（問題から）", "先", answer=4))
+    assert mark == "△" and "答えと柱の一覧" in msg                       # 先にすると、壁のすぐ後に答えの拍が要る
+    early = ["—", "しかし（壁）", "だから（帰結）"] + late[3:]
+    assert _arc_mark(_arc_outline(early, "論文紹介（問題から）", "先", answer=4))[0] == "✔"
+    assert "答えの枚は 5" in _arc_mark(_arc_outline(early, "論文紹介（問題から）", "先", answer=5))[1]
+    swapped = ["—", "だから（手段）", "しかし（壁）"] + late[4:]
+    assert _arc_mark(_arc_outline(swapped, "論文紹介（問題から）", "後"))[0] == "△"
+    assert _arc_mark(_arc_outline(swapped, "論文紹介（問題から）", "後") + "\n型を外す理由：方法が見どころ\n")[0] == "✔"
+    assert _arc_mark(_arc_outline(late, "ない型", "後"))[0] == "△"

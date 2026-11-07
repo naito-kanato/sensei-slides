@@ -74,6 +74,8 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         out["資料0.md"] = f"# 資料の抜き出し：要旨（{source.name} の最初の節より前）\n\n```text\n{head}\n```\n"
     text = (work / {"memo": "memo.md", "answers": "answers.md"}.get(kind, "outline.md")).read_text(encoding="utf-8")
     st = story.story_table(text) or {}
+    beats = story.beat_map(text, kind) if kind in ("memo", "outline") else {}
+    arc_name = (story.arc_of(text)[1] or ("",))[0]
     body = [r for r in rows if (col(r, "役割") or "本文") == "本文"]
     per = f"{minutes * 300 / max(len(body), 1):.0f}字" if minutes else ("380字" if kind == "memo" else "400字")
     skel = build_py(work, kind, "T", rows)
@@ -107,6 +109,9 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         if st:
             L += [f"- 筋の問い（{q_[1] or '?'}枚目）：{q_[0]}", f"- 筋の答え（{a_[1] or '?'}枚目）：{a_[0]}"]
             pos = story.answer_position(text, kind)
+            beat = beats.get(n)
+            if beat:
+                L.append(f"- この枚は話の型「{arc_name}」の拍 {beat[0]}：{beat[1]}（{beat[2]}）＝{beat[3]}。青帯と原稿の1文目で、この役を果たす")
             if n == q_[1]:
                 L.append("- **この枚が問いの枚**：筋の問いを、スライドにも短い一文で載せ（赤字でよい）、原稿でもそのまま聞き手に投げかける（あとの枚の「最初の問い」はここを指す）")
             if n == a_[1] and pos == "先":
