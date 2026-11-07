@@ -100,30 +100,56 @@ NOTES = [("course-notes.jpg", ROOT / "examples" / "course" / "AI活用講座" / 
          ("zemi-notes.jpg", ROOT / "examples" / "zemi" / "重力波の初観測_原稿.html")]
 
 
+def card_spans(im, x: int = 16, head: int = 100):
+    """原稿のページの画面で、カード（枠の付いた1枚ぶん）の上下 [(上, 下), …]。左の縁の列が背景より濃い所を続けて数える。"""
+    spans, start = [], None
+    for y in range(head, im.height):
+        dark = sum(im.getpixel((x, y))) < 3 * 245
+        if dark and start is None:
+            start = y
+        elif not dark and start is not None:
+            if y - start > 100:
+                spans.append((start, y))
+            start = None
+    return spans
+
+
 def notes_shots():
-    """原稿のページを 1360×1700 で写し、上の帯（0〜88px）と3枚目のカード（1112〜1630px）をつなぐ。Edge が無ければ飛ばす。"""
+    """原稿のページを 1360×2800 で写し、上の帯と3枚目のカードをつなぐ。カードの上下は、左の縁の色から探す
+    （決め打ちの位置だと、ページの作りが変わったときに前の枚の残りが入り、3枚目の下が切れた）。Edge が無ければ飛ばす。"""
     import subprocess
     import tempfile
     edge = next((e for e in EDGE if e.exists()), None)
     if edge is None:
         print("（Edge が無いので原稿のページの画面は作らない）")
         return
+    import time
+
+    def shoot(html: Path, shot: Path, height: int):
+        subprocess.run([str(edge), "--headless=new", "--disable-gpu", "--hide-scrollbars", f"--window-size=1360,{height}",
+                        "--virtual-time-budget=3000", f"--screenshot={shot}", html.as_uri()], capture_output=True, timeout=120)
+        for _ in range(40):           # Edge は起動役のプロセスがすぐ戻ることがあるので、画像ができるまで待つ
+            if shot.exists() and shot.stat().st_size > 0:
+                time.sleep(0.5)
+                break
+            time.sleep(0.5)
+        return Image.open(shot).convert("RGB") if shot.exists() else None
+
     with tempfile.TemporaryDirectory() as td:
         for name, html in NOTES:
-            shot = Path(td) / f"shot_{Path(name).stem}.png"   # 1枚ごとに別の名前（同じ名前だと、前の画像を写し違えることがあった）
-            subprocess.run([str(edge), "--headless=new", "--disable-gpu", "--hide-scrollbars", "--window-size=1360,1700",
-                            "--virtual-time-budget=3000", f"--screenshot={shot}", html.as_uri()], capture_output=True, timeout=120)
-            import time
-            for _ in range(40):           # Edge は起動役のプロセスがすぐ戻ることがあるので、画像ができるまで待つ
-                if shot.exists() and shot.stat().st_size > 0:
-                    time.sleep(0.5)
-                    break
-                time.sleep(0.5)
-            if not shot.exists():
+            stem = Path(name).stem          # 1枚ごとに別の名前（同じ名前だと、前の画像を写し違えることがあった）
+            im = shoot(html, Path(td) / f"tall_{stem}.png", 2800)
+            # 上の帯は 1700 の高さで写す（番号の印は画面のまん中あたりのカードに付く。1700 なら3枚目）
+            top_im = shoot(html, Path(td) / f"head_{stem}.png", 1700)
+            if im is None or top_im is None:
                 print(f"（{html.name} を写せなかった）")
                 continue
-            im = Image.open(shot).convert("RGB")
-            head, card = im.crop((0, 0, im.width, 88)), im.crop((0, 1112, im.width, 1630))
+            cards = card_spans(im)
+            if len(cards) < 3:
+                print(f"（{html.name} の3枚目のカードが見つからなかった）")
+                continue
+            (y0, y1), top = cards[2], cards[0][0]
+            head, card = top_im.crop((0, 0, im.width, top - 12)), im.crop((0, y0 - 12, im.width, min(im.height, y1 + 14)))
             out = Image.new("RGB", (im.width, head.height + card.height), "white")
             out.paste(head, (0, 0))
             out.paste(card, (0, head.height))

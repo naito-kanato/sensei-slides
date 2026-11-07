@@ -147,6 +147,8 @@ li .say span::before{content:"「";color:var(--text-3)}li .say span::after{conte
 .feats div{background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--key);border-radius:8px;padding:10px 14px}
 .feats b{display:block;color:var(--key);font-size:.9375rem;margin-bottom:3px}
 .feats p{margin:0;font-size:.8125rem;line-height:1.6;color:var(--text-2)}
+.feats details.more summary{cursor:pointer;font-size:.75rem;color:var(--key);margin-top:4px;width:max-content}
+.feats details.more p{margin-top:4px}
 @media (max-width:640px){.feats{grid-template-columns:1fr}}
 .flow .b{background:var(--key-pale);border-radius:6px;padding:6px 10px;font-size:.8125rem;line-height:1.4;text-align:center}
 .flow .b small{display:block;color:var(--text-3);font-size:.6875rem}
@@ -251,11 +253,10 @@ details.fold.gallery figure{margin:0 0 4px}
   <div class="card">
     <h2>あなたが止まる所・事実・文字の組み方・量まで確かめてから渡します</h2>
     <div class="feats">
-      <div><b>止まる所を埋める（推論距離）</b><p>別の AI があなたの立場で読み、あなたが自分で補う前提を書き出します。結論の理由・意味の書いていない用語・あとで使う前提は、話の流れの中で埋めます。どこまで埋めるかは、あなたの詳しさに合わせます。</p></div>
-      <div><b>話の筋</b><p>あなたの疑問を「問い」にして最初の数枚で立て、意外な結果や壁を越えて、後ろのほうで答えます。枚と枚のつながり（そして・しかし・だから）まで決めて、事実を並べるだけの講義にしません。</p></div>
-      <div><b>事実の裏取り</b><p>数値や事実は、出典を確かめてから使います。出典は、どの資料のどこかを特定できる形で書きます。裏が取れない事実は「要確認」と印を付けて、言い切りにしません。</p></div>
-      <div><b>文字の組み方</b><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、箇条書きだけにせず、そのスライドの中身に合う組み方を1枚ずつ選びます。</p></div>
-      <div><b>量と見た目の検査</b><p>本文は1枚100〜150字、結論の語句は赤字、確認問題は毎回6問（1枚に3問）。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></div>
+      <div><b>止まる所を埋める</b><p>あなたが自分で補う前提を、別の AI が書き出して埋める</p><details class="more"><summary>くわしく</summary><p>別の AI があなたの立場で読み、あなたが自分で補う前提を書き出します。結論の理由・意味の書いていない用語・あとで使う前提は、話の流れの中で埋めます。どこまで埋めるかは、あなたの詳しさに合わせます（推論距離）。</p></details></div>
+      <div><b>話の筋</b><p>問い → 壁 → 答え の順に、枚と枚をつなぐ</p><details class="more"><summary>くわしく</summary><p>あなたの疑問を「問い」にして最初の数枚で立て、意外な結果や壁を越えて、後ろのほうで答えます。枚と枚のつながり（そして・しかし・だから）まで決めて、事実を並べるだけの講義にしません。</p></details></div>
+      <div><b>事実の裏取り</b><p>出典を確かめてから使い、取れない事実は「要確認」</p><details class="more"><summary>くわしく</summary><p>数値や事実は、出典を確かめてから使います。制度の版や統計のように変わるものは、最新の版を探します。出典は、どの資料のどこかを特定できる形で書きます。裏が取れない事実は「要確認」と印を付けて、言い切りにしません。</p></details></div>
+      <div><b>組み方と量</b><p>1枚100〜150字、組み方と見た目を描いた画像で検査</p><details class="more"><summary>くわしく</summary><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、箇条書きだけにせず、中身に合う組み方を1枚ずつ選びます。本文は1枚100〜150字、結論の語句は赤字、確認問題は毎回6問（1枚に3問）。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></details></div>
     </div>
     <details class="fold gallery">
       <summary><svg class="i"><use href="#i-chev"/></svg>文字の組み方の型を見る（型の見本帳から12枚）</summary>
@@ -263,7 +264,7 @@ details.fold.gallery figure{margin:0 0 4px}
         <figure><img src="docs/structures.jpg" alt="本文の形と図解の型の見本12枚" loading="lazy"><figcaption>同梱の examples/structures。「前提 ⇒ 帰結」「ラベル＋説明」「横の矢印で展開」「場合分け」「問い → 答え」「手順」「縦の矢印で結論へ」と、並列カード・段違いの順序・循環・前後・2つ並べた図。</figcaption></figure>
       </div>
     </details>
-    <p>止まる所や間違いを見つけるのは AI、手当てが全部入ったか・目安に収まったかを確かめるのはプログラムです。検査を通るまでは、AI が「大丈夫そう」と言っても先へ進みません。</p>
+    <p>見つけるのは AI、確かめるのはプログラム。検査を通るまで先へ進みません。</p>
   </div>
 
   <div class="card">
@@ -317,10 +318,10 @@ details.fold.gallery figure{margin:0 0 4px}
   <div class="card">
     <h2>見た目だけでなく、聞き手が止まる所まで確かめてから渡します</h2>
     <div class="feats">
-      <div><b>止まる所を埋める（推論距離）</b><p>別の AI が聞き手の立場で読み、聞き手が自分で補う前提を書き出します。結論の理由・意味の書いていない用語・あとで使う前提を、聞き手の詳しさに合わせて言い足しで埋めます。</p></div>
-      <div><b>話の筋</b><p>発表の問い（何を確かめたいか）を前のほうで立て、壁や疑い（雑音・別の説明）を越えて、後ろのほうで答えます。枚と枚のつながり（そして・しかし・だから）まで決めて、山場の無い発表にしません。</p></div>
-      <div><b>文字の組み方</b><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、そのスライドの中身に合う組み方を1枚ずつ選びます。あなたの過去のデッキの癖にも寄せられます（「テンプレート」の章の「追加する」）。</p></div>
-      <div><b>量と見た目の検査</b><p>本文は1枚100〜150字、結論の語句は赤字。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></div>
+      <div><b>止まる所を埋める</b><p>聞き手が自分で補う前提を、別の AI が書き出して埋める</p><details class="more"><summary>くわしく</summary><p>別の AI が聞き手の立場で読み、聞き手が自分で補う前提を書き出します。結論の理由・意味の書いていない用語・あとで使う前提を、聞き手の詳しさに合わせて言い足しで埋めます（推論距離）。</p></details></div>
+      <div><b>話の筋</b><p>問い → 壁 → 答え の順に、枚と枚をつなぐ</p><details class="more"><summary>くわしく</summary><p>発表の問い（何を確かめたいか）を前のほうで立て、壁や疑い（雑音・別の説明）を越えて、後ろのほうで答えます。枚と枚のつながり（そして・しかし・だから）まで決めて、山場の無い発表にしません。</p></details></div>
+      <div><b>組み方と量</b><p>1枚100〜150字、組み方と見た目を描いた画像で検査</p><details class="more"><summary>くわしく</summary><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、中身に合う組み方を1枚ずつ選びます。あなたの過去のデッキの癖にも寄せられます（「テンプレート」の章の「追加する」）。本文は1枚100〜150字、結論の語句は赤字。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></details></div>
+      <div><b>想定質問</b><p>聞かれそうな4問と回答案を、最後の2枚に</p><details class="more"><summary>くわしく</summary><p>発表のあと聞かれそうな質問を4問、構成案の段階で決め、最後に1枚2組で2枚置きます。答えるときに戻るとよい枚は、原稿に書いておきます（「詳しくは13枚目に戻ると…」）。</p></details></div>
     </div>
     <details class="fold gallery">
       <summary><svg class="i"><use href="#i-chev"/></svg>文字の組み方の型を見る（型の見本帳から12枚）</summary>
@@ -328,7 +329,7 @@ details.fold.gallery figure{margin:0 0 4px}
         <figure><img src="docs/structures.jpg" alt="本文の形と図解の型の見本12枚" loading="lazy"><figcaption>同梱の examples/structures。「前提 ⇒ 帰結」「ラベル＋説明」「横の矢印で展開」「場合分け」「問い → 答え」「手順」「縦の矢印で結論へ」と、並列カード・段違いの順序・循環・前後・2つ並べた図。</figcaption></figure>
       </div>
     </details>
-    <p>止まる所や間違いを見つけるのは AI、手当てが全部入ったか・目安に収まったかを確かめるのはプログラムです。検査を通るまでは、AI が「大丈夫そう」と言っても先へ進みません。</p>
+    <p>見つけるのは AI、確かめるのはプログラム。検査を通るまで先へ進みません。</p>
   </div>
 
   <div class="card">

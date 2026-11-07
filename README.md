@@ -22,7 +22,7 @@ Codex や Claude Code などの AI エージェントで使うスキルです（
 ![講座の見本（1〜4枚目）](docs/course-slides-1.jpg)
 
 <details>
-<summary>続きを見る（5〜15枚目）</summary>
+<summary><b>残りのスライドを全部見る（5〜15枚目、11枚）</b>　← クリックで開く</summary>
 
 ![講座の見本（5〜15枚目：本文の続き・確認問題・解答）](docs/course-slides-2.jpg)
 </details>
@@ -32,7 +32,7 @@ Codex や Claude Code などの AI エージェントで使うスキルです（
 ![発表の見本（1〜4枚目）](docs/zemi-slides-1.jpg)
 
 <details>
-<summary>続きを見る（5〜16枚目）</summary>
+<summary><b>残りのスライドを全部見る（5〜16枚目、12枚）</b>　← クリックで開く</summary>
 
 ![発表の見本（5〜16枚目）](docs/zemi-slides-2.jpg)
 
