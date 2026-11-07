@@ -25,6 +25,9 @@ figkit（色・線・小道具）の上に作ってある。どの関数も渡�
 | precession      | 軸のまわりの歳差運動（傾いたベクトル＋円錐の楕円） |
 | decay_signal    | 減衰する振動と包絡線 |
 | dipole_lattice  | 格子上の双極子を矢印で並べ、1つを強調して周りからの寄与を示す |
+| bars            | 図の種類「棒グラフ」：2〜8個の値を横棒で比べる（主役だけ青、ほかは灰、値を棒の先に） |
+| share_bar       | 図の種類「帯グラフ」：全体の内訳を1本の100%の帯で（主役だけ青、ほかは淡い色） |
+| timeline        | 図の種類「年表」：時代の帯と、いつ何が起きたかの印（主役の出来事だけ赤） |
 """
 from __future__ import annotations
 
@@ -210,6 +213,69 @@ def dipole_lattice(ax, nx=5, ny=4, x0=1.25, y0=0.8, dx=0.51, dy=0.72, highlight=
 
 # ---- サンプル（python figlib.py --demo out_dir） -----------------------------------------------
 
+def bars(ax, labels, values, highlight=None, unit="", fmt="{:g}", xmax=None, fs=14):
+    """図の種類「棒グラフ」：値を横棒で比べる。labels・values は上から順。highlight（番号か番号のリスト）の棒だけ青、ほかは灰。
+    値を棒の先に書く（目盛りは消す）。大小の順に並べると読みやすい。"""
+    hi = set([highlight] if isinstance(highlight, int) else (highlight or []))
+    n = len(values)
+    ys = list(range(n))[::-1]
+    colors = [COL.blue if i in hi else COL.gray for i in range(n)]
+    ax.barh(ys, values, color=colors, height=0.6)
+    top = xmax or max(values) * 1.25
+    for y, v, i in zip(ys, values, range(n)):
+        ax.text(v + top * 0.015, y, fmt.format(v) + unit, va="center", fontsize=fs,
+                color=COL.blue if i in hi else COL.ink, fontweight="bold" if i in hi else "normal")
+    ax.set_yticks(ys)
+    ax.set_yticklabels(labels, fontsize=fs)
+    ax.set_xlim(0, top)
+    ax.set_xticks([])
+    ax.tick_params(axis="y", length=0)
+    for side in ("top", "right", "bottom"):
+        ax.spines[side].set_visible(False)
+
+
+def share_bar(ax, parts, highlight=0, fs=14, label_min=0.08):
+    """図の種類「帯グラフ」：全体の内訳を1本の帯で。parts = [(名前, 値), ...]（合計で割って100%にする）。
+    highlight の部分だけ青、ほかは淡い色。狭い部分（label_min 未満）の名前は帯の下に出す。"""
+    total = float(sum(v for _, v in parts))
+    x = 0.0
+    pale = [COL.lblue, COL.pale, COL.gray]
+    for i, (name, v) in enumerate(parts):
+        w = v / total
+        c = COL.blue if i == highlight else pale[i % len(pale)]
+        ax.barh(0, w, left=x, height=0.5, color=c, edgecolor="white", lw=2)
+        txt = f"{name}\n{w * 100:.0f}%"
+        if w >= label_min:
+            ax.text(x + w / 2, 0, txt, ha="center", va="center", fontsize=fs, color="white" if i == highlight else COL.ink)
+        else:
+            ax.text(x + w / 2, -0.45, txt, ha="center", va="top", fontsize=fs - 2, color=COL.ink)
+        x += w
+    ax.set_xlim(0, 1)
+    ax.set_ylim(-0.9, 0.4)
+    ax.axis("off")
+
+
+def timeline(ax, start, end, eras=(), events=(), highlight=None, fs=14):
+    """図の種類「年表」：横の時間軸に、時代の帯 eras = [(名前, 始め, 終わり), ...] と、
+    出来事 events = [(年, 名前), ...] の印を置く。highlight（出来事の番号）だけ赤。年は数（1997.25 のような小数も可）。"""
+    pale = [COL.pale, COL.lblue, COL.blue]
+    for i, (name, a, b) in enumerate(eras):
+        c = pale[i % len(pale)]
+        ax.barh(0.5, (b or end) - a, left=a, height=0.5, color=c, edgecolor="white", lw=2)
+        ax.text((a + (b or end)) / 2, 0.5, name, ha="center", va="center", fontsize=fs,
+                color="white" if c == COL.blue else COL.ink)
+    ax.plot([start, end], [0, 0], color=COL.ink, lw=LW.axis if hasattr(LW, "axis") else 1.5)
+    for i, (year, name) in enumerate(events):
+        c = COL.red if i == highlight else COL.ink
+        ax.plot([year], [0], marker="o", color=c, ms=7)
+        up = i % 2 == 0
+        ax.text(year, -0.25 if up else -0.75, f"{int(year)}\n{name}" if name else f"{int(year)}", ha="center", va="top",
+                fontsize=fs - 1, color=c, fontweight="bold" if i == highlight else "normal")
+    ax.set_xlim(start - (end - start) * 0.03, end + (end - start) * 0.03)
+    ax.set_ylim(-1.6, 1.0)
+    ax.axis("off")
+
+
 def _demo(outdir):
     import os
     from figkit import blank, box, fig, save
@@ -258,6 +324,22 @@ def _demo(outdir):
     f, ax = fig(5.0, 3.6)
     equal_area_peaks(ax, [1.8, 0.45]); ax.set_ylim(0, 1.12); ax.set_title("equal_area_peaks", fontsize=13)
     save(f, f"{outdir}/equal_area_peaks.png")
+
+    f, ax = fig(5.0, 2.6)
+    bars(ax, ["主役", "比較A", "比較B", "比較C"], [56.9, 33.0, 17.9, 9.0], highlight=0, unit="%")
+    ax.set_title("bars", fontsize=13)
+    save(f, f"{outdir}/bars.png")
+
+    f, ax = fig(5.0, 1.6)
+    share_bar(ax, [("主役", 27), ("その他", 66), ("小", 7)])
+    ax.set_title("share_bar", fontsize=13)
+    save(f, f"{outdir}/share_bar.png")
+
+    f, ax = fig(6.0, 2.4)
+    timeline(ax, 1995, 2026, eras=[("第1期", 1997, 2002), ("第2期", 2002, 2013), ("第3期", 2013, None)],
+             events=[(1997, "開始"), (2013, "改定"), (2023, "今の版")], highlight=2)
+    ax.set_title("timeline", fontsize=13)
+    save(f, f"{outdir}/timeline.png")
 
     f, ax = blank(4.6, 4.0)
     P2 = lambda t: 0.5 * (3 * np.cos(t) ** 2 - 1)

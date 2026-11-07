@@ -326,6 +326,8 @@ def check_plan(text: str, kind: str, body_no: list, where: str, folder=None):
         used = sorted({k for i in body_no for k in plan.get(i, []) if isinstance(k, str)}, key=FORM_KEYS.index)
         res.append(("✔", "本文の形", f"本文 {len(body_no)}枚に形がある（使う形：{'・'.join(used) or 'なし'}）"))
     res += check_slots(text, kind, body_no, where)
+    import figplan
+    res += figplan.check_menu(text, kind, body_no)
     if folder is not None:
         res += compat(plan, body_no, template_of(folder, text))
     return res

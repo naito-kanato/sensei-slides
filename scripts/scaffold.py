@@ -261,7 +261,11 @@ def build_py(work: Path, kind, title, rows) -> str:
             if fig not in EMPTY and re.match(r"\s*(表|大きな数字)", fig):
                 L.append(f'# TODO {fig[:60]}（画像ではなく s.table か本文の部品で）')
             elif fig not in EMPTY:
-                L.append(f'# s.figure_beside(FIG / "s{n:02d}.png", caption="（TODO 出典）")   # 図：{fig[:60]}（図は figs/s{n:02d}.png）')
+                import figplan
+                mn = figplan.menu_name(fig)
+                part = next((x[2] for x in figplan.FIG_MENU if x[0] == mn), "")
+                hint = f"。{mn}は {part}" if mn else ""
+                L.append(f'# s.figure_beside(FIG / "s{n:02d}.png", caption="（TODO 出典）")   # 図：{fig[:60]}（図は figs/s{n:02d}.png{hint}）')
         L.append("")
     L += ['NOTES = load_notes(HERE / "notes.md")',
           "for i, sl in enumerate(deck.slides, 1):",

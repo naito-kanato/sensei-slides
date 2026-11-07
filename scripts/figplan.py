@@ -18,6 +18,59 @@ TABLE_WORDS = re.compile(r"^表[：:\s]|比較表|の表")
 REASON = re.compile(r"流れ図の理由[：:]\s*\S")
 
 
+# ---- 図の種類の選択肢（構成案・設計メモの「図で見せるもの」は、この名前のどれかを書いてから中身を書く。例「棒グラフ：…」）
+# 目的から選ぶ。名前ごとに描く部品が決まっているので、文字の箱を並べただけの図になりにくい。
+FIG_MENU = [
+    # (名前, 目的, 部品, 別の書き方)
+    ("棒グラフ", "2〜8個の値を比べる・順位", "figlib.bars", ("棒",)),
+    ("折れ線", "時間・条件で値が変わる（数値あり）", "fig() に plot（figlib.data_fit）", ("推移のグラフ",)),
+    ("概略グラフ", "関数形・傾向（数値なし）", "fig() ＋ noticks（figlib.compare など）", ("概略図", "傾向の図")),
+    ("帯グラフ", "全体の内訳・割合", "figlib.share_bar", ("割合の帯", "内訳の帯")),
+    ("年表", "いつ何が起きたか・時代の区切り", "figlib.timeline", ("時間軸",)),
+    ("模式図", "仕組み・構造・配置・縮尺", "blank() に box・arrow など（figkit）", ("仕組みの図", "断面図", "縮尺図", "作図", "装置図")),
+    ("流れ図", "手順・因果・分類（順番や枝分かれに意味がある）", "s.flow（PowerPoint の図形）", ("フロー", "ブロック図")),
+    ("表", "項目×観点（2つ以上の比較を、数や語で）", "s.table", ("比較表",)),
+    ("比較", "2つを左右に並べて違いを見せる", "s.compare", ("並べて比べ",)),
+    ("前後", "変える前と後", "s.before_after", ("ビフォー",)),
+    ("カード", "同格の要素を2〜6個", "s.cards", ("箱",)),
+    ("ツリー", "階層・分類の木", "s.tree", ()),
+    ("大きな数字", "1つの値・結論を印象づける（1回に1〜2枚）", "s.key_message", ()),
+    ("資料の図", "教科書・論文の図をそのまま（出典を付ける）", "pdf_pages.py crop", ("論文 Fig", "論文の図", "教科書の図", "論文 Table", "Fig.")),
+    ("写真", "実物（自作しない。ユーザーに用意してもらう）", "s.figure_beside", ()),
+]
+
+
+def menu_name(desc: str):
+    """図の案の一文に出てくる、図の種類の選択肢の名前（無ければ None）。"""
+    d = desc or ""
+    for name, _, _, alias in FIG_MENU:
+        if name in d or any(a in d for a in alias):
+            return name
+    return None
+
+
+def check_menu(text: str, kind: str, body_no: list):
+    """本文の枚の「図で見せるもの」が、図の種類の選択肢から選んであるか [(印, 項目, 説明)]。"""
+    import structures
+    rows = structures._plan_table(text, kind)
+    if not rows:
+        return []
+    head = rows[0]
+    i = next((k for k, h in enumerate(head) if "図で見せる" in h), None)
+    if i is None:
+        return []
+    bad = []
+    for r in rows[1:]:
+        if r and r[0].strip().isdigit() and int(r[0]) in body_no and len(r) > i:
+            d = r[i].strip()
+            if d not in ("", "—", "-", "－", "なし") and not menu_name(d):
+                bad.append(f"[{r[0]}]「{d[:16]}」")
+    if bad:
+        return [("△", "図の種類", "図の種類の選択肢に無い：" + "・".join(bad[:6])
+                 + "（目的から選んで先頭に書く：" + "・".join(n for n, *_ in FIG_MENU) + "。references/figures.md 1b）")]
+    return [("✔", "図の種類", "本文の図の案は、どれも図の種類の選択肢から選んである")]
+
+
 def flow_limit(n_body: int) -> int:
     """1回のデッキで使ってよい流れ図の枚数：本文4枚に1枚、最低2枚（本文10枚なら2枚、12枚なら3枚、16枚なら4枚）。"""
     return max(2, n_body // 4)
