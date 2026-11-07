@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 > nul
-cd /d "%~dp0"
+cd /d "%~dp0.."
 echo.
 echo sensei-slides の準備をします。仮想環境 .venv を作って、スライド作りの部品を入れます（数分かかります）。
 echo.
@@ -36,7 +36,7 @@ echo.
 echo 準備ができました。使い方のページ（スキルの使い方.html）をブラウザで開きます。
 start "" "スキルの使い方.html"
 echo このフォルダを Codex・Claude Code・Antigravity・VS Code などで開いて、
-echo 「〇〇の講座を作って」「〇〇.pdf のスライドを作って」と頼みます（くわしくは はじめに.md）。
+echo 「〇〇の講座を作って」「〇〇.pdf のスライドを作って」と頼みます（くわしくは スキルの使い方.html）。
 echo.
 pause
 exit /b 0

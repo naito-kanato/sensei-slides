@@ -201,7 +201,7 @@ PowerPoint で実際に描いた位置で検査します。はみ出し・重な
 | `SKILL.md` | スキル本体（AI が読む手順書）。入口の「発表か講座か」と、スライドを作る手順 |
 | `references/course.md` | 講座の手順（ヒアリング・地図・設計メモ・レビュー・コメントから次の回へ） |
 | `references/` | ほかに、書式ガイド・図のガイド・レビューの手順と雛形・構成案と図の実例と、ときどき使う流れ（質問回答デッキ `answer-deck.md`・続きもの `series.md`・テンプレートを作る `templates.md`） |
-| `assets/` | スライドのテンプレート、講座の README と設計メモの雛形、配布の一式の 準備.bat・.sh・.md（`assets/starter/`）、Codex の決まり（`assets/codex/`） |
+| `assets/` | スライドのテンプレート、講座の README と設計メモの雛形、配布の一式の準備のスクリプト 準備.bat・.sh（`assets/starter/`）、Codex の決まり（`assets/codex/`） |
 | `scripts/` | `zemi.py`（スライドの部品）、`figkit.py`・`figlib.py`（図）、`check_layout.py`・`render_check.ps1`（描画検査）、`notes_html.py`（原稿のページ）、`comments_read.py`（コメントの読み込み）ほか |
 | `examples/course/` | 講座の見本（AI活用講座：講座フォルダの README と、第1回の設計メモ・図・ビルド・原稿） |
 | `examples/zemi/` | 発表の見本（論文紹介。構成案 → 図 → ビルド → 原稿） |
@@ -226,15 +226,13 @@ sensei-slides/
   .agents/skills/sensei-slides/      スキル（Codex・Antigravity・VS Code の Copilot が読む）
   .claude/skills/sensei-slides/      同じスキル（Claude Code が読む）
   .codex/rules/sensei-slides.rules   Codex で PowerPoint を使う3つの作業だけを、確認なしで動かす決まり
-  準備.bat / 準備.sh / はじめに.md
+  .setup/準備.bat / 準備.sh          自分で準備するときのスクリプト（AI に任せるなら使わない）
 ```
 
-### 2. 準備.bat をダブルクリックする
+### 2. 準備は AI に任せてよい
 
-飛ばしてそのまま AI に頼んでも、足りない部品は AI が聞いてから入れます。
-
-仮想環境（`.venv`）を作って部品を入れ、PowerPoint やフォントがそろっているかを確かめます（数分、最初の1回だけ）。
-Mac / Linux はターミナルで `sh 準備.sh`。仮想環境にするのは、ほかの作業の Python の部品と版がぶつからないようにするためです。
+頼むと最初に、部品と PowerPoint・フォントがそろっているかを確かめ、足りない部品は、入れてよいかを聞いてから作業フォルダの仮想環境（`.venv`）に入れます（数分、最初の1回だけ）。
+自分で先に済ませるなら `.setup/準備.bat` をダブルクリックします（Mac / Linux は `sh .setup/準備.sh`）。仮想環境にするのは、ほかの作業の Python の部品と版がぶつからないようにするためです。
 
 ### 3. フォルダをエージェントで開いて頼む
 
@@ -274,7 +272,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r .agents/skills/sensei-slides/requirements.txt
 ```
 
-`assets/starter/準備.bat` をそのフォルダに写してダブルクリックしても同じです。Codex で使うなら、`assets/codex/sensei-slides.rules` をそのフォルダの `.codex/rules/` に写します（全部のフォルダで使うなら `~/.codex/rules/`）。
+`assets/starter/準備.bat` をそのフォルダの `.setup/` に写してダブルクリックしても同じです。Codex で使うなら、`assets/codex/sensei-slides.rules` をそのフォルダの `.codex/rules/` に写します（全部のフォルダで使うなら `~/.codex/rules/`）。
 仮想環境を使わずに、ふだんの Python に `pip install -r requirements.txt` で入れても動きます（`.venv` が無ければ、ふだんの Python を使います）。
 </details>
 

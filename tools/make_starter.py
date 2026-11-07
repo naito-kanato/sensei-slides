@@ -9,7 +9,8 @@ zip の中身（フォルダで包まずに一番上に置く。Windows の「�
     .agents/skills/sensei-slides/      スキル（Codex・Antigravity・VS Code の Copilot が読む）
     .claude/skills/sensei-slides/      同じスキル（Claude Code が読む。Windows の zip にはリンクを入れられないので2組）
     .codex/rules/sensei-slides.rules   Codex で PowerPoint を使う3つのスクリプトだけを外で動かす決まり
-    準備.bat・準備.sh・はじめに.md  assets/starter/ から（仮想環境を作って部品を入れる）
+    .setup/準備.bat・.setup/準備.sh     assets/starter/ から（自分で準備するときのスクリプト。足りない部品は AI も聞いてから入れるので、
+                                       一番上に出さず隠しフォルダに置く。スクリプトは一つ上のフォルダに移ってから動く）
     スキルの使い方.html                 使い方のページ（画像の場所を .agents/skills/sensei-slides/docs/ に書き換えた写し。隠しフォルダの奥まで探さずに開ける）
 
 スキルの中身は git archive HEAD（コミット済みのもの）。まだコミットしていない変更は入らないので、残っていれば知らせる。
@@ -75,7 +76,7 @@ def build(out_dir: Path) -> Path:
         add(z, f".codex/rules/{NAME}.rules", by_name[RULES])
         for n, b, _ in files:
             if n.startswith(STARTER):
-                add(z, n[len(STARTER):], b, exe=n.endswith(".sh"))
+                add(z, ".setup/" + n[len(STARTER):], b, exe=n.endswith(".sh"))
         guide = by_name[GUIDE].decode("utf-8").replace('src="docs/', f'src=".agents/skills/{NAME}/docs/')
         add(z, GUIDE, guide.encode("utf-8"))
     head = git("rev-parse", "--short", "HEAD").decode().strip()

@@ -365,7 +365,7 @@ details.fold.gallery figure{margin:0 0 4px}
 <section class="tab" id="tab-setup" role="tabpanel">
   <p class="eyebrow">使い方</p>
   <h1>準備</h1>
-  <p class="lead">最初に1回だけ行います。一式を解凍して、準備.bat をダブルクリックするだけです（飛ばしてそのまま AI に頼んでも、足りない部品は AI が聞いてから入れます）。</p>
+  <p class="lead">一式を解凍して、フォルダを AI エージェントで開いて頼むだけです。足りない部品は、最初に AI が聞いてから入れます。</p>
 
   <div class="card">
     <h2>必要なもの</h2>
@@ -402,8 +402,8 @@ details.fold.gallery figure{margin:0 0 4px}
     <ol class="steps">
       <li><b>一式をダウンロードして解凍する</b>スキル入りの作業フォルダ一式 <code>sensei-slides.zip</code> を、<a href="https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip">最新版のダウンロード</a>（GitHub の Releases）から落として解凍します。
         フォルダの名前は変えてかまいません（「発表」「講座」など）。</li>
-      <li><b>準備.bat をダブルクリックする</b>仮想環境（<code>.venv</code>）を作って部品を入れ、PowerPoint やフォントがそろっているかを確かめます（数分）。
-        Mac・Linux はターミナルで <code>sh 準備.sh</code>。最初の1回だけです。</li>
+      <li><b>準備は AI に任せてよい</b>頼むと最初に、部品と PowerPoint・フォントがそろっているかを確かめ、足りない部品は、入れてよいかを聞いてから作業フォルダの仮想環境（<code>.venv</code>）に入れます（数分、最初の1回だけ）。
+        自分で先に済ませるなら <code>.setup/準備.bat</code> をダブルクリックします（Mac・Linux はターミナルで <code>sh .setup/準備.sh</code>。<code>.setup</code> は隠しフォルダです）。</li>
       <li><b>フォルダをエージェントで開いて頼む</b>Codex・Claude Code・Antigravity・VS Code の Copilot でこのフォルダを開き、
         <span class="only-course">「〇〇の講座を作って」</span><span class="only-zemi">「〇〇.pdf のスライドを作って」</span>と頼みます。
         開き方：VS Code（Copilot・Codex の拡張）なら「ファイル → フォルダーを開く」でこのフォルダを選び、チャット欄に書きます。
@@ -419,7 +419,8 @@ details.fold.gallery figure{margin:0 0 4px}
         <tr><td><code>.agents/skills/sensei-slides/</code></td><td>スキル（Codex・Antigravity・VS Code の Copilot が読む）</td></tr>
         <tr><td><code>.claude/skills/sensei-slides/</code></td><td>同じスキル（Claude Code が読む）</td></tr>
         <tr><td><code>.codex/rules/sensei-slides.rules</code></td><td>Codex で PowerPoint を使う3つの作業だけを、確認なしで動かす決まり（フォルダを「信頼する」にしたときに読まれる）</td></tr>
-        <tr><td><code>準備.bat</code>・<code>準備.sh</code>・<code>はじめに.md</code></td><td>準備のスクリプトと、3行の説明</td></tr>
+        <tr><td><code>スキルの使い方.html</code></td><td>このページ</td></tr>
+        <tr><td><code>.setup/準備.bat</code>・<code>準備.sh</code></td><td>自分で準備するときのスクリプト（AI に任せるなら使わない）</td></tr>
       </tbody>
     </table>
     <p>この説明で <code>references/…</code>・<code>examples/…</code>・<code>scripts/…</code> と書いたものは、<code>.agents/skills/sensei-slides/</code> の中にあります
@@ -445,7 +446,7 @@ details.fold.gallery figure{margin:0 0 4px}
           <code>.venv\Scripts\python -m pip install -r .agents\skills\sensei-slides\requirements.txt</code></p>
         <p>2行目の場所は、スキルを置いた場所に合わせて変えます（例は Codex の場所）。Mac / Linux では <code>python3 -m venv .venv</code> と
           <code>.venv/bin/python -m pip install -r .agents/skills/sensei-slides/requirements.txt</code>。
-          一式の <code>準備.bat</code> をこのフォルダに写してダブルクリックしても同じです。</p>
+          一式の <code>.setup</code> フォルダをこのフォルダに写して、<code>.setup/準備.bat</code> をダブルクリックしても同じです。</p>
       </div>
     </details>
     <details class="fold">

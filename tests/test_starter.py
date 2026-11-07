@@ -30,12 +30,14 @@ def test_starter_zip_has_everything(tmp_path):
         assert f"{d}/sensei-slides/scripts/MANIFEST.txt" in names
         assert not any(n.startswith(f"{d}/sensei-slides/tools/") for n in names)   # 配る側の道具は入れない
     assert f".codex/rules/sensei-slides.rules" in names
-    for f in ("準備.bat", "準備.sh", "はじめに.md"):
-        assert f"{f}" in names
-    assert b"\r\n" in z.read(f"準備.bat")                     # bat は CRLF
-    assert (z.getinfo(f"準備.sh").external_attr >> 16) & 0o111   # sh は実行できる
+    for f in (".setup/準備.bat", ".setup/準備.sh", "スキルの使い方.html"):
+        assert f in names
+    assert {n.split("/")[0] for n in names} == {".agents", ".claude", ".codex", ".setup", "スキルの使い方.html"}   # 一番上に見えるのは使い方だけ
+    assert b"\r\n" in z.read(".setup/準備.bat")                     # bat は CRLF
+    assert (z.getinfo(".setup/準備.sh").external_attr >> 16) & 0o111   # sh は実行できる
     # 準備.bat が呼ぶ場所が、一式の中にある
-    bat = z.read(f"準備.bat").decode("utf-8")
+    bat = z.read(".setup/準備.bat").decode("utf-8")
+    assert 'cd /d "%~dp0.."' in bat                                       # .setup の一つ上で動く
     for p in (r".agents\skills\sensei-slides\requirements.txt", r".agents\skills\sensei-slides\scripts\check_env.py"):
         assert p in bat and p.replace("\\", "/") in names
     # 一番上の使い方のページは、画像を .agents の中の docs から読む
