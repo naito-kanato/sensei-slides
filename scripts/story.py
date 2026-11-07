@@ -4,7 +4,9 @@ check_outline.py・check_memo.py から呼ばれる。面白いかどうかは�
   筋の表：見出しの1列目が「筋」の表（| 筋 | 一文 | 枚 |）。行は 状況・複雑化・問い・答え（SCQ）と、語り手（任意）
     - 表が無い・4行のどれかが空なら ✘（本文5枚以下の小さな依頼は ・）
     - 問いが疑問の形（？で終わる）でなければ △
-    - 問いの枚が本文の前のほう（最初の3枚か、本文の3分の1まで）に無ければ △。答えの枚が本文の後ろ3分の1に無ければ △
+    - 問いの枚が本文の前のほう（最初の3枚か、本文の3分の1まで）に無ければ △
+    - 答えの枚：オプション「答えの位置」が「後」（講座の既定）なら本文の後ろ3分の1、「先」（発表の既定。Minto 流の結論から）なら
+      本文の前のほう（問いの枚か、そのすぐ後）に無ければ △
   前の枚から：本文の枚ごとに、前の本文の枚の青帯からどうつながるか。「語（種類）」で書く（例：しかし（壁）。本文の最初の枚は「—」）
     - 列が無い・分からない語・種類が無いか表に無いものは △（種類は KINDS）
     - 「そして」が4つ以上続いたら △（並べるだけの所。しかし・だからでつなぐか、まとめる。理由があれば「つなぎの理由：…」）
@@ -34,6 +36,18 @@ OPEN = ("壁", "疑い")   # 越え方・確かめ方（だから）が要る「
 AND_LIMIT = 3          # 「そして」が続いてよい数（4つ目から △）
 COLUMN = "前の枚から"
 EMPTY = ("", "—", "-", "－", "なし")
+POSITION_KEY = "答えの位置"
+
+
+def answer_position(text: str, kind: str) -> str:
+    """「先」か「後」。一覧（outline.md の ## オプション・設計メモの1節）の「答えの位置」。無ければ発表は先、講座は後。"""
+    from slide_profile import read_options
+    v = read_options(text).get(POSITION_KEY, "")
+    if "先" in v or "結論から" in v:
+        return "先"
+    if "後" in v:
+        return "後"
+    return "後" if kind == "memo" else "先"
 
 
 def story_table(text: str):
@@ -133,15 +147,19 @@ def check(text: str, kind: str, body_no: list, where: str):
             third = max(3, -(-len(body_no) // 3))
             head, tail = body_no[:third], body_no[-max(2, len(body_no) // 3):]
             an = st["答え"][1]
+            pos = answer_position(text, kind)
             if qn is None or an is None:
                 notes.append("問いか答えの「枚」が空（その一文を言う枚の番号）")
             else:
                 if qn not in head and qn not in (1,):
                     notes.append(f"問いの枚 {qn} が前のほうに無い（本文の {head[0]}〜{head[-1]} 枚目までに問いを立てる）")
-                if an not in tail:
-                    notes.append(f"答えの枚 {an} が後ろのほうに無い（本文の {tail[0]}〜{tail[-1]} 枚目で問いに答える）")
+                if pos == "後" and an not in tail:
+                    notes.append(f"答えの枚 {an} が後ろのほうに無い（答えの位置「後」：本文の {tail[0]}〜{tail[-1]} 枚目で問いに答える）")
+                if pos == "先" and (an not in head or an < qn):
+                    notes.append(f"答えの枚 {an} が前のほうに無い（答えの位置「先」：問いの枚か、そのすぐ後の本文 {head[0]}〜{head[-1]} 枚目で答えを言い、"
+                                 "あとの枚はその根拠を順に。答えを後ろで回収するなら一覧の「答えの位置」を「後」に）")
             res.append(("△" if notes else "✔", "話の筋", "。".join(notes) if notes else
-                        f"問い（{qn}枚目）「{q[:24]}」→ 答え（{an}枚目）"))
+                        f"問い（{qn}枚目）「{q[:24]}」→ 答え（{an}枚目、答えの位置「{pos}」）"))
     rows = structures._plan_table(text, kind)
     links = link_cells(rows) if rows else None
     if links is None:

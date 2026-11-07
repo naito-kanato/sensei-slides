@@ -123,10 +123,21 @@ def main(argv=None):
     notes = [(mk, item, msg) for mk, item, msg in check_notes.check(work) if mk in ("✘", "△")]
     for mk, item, msg in notes:
         print(f"{mk} {item}：{msg}")
+    # 構成案・設計メモどおりに組んだか（渡す前の確認と同じ項目。仕上げの1周目で気づけるように）
+    import check_done
+    PLAN_ITEMS = ("役割と結論", "図の案どおりか", "図の無いスライド", "本文の形", "流れ図の数", "スライドの型")
+    try:
+        plan_rows = [(mk, item, msg) for mk, item, msg in check_done.check(pptx, work, record=False)
+                     if item in PLAN_ITEMS and mk in ("✘", "△")]
+    except Exception as e:   # 確認が動かなくても組んだ結果は出す
+        plan_rows = [("△", "構成案どおりか", f"確かめられなかった（{type(e).__name__}）")]
+    for mk, item, msg in plan_rows:
+        print(f"{mk} {item}：{msg}")
+    notes += plan_rows
     n_x = sum(mk == "✘" for mk, _, _ in notes)
     nxt = ("直す所をまとめて直し、もう一度 make_deck.py" if (n_err or n_warn or n_x or "←" in lay)
            else "完成後のレビュー（手順5b。レビュー担当には render/grid-*.jpg を見せる）")
-    print(f"\n=> ERROR {n_err}・WARN {n_warn}・原稿 ✘ {n_x}・△ {len(notes) - n_x}。次：{nxt}")
+    print(f"\n=> ERROR {n_err}・WARN {n_warn}・原稿と構成案どおりか ✘ {n_x}・△ {len(notes) - n_x}。次：{nxt}")
     return 1 if (n_err or n_x or lay_code) else 0
 
 

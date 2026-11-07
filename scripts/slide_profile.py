@@ -185,6 +185,7 @@ OPTIONS = [
     ("発表時間", "", "任意：分（決まっていれば。原稿の長さと枚数の目安に使う）", False),
     ("枚数の目安", "", "本文の枚数の目安（表紙・区切りを除く）。空なら発表時間÷1.5〜2分", False),
     ("枚数が少ないとき", "足さない（短くてよい）", "足さない（短くてよい）／説明を厚くする", False),
+    ("答えの位置", "", "先（問いのすぐ後で答えを言い、あとの枚で根拠。Minto 流。発表の既定）／後（前で問いを立て、後ろ3分の1で答えを回収。講座の既定）", False),
     ("範囲", "全部の結果", "全部の結果／主要な結果に絞る", False),
     ("議論のスライド", "入れない", "入れる（疑問点・限界・自分の研究との関係）／入れない", False),
     ("構成案の確認", "見せる", "見せる／任せる（見せずに完成まで）", False),
@@ -206,6 +207,8 @@ def options_table(p=None, overrides=None, kind="ゼミ"):
     for key, default, choices, required in OPTIONS:
         if kind == "講座" and key in COURSE_SKIP:
             continue
+        if key == "答えの位置" and not cur.get(key):
+            default = "後（講座の既定）" if kind == "講座" else "先（発表の既定）"
         v = cur.get(key) or default or ("（必須・未設定）" if required else "（任意・未設定）" if "任意" in choices else "（未設定）")
         rows.append((key, v, choices))
     tv = cur.get("テンプレート") or DEFAULT_TEMPLATE

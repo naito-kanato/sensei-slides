@@ -86,9 +86,19 @@ def steps_for(work: Path):
         bad = _fails(check_memo.check(plan))
         rv = work / "memo_review.md"
         add(not bad, "設計メモの確認（check_memo）", "；".join(bad[:3]))
+        import facts
+        _, fh, frows = facts.memo_facts(plan.read_text(encoding="utf-8"))
+        i_ok = next((k for k, h in enumerate(fh) if "確認" in h), 3)
+        todo = [r for r in frows if facts.unchecked(r, i_ok)]
+        split = [f for f in work.glob("facts_*.md") if f.name != "facts_diff.md"]
+        add(not todo, "事実の裏取り（3節の確認）", f"まだ {len(todo)} 行" if todo else "")
         add(rv.exists(), "設計メモのレビュー（memo_review.md）")
         if bad and not nxt:
             nxt = f"references/course.md 手順4：check_memo の ✘ を直す（python {SKILL}/scripts/check_memo.py {plan.as_posix()}）"
+        if todo and not nxt:
+            nxt = (f"references/course.md 手順4②：裏取りの担当（facts_N.md ごとに1人、同時に）の結果を待ち、python {SKILL}/scripts/facts.py merge {work.as_posix()}"
+                   if split else
+                   f"references/course.md 手順4①の終わり：python {SKILL}/scripts/facts.py split {work.as_posix()} --n 2 → 裏取りの担当を2人、同時に起動")
         if not rv.exists() and not nxt:
             nxt = "references/course.md 手順4：設計メモを【別のエージェント】にレビューさせ、結果を memo_review.md に残し、9節に手当てを書く"
     else:

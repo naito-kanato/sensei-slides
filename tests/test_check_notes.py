@@ -59,5 +59,7 @@ def test_work_memo_left_in_notes(tmp_path):
     bad = "## 2\nこの値は今の抜き出しでは確認できていません。出典を確かめてから話してください。\n"
     res = check_notes.check(_work(tmp_path, bad))
     assert marks(res)["原稿の作業メモ"] == "✘"
+    left = "## 2\n中間で C のある病院は45.7%です。なお、2025年度の集計は、手元の資料にありません。\n"
+    assert marks(check_notes.check(_work(tmp_path, left)))["原稿の作業メモ"] == "✘"
     ok = "## 2\n答えは、確かめてから使う、です。重力波は時空のゆがみが伝わる波です。\n※（出典）Abbott et al. 2016\n"
     assert "原稿の作業メモ" not in marks(check_notes.check(_work(tmp_path, ok)))

@@ -141,6 +141,17 @@ def form_code(forms: str, pts):
     return out
 
 
+def misplaced(work: Path, kind) -> str:
+    """作業フォルダの置き場所の誤り（出力先 OUT は「作業ディレクトリ/_work/<名前>/」の2つ上から決めるので、ずれると出力が二重のフォルダに入る）。"""
+    if kind == "answers":
+        return ""
+    course = re.sub(r"_\d{2}$", "", work.name)
+    if kind == "memo" and work.parents[1].name == course:
+        return (f"_work/ が講座フォルダ {course}/ の中にある（出力が {course}/{course}/ に入る）。"
+                f"_work/ を作業ディレクトリ直下（{course}/ と並ぶ所）に移してから scaffold.py をやり直す")
+    return ""
+
+
 def build_py(work: Path, kind, title, rows) -> str:
     try:
         rel = os.path.relpath(SKILL / "scripts", work).replace("\\", "/")
@@ -355,6 +366,12 @@ def main(argv=None):
               + ("。次は make_deck.py" if not refused else ""))
         return 1 if refused else 0
     kind, title, rows, care = plan(work)
+    bad = misplaced(work, kind)
+    if bad:
+        print(f"✘ {bad}")
+        return 1
+    if work.parent.name != "_work" and kind != "answers":
+        print(f"△ 作業フォルダ {work.name} が _work/ の直下に無い（出力先 OUT は2つ上のフォルダから決まる。ずれたら build.py の OUT を直す）")
     import check_notes
     minutes = check_notes.talk_minutes((work / {"memo": "memo.md", "answers": "answers.md"}.get(kind, "outline.md")).read_text(encoding="utf-8"))
     made = []
