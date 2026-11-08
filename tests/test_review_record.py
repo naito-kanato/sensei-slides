@@ -122,3 +122,36 @@ def test_session_started_outside_the_work_folder(tmp_path):
     _write(d / "s1.jsonl", [_use("Write", w / "review.md")])
     _write(d / "s1" / "subagents" / "agent-a1.jsonl", [_use("Read", w / "render" / "slide-01.png", model="model-big")])
     assert rr.check(w, "final", until=NOW + 60)[0] == "✔"
+
+
+def test_run_record_reads_codex_tokens(tmp_path, monkeypatch):
+    """作った記録：Codex の会話の記録から、モデル・思考の強さ・トークンを拾う（一式の外で始めた会話は数えない）。"""
+    import json
+    import run_record
+    root = tmp_path / "一式"
+    work = root / "_work" / "講座_01"
+    work.mkdir(parents=True)
+    (work / "memo.md").write_text("x", encoding="utf-8")
+    home = tmp_path / "codex"
+    monkeypatch.setenv("CODEX_HOME", str(home))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude"))
+    d = home / "sessions" / "2026" / "11" / "08"
+    d.mkdir(parents=True)
+
+    def log(name, cwd):
+        rows = [{"timestamp": "2026-11-08T01:00:00Z", "type": "session_meta", "payload": {"cwd": str(cwd), "timestamp": "2026-11-08T01:00:00Z"}},
+                {"timestamp": "2026-11-08T01:00:01Z", "type": "turn_context", "payload": {"model": "m-1", "effort": "medium"}},
+                {"timestamp": "2026-11-08T01:00:02Z", "type": "response_item", "payload": {"type": "function_call", "arguments": "cat _work/講座_01/memo.md"}},
+                {"timestamp": "2026-11-08T01:05:00Z", "type": "event_msg", "payload": {"type": "token_count", "info": {
+                    "total_token_usage": {"input_tokens": 1000, "cached_input_tokens": 800, "output_tokens": 50, "reasoning_output_tokens": 20},
+                    "last_token_usage": {"input_tokens": 1000}}, "rate_limits": {"primary": {"used_percent": 10}}}}]
+        (d / f"rollout-{name}.jsonl").write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows), encoding="utf-8")
+    log("in", root)
+    log("out", tmp_path)          # スキルを直す会話など（一式の外）
+    rows = run_record.collect(work, since=0)
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["models"] == ["m-1"] and r["effort"] == ["medium"]
+    assert (r["input"], r["cache_read"], r["output"], r["reasoning"]) == (200, 800, 50, 20)
+    run_record.save(work, rows)
+    assert "m-1" in (work / "run_record.md").read_text(encoding="utf-8")

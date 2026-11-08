@@ -1,336 +1,40 @@
+[English](README.md) | [日本語](README.ja.md)
+
 # sensei-slides
 
-**AI が講師になって、あなた専用の連続講座をスライドで進める。論文紹介・教科書の輪読・学会などの発表資料も。**
+**An agent skill that makes lecture and seminar slides people can actually follow: an AI-taught course built one session at a time, or a single talk from a paper or textbook.**
 
-![講座と発表の見本のスライド（自動で切り替わる）](docs/demo.gif)
+![Sample slides from the course and the talk examples (animated)](docs/demo.gif)
 
-版 0.4.0（2026-11-08）。**[最新版をダウンロード](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)**（スキル入りの作業フォルダ一式の zip）。変更の記録は [CHANGELOG.md](CHANGELOG.md)。
+Version 0.4.1 (2026-11-08). **[Download the latest release](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)** (a ready-to-use work folder with the skill inside). Changes: [CHANGELOG.md](CHANGELOG.md) (in Japanese).
 
-Codex や Claude Code などの AI エージェントで使うスキルです（Antigravity・GitHub Copilot でも読めます）。頼むだけで、**PowerPoint のスライド（.pptx）・読み上げ原稿・原稿を読むための HTML** ができます。
-使い方は2つあります。
+> **The slides, speaker notes, instructions and check messages are in Japanese.** This skill is built for Japanese-language decks. English output is not supported yet.
 
-| [講座](#講座) | [発表](#発表) |
+You ask an AI coding agent (Codex, Claude Code; Antigravity and GitHub Copilot can read it too), and it produces a **PowerPoint deck (.pptx), a read-aloud script, and an HTML page** that shows each slide next to its script, where you leave comments and answer quiz questions.
+
+| Course | Talk |
 |---|---|
-| テーマか PDF から、AI が講師の全N回の講座を1回ずつ作る。確認問題の答えとコメントを読んで、次の回を変える | 論文・教科書の PDF や、研究の図・前の発表のスライド・方針から、発表の1デッキを作る。ゼミ・学会にも、自分の理解のための「ひとりゼミ」にも |
-| ![講座の見本の原稿のページ（スライドと原稿が横に並ぶ）](docs/course-notes.jpg) | ![発表の見本の原稿のページ（スライドと原稿が横に並ぶ）](docs/zemi-notes.jpg) |
-| 見本：AI活用講座 第1回「生成AIは何をしているか」全15枚 | 見本：論文紹介「重力波の初観測」（Abbott et al., PRL 2016、CC BY 3.0）全16枚（想定質問2枚を含む） |
+| From a topic or a PDF, the AI plans an N-session course and builds one session at a time. It reads your quiz answers and comments, then adjusts the next session. | One deck from a paper, a textbook section, your own figures, or earlier slides: lab seminars, conference talks, or a "solo seminar" to understand a paper yourself. |
+| ![Course example: script page](docs/course-notes.jpg) | ![Talk example: script page](docs/zemi-notes.jpg) |
 
-上の画像は、スライドといっしょに届く**原稿のページ**です。スライドと読み上げ原稿を横に並べて読め、疑問点のコメントや確認問題の答えもここに書きます。
+## What it checks
 
-**講座の見本のスライド**（1〜4枚目）
+AI-made slides often look tidy but leave gaps that only the AI can fill. The skill checks four things, before and after building the deck.
 
-![講座の見本（1〜4枚目）](docs/course-slides-1.jpg)
+1. **Where the listener gets stuck (inference distance).** A separate agent reads the plan as the listener and writes out every premise the listener would have to supply. Each one is then fixed inside the flow (an earlier mention, a one-line aside, a sentence in the script), at a level set by how much the listener already knows.
+2. **A storyline.** Situation → complication → question → answer. You pick one of 13 story patterns, and the answer comes first (talks, pyramid style) or last (courses). Each slide states its conclusion, and the steps from slide to slide are checked.
+3. **How text is laid out.** You choose a body form for each slide (cause → effect, labels, cases, steps, a question and its result…). Each form has fixed slots, and the facts go into those slots. Figures are chosen by purpose first (compare, trend, breakdown, mechanism…), then by kind.
+4. **Amount and emphasis, checked on the rendered slides.** Overflow, overlaps, characters per slide and per line, and the gap between text and figures are measured on the actual PowerPoint (or LibreOffice) rendering. A deck is not called done until the final check passes.
 
-<details>
-<summary><b>残りのスライドを全部見る（5〜15枚目、11枚）</b>　← クリックで開く</summary>
+## Quick start
 
-![講座の見本（5〜15枚目：本文の続き・確認問題・解答）](docs/course-slides-2.jpg)
-</details>
+1. Download the zip above and unzip it.
+2. Open the folder in your agent (in Codex, mark it as trusted).
+3. Ask, in Japanese, for example 「〇〇の講座を作って」 (make a course on …) or 「〇〇.pdf のスライドを作って」 (make slides from ….pdf).
 
-**発表の見本のスライド**（1〜4枚目）
+The agent first checks Python (3.10+), PowerPoint (or the free LibreOffice) and Japanese fonts. It asks before installing missing packages into a local `.venv`.
+Full instructions are in the Japanese README ([README.ja.md](README.ja.md)) and in `スキルの使い方.html` inside the zip.
 
-![発表の見本（1〜4枚目）](docs/zemi-slides-1.jpg)
+## License
 
-<details>
-<summary><b>残りのスライドを全部見る（5〜16枚目、12枚）</b>　← クリックで開く</summary>
-
-![発表の見本（5〜16枚目）](docs/zemi-slides-2.jpg)
-
-論文の図（Fig. 1・2・3・4）は、CC BY 3.0 の条件に従い、出典を付けて使っています（`examples/zemi/paper_figs/ATTRIBUTION.md`）。
-</details>
-
-どちらも、原稿のページで疑問点にコメントして渡すと、答えのデッキが届きます。
-使い方の説明は **[スキルの使い方.html](スキルの使い方.html)** にあります（ダウンロードしてブラウザで開く。左上で講座か発表かを選びます）。
-
-## このスキルが確かめること
-
-AI にスライドを作らせると、見た目は整っていても「AI なら分かるが、人だと途中で止まる」資料になりがちです。このスキルは、作る前と作ったあとに、次の4つを確かめます。
-
-### 1. 聞き手が止まる所を見つけて、流れの中で埋める（推論距離）
-
-構成案（講座では各回の設計メモ）を、別の AI に聞き手の立場で読ませ、**聞き手が自分で補わないといけない前提を1つずつ文で書き出させます**。
-AI は自分の知識で穴を埋めて「分かる」と言ってしまうため、「分かるか」ではなく「何を補ったか」を書かせます。
-
-- 各前提に **要／深** を付けます。**要**は、その枚の結論の「なぜ・どうやって」が無い、知らない法則や用語が意味なしに出る、あとの枚・確認問題・回のゴールや話の筋で使う前提が抜けている、のどれか。**深**は、知らなくても分かるが知ると深まる話です
-- この分け方は、実際の講座で学習者が付けたコメント（詰まった所・深めたかった所）に合わせて決めました。詰まった所はほぼ全部「要」に入り、深めたかった所は「深」に入ります
-- **どこまで埋めるかは聞き手に合わせます。** 最初に、聞き手（講座なら学習者のあなた）がテーマに **初学者／多少知っている／かなり知っている** のどれかを必ず聞き、
-  それで丁寧さが決まります。「その枚の結論の理由」と「意味の書いていない用語」はいつも埋め、「あとで使う前提」だけを、初学者なら全部・多少知っているなら1枚に1つまで残し・かなり知っているならもう少し残します。講座でもゼミでも同じで、回ごとに変えられます。
-  任意で聞き手のプロフィール（専門・研究テーマ）を書くと、その人が知っていることは穴に数えず、知らない言葉はその人の分野の言葉で言い換えます。知らない用語は、どの聞き手でも必ず埋めます
-- 埋め方は、説明のスライドを足すのではなく、前の枚で先に触れる・「理由は次で」と予告する・括弧で一言・原稿の1文、のように流れの中で済ませます。手当てが全部入ったかは機械で突き合わせます。深は数えず、講座なら原稿の補足の候補にします
-- 書く側（構成案・原稿を書く AI）にも、同じ3つの型を最初から避けさせます
-
-### 2. 話の筋をつくる（問い → 壁 → 答え）
-
-スライドを1枚ずつ並べる前に、デッキ全体の筋を **状況・複雑化・問い・答え** の4行で決めます。考える順は上から（筋 → 各枚の結論 → 要点と事実）で、状況は聞き手が今知っていることから、問いは前のほうの枚でスライドにも出します。答えを置く所はオプション「答えの位置」で選べ、発表は**先**（問いのすぐ後で結論を言い、あとの枚で根拠。Minto のピラミッド原則）、講座は**後**（後ろのほうの枚で回収）が既定です。
-各枚の結論の一文（青帯）は、前の枚から **そして／しかし／だから** のどれでつながるかを決めます。「しかし」には種類（壁・意外・疑い・限り）があり、壁や疑いを出したら、あとの枚で越え方・確かめ方を示します。
-「そして」が4つ以上続く（並べるだけになっている）デッキや、「しかし」が1つも無い（山場の無い）デッキは、構成の段階で止めます。
-
-見本の論文紹介の、結論の一文だけを上から読んだもの（括弧は前の枚からのつながり）：
-
-> 重力波は予言から100年、直接の観測がなかった →（そして）連星パルサーで間接的には確認、次は波そのものの観測 →（だから）2本の腕の長さの差を、レーザー干渉計で読み取る →（**しかし：壁**）差は陽子より小さく、腕の中の光を 100 kW に強める → … →（**しかし：疑い**）雑音の偶然でも2台はそろいうるので、その頻度を数える →（だから）雑音で偶然起きる頻度は、20万年に1回未満 →（だから）重力波を初めて直接観測し、連星ブラックホールを実証
-
-原稿の1文目も、このつながりの言葉で前の枚から受けます（「しかし、ここに壁があります」）。
-
-### 3. 文字の組み方まで設計する（本文の形）
-
-1枚の中の文字を、ただの箇条書きにしません。「前提 ⇒ 帰結」「ラベル＋説明」「横の矢印で展開」「縦の矢印で結論へ」「場合分け」「問い → 答え」「手順」などの形を、構成案の「本文の形」の列で枚ごとに決め、部品で組みます。
-並列カード・段違いの順序・循環・ツリー・前後・2つ並べた図などの図解の型もあります。渡す前の確認が、案どおりの部品で組んだかを突き合わせます。
-
-![本文の形と図解の型（型の見本帳から12枚）](docs/structures.jpg)
-
-### 4. 量と強調を、描いた結果で確かめる
-
-PowerPoint で実際に描いた位置で検査します。はみ出し・重なりだけでなく、
-1枚の本文が **100〜150字** の目安に入っているか（少なすぎ・デッキ全体が薄い、も知らせる）、各枚に **赤字の結論** があるか、
-講座の **確認問題が6問（1枚3問）** になっているか、1行の長さ・文章調・図との間隔まで見ます。
-
----
-
-## 講座
-
-講師の AI が、あなた専用の連続講座を作ります。テーマだけからでも、教科書・論文の PDF を土台にしても作れます。
-
-```
-テーマ or PDF → ヒアリング → 全体の地図（全N回）→ 第1回の設計メモ → スライドと原稿
-     ↑                                                          ↓
-  次の回の設計メモ ← つまずき一覧 ← 答えのデッキ ← コメントと確認問題の答え（原稿のページ）
-```
-
-**頼み方**：「生成 AI の使い方を一から教えて」「この教科書で全5回の講座を作って」「次の回を作って」「コメントした」
-
-**工夫したところ**
-
-- **事実の出どころを残す。** AI が講師だと、もっともらしい言い切りがそのまま講座に入ります。各回の設計メモに数値・式・定義の出典の表を作り、
-  資料外のことは Web で裏を取り、取れないものは「要確認」と書きます。原稿にも「※（出典）」の行で残します。
-  スライドを作る前に設計メモを機械で確かめます（本文が1回10〜15枚に入っているか、出典から資料を特定できるか）。
-- **学習者の詳しさに合わせて、止まる所を埋める。** 最初のヒアリングで、テーマへの詳しさ（必須）と、任意で専門・研究テーマを聞き、各回の設計メモを「[聞き手が止まる所](#1-聞き手が止まる所を見つけて流れの中で埋める推論距離)」で確かめます。初学者なら要の穴は全部、流れの中で埋めます。確認問題は毎回6問（1枚に3問）です。
-- **1回ずつ作る。** 前の回のコメントと確認問題の答えを読んでから次の回を作ります。取り違えた所は講座の「つまずき一覧」に残り、
-  次の回の冒頭で補い、数回ごとに言い換えた問題で解き直します。
-- **原稿は AI講義モード。** 「あなた」と呼びかけ、問いかけを入れ、学習者の専門の言葉に置き換えて説明します。確認問題には原稿のページの
-  「1-1 に答える」ボタンで答え、答えのデッキで ○・△・× の添削が返ります。
-
-![確認問題に答えているところ](docs/guide/answer.jpg)
-
-## 発表
-
-1回の発表のスライドを作ります。研究室のゼミ（教科書の輪読・論文紹介）、学会・卒論発表などの研究発表、
-発表の予定がなくても資料を人に説明できるところまで読み込む「ひとりゼミ」に使えます。
-
-```
-資料をフォルダに入れて頼む → 設定の確認（聞き手の詳しさ・発表時間）→ 資料を格納 → 構成案 → 構成案のレビュー → 図とスライド → 描画して検査 → 完成後のレビュー → 受け取る
-```
-
-**頼み方**：「教科書.pdf の 3.2 節をスライドにして」「論文紹介の発表資料を作って。論文は入れた」「学会の発表を作りたい。図と前のスライドを入れた」「この論文を自分の理解のためにまとめたい」
-
-**資料の受け取り**：資料はフォルダの一番上に入れて頼みます。AI が中身を確かめてから、使うものを発表ごとのフォルダの `資料/` に、図・過去のスライド・その他（論文・教科書・メモ）に分けて写します（元のファイルは残ります）。
-研究発表のように論文や原稿が全部はそろっていないときは、目的・各図で見えること・いちばん言いたい結論の3つのうち、ファイルに無いものをチャットで聞き、
-聞いた言葉のまま `資料/方針.md` に書きます。背景と方法は、前のスライドや要旨から AI が下書きします。そろうまで構成案に進みません。結果と数値は、もらった資料からだけ取ります。
-
-**工夫したところ**
-
-- **結論の一文を先に決める。** 全スライドの「見出し・青帯の一文・図・要点」を表にしてから作り始めます。青帯の一文だけを上から読んで、
-  節の話が通じるかを確かめます。
-- **聞き手が詰まる所を埋める。** 上の「[聞き手が止まる所を見つけて、流れの中で埋める](#1-聞き手が止まる所を見つけて流れの中で埋める推論距離)」を構成案の段階でやります（「AI なら理解できるが人だと詰まる」と言われた論文紹介の反省から）。
-  聞き手の詳しさで丁寧さが変わります（専門外の聞き手なら、多少知っている＝丁寧さ 1）。
-- **枚数は構成案の段階で決める。** 本文の枚数を発表時間と比べ、少なすぎる（20分で10枚未満）ときは抜けている話がないかを見直させます。上限はゆるめです。
-- **教科書のスキャンをそのまま読む。** 見開きのスキャン PDF を左右のページに分けて読み、教科書の図は話す所だけを切り出します。
-  論文の図も、そのスライドで話すパネルだけを載せ、読み方の注記を重ねます。
-- **想定質問と回答案を付ける。** 発表のあと聞かれそうな質問を4問、構成案の段階で決め、最後に1枚2組で2枚置きます。
-  答えるときに戻るとよい枚は、原稿に書いておきます（「詳しくは13枚目に戻ると…」）。
-- **読んだあとに理解を固める。** できた原稿を読んで疑問点にコメントすると、答えのデッキが届きます。発表で聞かれそうな所や、
-  ひとりゼミで読み飛ばした所を先につぶせます。
-
----
-
-## テンプレート
-
-同梱のテンプレートは、**構造**（タイトルの置き方・結論の置き場・本文の場所と割合）の違う8つです。どれにも**標準の色**があり、**色はオプションで変えられます**（10の配色。どの構造にもどの色でも）。名前を言わなければ テンプレート1 を使います。テンプレートは番号のほか、構造の名前（「結論の囲み」など）でも選べます。
-構造は、研究発表のデッキと、公開されているフリーのテンプレート（研究発表用・論文発表用）の形から、研究発表に合うものを選び、白紙から作りました。テンプレート1 は、ほかの7つの良い所（結論を先に・本文を最大に・飾りは短い縦棒と細い線だけ・濃い墨の文字）を合わせて作ったものです。
-
-![テンプレート1〜8（標準の色）で、同じスライドを組んだもの](docs/templates.jpg)
-
-| 番号 | 構造 | 面積の割り振り | 標準の色 |
-|---|---|---|---|
-| テンプレート1（既定） | 結論ヘッダー：上に小さく話題と見出し、その下に大きく結論の一文（左に主色の短い縦棒）、細い線で本文と分ける。下の帯は無く、本文が一番広い | 上の2段 19%・本文 62%（一番広い） | 墨と藍 |
-| テンプレート2 | 結論タイトル：上に小さく話題、その下に大きく結論の一文。下の帯は無し（結論を見出しにする形） | 上の2段 20%・本文 60% | 藍 |
-| テンプレート3 | 細い左帯と副題：左端に主色の細い帯、大きなタイトルの下に結論の副題の1行。下の帯は無し | 左の帯 2%・上の2段 22%・本文 60% | 青緑 |
-| テンプレート4 | 下の帯：左上の縦棒とタイトル、下の帯に結論の1行（ゼミの基本の形） | 本文 53%・下の帯 10% | 青 |
-| テンプレート5 | 上の帯：上の濃い帯にタイトル、下に「まとめ」の札つきの淡い帯 | 上の帯 14%・本文 53%・下の帯 10% | 紺とオレンジ |
-| テンプレート6 | 章のナビ：上に章の並び（今の章を主色に）、その下にタイトル、下に線で挟んだ結論の1行（長い発表） | 章のナビ 5%・本文 52%・下の線の帯 10% | 墨と山吹 |
-| テンプレート7 | 結論の囲み：上に淡い帯（タイトルは中央）、下の帯は無く、結論は淡い色の囲みに（学会発表） | 上の帯 13%・本文 48%・結論の囲み 9% | 生成りと山吹 |
-| テンプレート8 | 左の淡い柱：左の 34% の淡い柱にタイトル・結論・短い要点、右に図を大きく（図が主役の枚） | 柱 34%（タイトル・結論・短い要点）・右 60%（図） | 珊瑚 |
-
-配色：青・紺とオレンジ・生成りと山吹・藍・青緑・珊瑚・墨と山吹・深緑・グレーと赤・墨と藍。同じ構造（上の帯）に配色を当てたもの：
-
-![上の帯の構造に、配色を当てたもの](docs/colors.jpg)
-
-- **選ぶ**：頼むときに「テンプレートは テンプレート3 で、色は深緑」と言います（そのデッキの設定の一覧に入ります）。色を言わなければ、その構造の標準の色です。
-- **手持ちのスライドから作る**：作業フォルダの `スライドテンプレート/` に置いて「このスライドからテンプレを作って」と頼むと、部品が元のスライドを約50項目分析し
-  （大きさ・レイアウト・タイトルの位置と色・見出しの印・本文の大きさ・強調の色・下の帯・表の塗り・余白・図の置き方など。研究発表のデザインの手引きの目安も並べる）、
-  テンプレートと見た目の設定（色・見出しの印・帯の寄せ）を作ります。AI の印象ではなく部品の表で作るので、どの AI で頼んでも同じ結果になります。
-  AI が聞くのは、本文のレイアウト・まとめの帯・強調の色の3つだけです（`scripts/analyze_template.py`・`scripts/make_template.py`）。
-
-同じ中身を テンプレート1（左）と テンプレート2（右）で組んだもの。中身（見出し・本文・図・まとめの一文）は同じで、テンプレートだけが違います（`examples/template/build.py`）。
-
-![同じ中身を、テンプレート1（左）とテンプレート2（右）で組んだもの](docs/template-compare.jpg)
-
-## 両方に共通する工夫
-
-- **機械の検査を「合格」にしない。** PowerPoint で実際に描いた位置で、はみ出し・重なり・文字量・1行の長さ・文章調の行・本文と図の間隔を検査します。
-  ERROR が 0 でも「文字が多い」「図との隙間がない」と言われたため、目安（1枚 100〜150字、1行 20字、図との間隔 0.4 in）に寄せるまでを仕上げにしました。多すぎだけでなく、少なすぎ・赤字の無い枚も知らせます。
-- **最後まで手順を通したかを機械で確かめる。** 渡す前に、描画の検査・全スライドの原稿・原稿のページ・レビューの記録・出典・構成案の手当てがそろっているかを確かめ、そろうまで「できた」と言わせません。エージェントが部品を書き換えたり、代わりのスクリプト（自作の原稿ページ・別の描き方の図）を作ったりしていないかも、部品の指紋と作業フォルダの中身で見ます（ほかのエージェントで試したとき、PowerPoint が止められて代わりを自作したため）。
-- **失敗を決まりに戻す。** 指摘を受けるたびに、原因を手順か検査に足しています（動詞で終わる行を見逃した → 検出を追加、
-  OneDrive が古い版を開いた → 描画の前に一時フォルダへ複製、など）。
-- **スライドの型を内容で選ぶ。** 左に文・右に図のほか、上に文・下に横長の図、全面の図、2つを並べて比べる、大きな数字・結論、表、流れ図、並列カード・段違いの順序・循環・ツリー・前後・2つ並べた図の型があります。同じ型が4枚を超えて続くと、渡す前の確認が知らせます。
-- **文字の組み方も設計する。** 上の「[文字の組み方まで設計する](#2-文字の組み方まで設計する本文の形)」。手持ちのデッキから自分の組み方の割合を数え（`scripts/analyze_structure.py`）、その割合に寄せられます。型の辞書は `references/structures.md`。
-- **作る前に環境を確かめる。** Python の部品・PowerPoint（無ければ LibreOffice）・日本語フォントを調べ、足りないものの入れ方を案内します（`scripts/check_env.py`）。
-- **作る役とレビューする役を分ける。** 構成案と完成品を、作った本人ではない別のエージェントがレビューします。
-  レビュー担当には「指摘の型」（資料との食い違い・図・本文・構成案との突き合わせ・原稿の20型）を渡すので、モデルによる見落としの差が小さく、モデルは選び直さなくて済みます。
-- **設定はデッキごと、必須は抜かせない。** スキル全体の共通の設定ファイルは置かず、聞き手のテーマへの詳しさ（必須）・発表時間・テンプレートなどを、
-  デッキごとの一覧（構成案の冒頭、講座は設計メモ）に書きます。必須が抜けていると検査が止めます。聞き手のプロフィール（専門・研究テーマ）は任意で、書くと言い換えと止まる所の判定がよくなります。
-
-## 使われ方
-
-これまでに **18 デッキ**をこのスキルで作りました（研究室のゼミ 3、自分用の講座 15。原稿のページも同じ数）。
-講座は材料・データ解析・電子工学・SNS 運営など、全1〜7回のものを作りました（自分の論文を橋渡しに使った講座もあります）。
-
-## フォルダ構成
-
-| 場所 | 中身 |
-|---|---|
-| `SKILL.md` | スキル本体（AI が読む手順書）。入口の「発表か講座か」と、スライドを作る手順 |
-| `references/course.md` | 講座の手順（ヒアリング・地図・設計メモ・レビュー・コメントから次の回へ） |
-| `references/` | ほかに、書式ガイド・図のガイド・レビューの手順と雛形・構成案と図の実例と、ときどき使う流れ（質問回答デッキ `answer-deck.md`・続きもの `series.md`・テンプレートを作る `templates.md`） |
-| `assets/` | スライドのテンプレート、講座の README と設計メモの雛形、配布の一式の準備のスクリプト 準備.bat・.sh（`assets/starter/`）、Codex の決まり（`assets/codex/`） |
-| `scripts/` | `zemi.py`（スライドの部品）、`figkit.py`・`figlib.py`（図）、`check_layout.py`・`render_check.ps1`（描画検査）、`notes_html.py`（原稿のページ）、`comments_read.py`（コメントの読み込み）ほか |
-| `examples/course/` | 講座の見本（AI活用講座：講座フォルダの README と、第1回の設計メモ・図・ビルド・原稿） |
-| `examples/zemi/` | 発表の見本（論文紹介。構成案 → 図 → ビルド → 原稿） |
-| `tests/` | テスト（文字の装飾の読み取り、設定の一覧と原稿の読み込み、レイアウト検査の判定、図の文字の検査、見本2つのビルドと原稿ページ、構成案と設計メモの確認、渡す前の確認） |
-| `tools/` | 配る側の道具：配布の一式の zip を作る `make_starter.py`（一式には入らない） |
-
-## 使い方
-
-必要なもの：Python 3.10 以上と、AI エージェント（Codex・Claude Code・Antigravity・GitHub Copilot のどれか）。描画検査と原稿のページ作りには **Windows 版 PowerPoint** を使います。
-PowerPoint が無いときは、無料の **LibreOffice** で代わりに描けます（Windows の見本3つでは検査の判定が PowerPoint と同じでした。やや甘めなので、最後は画像を目で確かめます。Mac・Linux ではまだ試していません）。図の日本語フォントは Meiryo / Yu Gothic を第一に、無ければヒラギノ・Noto Sans CJK を使います。
-
-### 1. 一式をダウンロードして解凍する
-
-スキルを入れ終わった作業フォルダの一式 **`sensei-slides.zip`** を解凍します。**[最新版をダウンロード](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)**（[Releases](https://github.com/naito-kanato/sensei-slides/releases) の一覧から、前の版も選べます。リポジトリからは `python tools/make_starter.py` で作れます）。
-フォルダの名前は変えてかまいません（「発表」「講座」など）。中身はこうです。
-
-解凍すると `sensei-slides` フォルダができ、その中にそのまま入っています（解凍ツールで「ここに展開」を選ぶと、いまのフォルダに広がるので、先にフォルダを作ってから）。
-
-```
-sensei-slides/
-  スキルの使い方.html                使い方のページ（ダブルクリックでブラウザが開く）
-  .agents/skills/sensei-slides/      スキル（Codex・Antigravity・VS Code の Copilot が読む）
-  .claude/skills/sensei-slides/      同じスキル（Claude Code が読む）
-  .codex/rules/sensei-slides.rules   Codex で PowerPoint を使う3つの作業だけを、確認なしで動かす決まり
-  .setup/準備.bat / 準備.sh          自分で準備するときのスクリプト（AI に任せるなら使わない）
-```
-
-### 2. 準備は AI に任せてよい
-
-頼むと最初に、部品と PowerPoint・フォントがそろっているかを確かめ、足りない部品は、入れてよいかを聞いてから作業フォルダの仮想環境（`.venv`）に入れます（数分、最初の1回だけ）。
-自分で先に済ませるなら `.setup/準備.bat` をダブルクリックします（Mac / Linux は `sh .setup/準備.sh`）。仮想環境にするのは、ほかの作業の Python の部品と版がぶつからないようにするためです。
-
-### 3. フォルダをエージェントで開いて頼む
-
-Codex・Claude Code・Antigravity・VS Code の Copilot でこのフォルダを開き、「〇〇の講座を作って」「〇〇.pdf のスライドを作って」と頼みます。
-仮想環境を「有効」にしてから起動しなくてかまいません。スキルが、そのフォルダの `.venv` の Python を使います。
-Codex では、そのフォルダを「信頼する」にします（`.codex/rules/` の決まりが読まれ、描画の検査・PDF の書き出し・原稿のページ作りの3つだけがサンドボックスの外で動きます）。
-GitHub Copilot の CLI で使うときは、`.agents/skills/sensei-slides` を `.github/skills/sensei-slides` に写します。
-スキルを新しくするときは、新しい一式の `.agents`・`.claude`・`.codex` と `スキルの使い方.html` で置き換えます（`_work/`・作ったスライドはそのまま）。
-
-手順書は、特定のエージェントに頼らない中立の言葉（【質問】【別のエージェント】など）で書いてあります。
-ツールごとに何に当たるかは、`references/agents.md` の**対応表**にまとめてあり、エージェントは最初にそれを読みます。
-モデルは、あなたが選んだメインのモデルで全部を進めます（別のエージェントにも、勝手に重いモデルを選びません）。ほかのモデルを使いたいときは、頼むときに言ってください。
-Codex・Claude Code・Antigravity・GitHub Copilot CLI で、短いデッキ（講義メモから）や講座の1回（テーマだけから）を、手順書どおり最後まで（描画の検査・レビューの記録・原稿のページ・渡す前の確認まで）作れることを確かめています。
-軽量のモデルは非推奨です。最後まで作れはしましたが、図の中身が薄く、資料にない仕組みを簡単にしすぎる所がありました。使うときは、図と事実を自分で確かめてください。
-
-<details>
-<summary>自分のフォルダにスキルだけ入れるとき</summary>
-
-今あるフォルダで使うなら、このフォルダを、使うツールの場所に **`sensei-slides` という名前のまま**置きます。フォルダ名を変えると読み込まないツールがあります。
-
-| ツール | 置く場所（プロジェクトの中） |
-|---|---|
-| Codex | `.agents/skills/sensei-slides/` |
-| Claude Code | `.claude/skills/sensei-slides/` |
-| Antigravity | `.agents/skills/sensei-slides/` |
-| GitHub Copilot | `.github/skills/sensei-slides/`（VS Code なら `.agents/skills/` でも可） |
-
-そのあと、スライドを作るフォルダで仮想環境を作って部品を入れます（`requirements.txt` の場所は、置いた場所に合わせる）。
-
-```bat
-python -m venv .venv
-.venv\Scripts\python -m pip install -r .agents\skills\sensei-slides\requirements.txt
-```
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r .agents/skills/sensei-slides/requirements.txt
-```
-
-`assets/starter/準備.bat` をそのフォルダの `.setup/` に写してダブルクリックしても同じです。Codex で使うなら、`assets/codex/sensei-slides.rules` をそのフォルダの `.codex/rules/` に写します（全部のフォルダで使うなら `~/.codex/rules/`）。
-仮想環境を使わずに、ふだんの Python に `pip install -r requirements.txt` で入れても動きます（`.venv` が無ければ、ふだんの Python を使います）。
-</details>
-
-エージェントがコマンドのたびに許可を求めてくるのが手間なら、`references/agents.md` の「許可リスト」にある行を、エージェントの設定の許可リストに登録します（`python` だけ、のような広い登録はしません）。
-
-見本を動かすとき：
-
-```bash
-cd examples/zemi
-python figs.py
-python build.py
-```
-
-```bash
-cd examples/course/_work/AI活用講座_01
-python figs.py
-python build.py
-```
-
-## トークンの使い方（費用の目安）
-
-このスキルは、1デッキを作るあいだに、資料の読み込み・構成案・図の描き直し・描画の検査のやり直し・別のエージェントによるレビュー
-（構成案と完成品の2回）を行うので、**トークンをまあまあ使います**。目安は次のくらいです。
-
-| 作業 | 使ったトークン |
-|---|---|
-| レビュー担当（別のエージェント）1人分 | 約4万〜12.5万（資料の量による） |
-| 同じ会話でレビュー担当を続投させた2回目 | 1回目の約3割 |
-| 約50頁の論文をまるごと先読みさせたとき | 約18万 |
-
-自分の使い方で何本作れるかは、ツールと時期で変わります。1デッキ作ったあとに、ツールの使用量の画面で割合を見て判断してください。下の工夫で使用量を減らせます。
-
-- **メインのモデルは、標準くらいのものにする**。別のエージェントもメインと同じモデルで動くので、いちばん重いモデルにすると全部が重くなる
-- **1回のデッキは本文10〜15枚くらいに収める**。長い資料は節や章で分けて、何回かに分ける
-- **資料は使う章だけ読ませる**。教科書や論文をまるごと渡さない
-- **続きものは同じ会話で作る**。レビュー担当を続投させると、2回目から大きく減る
-- **構成案の確認は「任せる」にしない**。できたあとで構成から作り直すのが、いちばん高くつく
-- **上限に近づいたら区切る**。作業フォルダ（`_work/`）に途中の状態が残るので、上限が戻ってから「続きを作って」と頼めば続けられる
-
-## テスト
-
-PowerPoint を使わない部分（100件。LibreOffice があれば、その描画も）は pytest で確かめられます。GitHub に push すると、GitHub Actions が Ubuntu と Windows で自動で走らせます。
-
-```bash
-pip install pytest
-python -m pytest -q
-```
-
-PowerPoint で実際に描いて検査する部分（`render_check.ps1`）と、原稿ページの画像づくりはテストに含みません。見本を組んで描画検査を通すことで確かめています。
-
-`scripts/` と `assets/` を直したら、`python tests/update_manifest.py` で部品の指紋（`scripts/MANIFEST.txt`）を作り直します。渡す前の確認が、エージェントが部品を書き換えていないかをこの指紋で見るためです（作り直し忘れはテストが見つけます）。
-
-## 注意
-
-- 手順書と検査のメッセージは日本語です。
-- **論文や教科書の図を含むスライドについて**：研究室のゼミ（授業での利用）や自分の勉強（私的使用）のためのものです。スキルは切り出した図に出典を付けます。スライドや原稿のページ（スライドの画像が入っています）をネットに上げる・研究室の外に配る・学会や会社で使うときは、論文のライセンス（CC BY など）か出版社の許可を確かめてください。
-- 発表の見本で紹介している論文（Abbott et al., *Phys. Rev. Lett.* **116**, 061102 (2016)）は CC BY 3.0 で公開されていて、図は出典を付けて使っています（`examples/zemi/paper_figs/ATTRIBUTION.md`）。
-
-## ライセンス
-
-[MIT](LICENSE)
+[MIT](LICENSE). The talk example uses figures from Abbott et al., *Phys. Rev. Lett.* **116**, 061102 (2016), CC BY 3.0, with attribution (`examples/zemi/paper_figs/ATTRIBUTION.md`).

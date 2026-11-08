@@ -25,3 +25,11 @@ examples/structures/*.pptx
 
 # 配布の一式（tools/make_starter.py が作る）
 /dist/
+
+# 組みの記録（make_deck が作業フォルダに足す）
+build_log.jsonl
+run_record.md
+run_record.json
+
+# 回数の予算（brief.py・make_deck が作業フォルダに足す）
+budget_log.jsonl

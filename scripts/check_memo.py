@@ -156,6 +156,47 @@ def thin_points(rows, what="設計メモ2節"):
 MEMO_REVIEW = "memo_review.md"
 
 
+def data_rows(text: str, work: Path, body_no) -> list:
+    """3b節「データ」：組の書き方、図の案が指すデータNがあるか、データを描く図があるか。"""
+    import data
+    import figplan
+    import structures
+    if data.section(text) is None:
+        if data.files(work):
+            return [("✘", "データ", "data_N.md があるのに3b節が無い（python <skill>/scripts/data.py merge <work>）")]
+        return [("・", "データ", "3b節が無い（講座は、設計の前に数字を探す担当が比べられる数字の組を探す。references/course.md 手順4⓪）")]
+    ds = data.datasets(text)
+    res = []
+    bad = [f"データ{n}：{'・'.join(p)}" for n, d in ds.items() if (p := data.problems(d))]
+    if bad:
+        res.append(("✘", "データ", "；".join(bad[:4])))
+    cells = dict(figplan.plan_from_text(text, "memo") or {})
+    rows = structures._plan_table(text, "memo") or []
+    i_fig = next((k for k, h in enumerate(rows[0]) if "図で見せる" in h), None) if rows else None
+    for r in rows[1:] if i_fig is not None else []:
+        if r and r[0].strip().isdigit() and len(r) > i_fig:
+            cells[int(r[0])] = (cells.get(int(r[0]), "") + " " + r[i_fig]).strip()
+    used = {n for c in cells.values() for n in data.refs(c)}
+    missing = sorted(used - set(ds))
+    if missing:
+        res.append(("✘", "データ", f"図の案が指すデータが3b節に無い：{'・'.join(f'データ{n}' for n in missing)}"))
+    if ds and not used:
+        res.append(("△", "データ", "3b節にデータがあるのに、描く図が無い。思い込みを崩す数字の比べは、図の案を「目的：種類：データN」（棒グラフ・折れ線・帯など）にして見せる"))
+    elif not bad and not missing:
+        res.append(("✔", "データ", f"{len(ds)}組。図で使うもの：{'・'.join(f'データ{n}' for n in sorted(used)) or 'なし'}"))
+    return res
+
+
+def fact_count(text: str):
+    """3節「事実と出典」の表の行の数（空の行は数えない）。表が無ければ None。"""
+    m = re.search(r"^##\s*3[.．]?\s*事実と出典.*?(?=^##\s)", text + "\n## ", re.M | re.S)
+    if not m:
+        return None
+    rows = [l for l in m.group(0).splitlines() if l.startswith("|") and not re.match(r"^\|\s*-", l)]
+    rows = rows[1:]   # 見出しの行
+    return sum(1 for l in rows if any(c.strip() for c in l.strip("|").split("|")))
+
+
 def check(memo: Path, require_review: bool = False):
     """[(✔/✘/△, 項目, 説明)] を返す。require_review＝レビュー結果が無ければ ✘（渡す前の確認）。"""
     text = memo.read_text(encoding="utf-8")
@@ -201,6 +242,12 @@ def check(memo: Path, require_review: bool = False):
         res += structures.check_quiz_plan(text, "memo")
         import story
         res += story.check(text, "memo", story.body_numbers(text, "memo"), "設計メモ2節")
+    res += data_rows(text, memo.parent, body_no)
+    nfacts = fact_count(text)
+    if nfacts is not None and body_no and nfacts < len(body_no):
+        res.append(("△", "事実の数", f"3節の事実の行が {nfacts} 行で、本文の {len(body_no)} 枚より少ない。"
+                    "1枚に1つ以上、そのテーマの具体（数値・年・固有の名前・実際の例）を事実の行にして本文の要点に〔事実N〕で付ける。"
+                    "一般論（見方・比べ方）だけの枚が続くと、どのテーマでも言える講座になる"))
     bad = vague_sources(memo)
     if bad is None:
         res.append(("✘", "出典", "3節「事実と出典」の表が無い"))
@@ -215,7 +262,8 @@ def check(memo: Path, require_review: bool = False):
 
 
 def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
+    import report
+    argv, full = report.take_all(sys.argv[1:] if argv is None else argv)
     if len(argv) != 1:
         print(__doc__)
         return 2
@@ -224,8 +272,7 @@ def main(argv=None):
         print(f"[ERROR] {memo} が無い")
         return 1
     res = check(memo)
-    for mark, item, msg in res:
-        print(f"{mark} {item}：{msg}")
+    report.show(res, full)
     bad = sum(m == "✘" for m, _, _ in res)
     warn = sum(m == "△" for m, _, _ in res)
     if bad:

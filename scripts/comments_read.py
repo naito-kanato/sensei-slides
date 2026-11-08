@@ -16,7 +16,6 @@ import json
 import sys
 from pathlib import Path
 
-import pymupdf as fitz  # PyMuPDF（古い呼び名 fitz は将来なくなる）
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -106,6 +105,7 @@ def deck_paths(data, deck_arg):
 
 
 def crop(pdf, slide, rect, out, width=1600, margin=0.12):
+    import pymupdf as fitz  # PyMuPDF（古い呼び名 fitz は将来なくなる）。PDF を使う所でだけ読む（無くても他は動く）
     doc = fitz.open(pdf)
     page = doc[slide - 1]
     z = width / page.rect.width

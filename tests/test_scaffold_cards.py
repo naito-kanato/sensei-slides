@@ -100,3 +100,43 @@ def test_course_card_lists_fact_rows(root, tmp_path):
     assert scaffold.main([str(w)]) == 0
     c = (w / "cards" / "07.md").read_text(encoding="utf-8")
     assert "この枚の要点が使う事実" in c and "事実7：" in c and "55%" in c
+
+
+def test_try_one_part_reports_plan_checks(work, capsys):
+    """書き手が部品のソースを読まずに自分の1枚を確かめる道具（scaffold.py --try NN）。描かず、作業フォルダに残さない。"""
+    (work / "parts" / "06.py").write_text(
+        's = deck.slide("実験手法", summary="差は陽子より小さく、腕の中の光を 100 kW に強める")\ns.p("書いた本文")\n', encoding="utf-8")
+    scaffold.main([str(work), "--try", "6"])
+    out = capsys.readouterr().out
+    assert "結論の一文：ある" in out and "本文の字数" in out
+    assert not list(work.glob("_try_*.py")) and not list((work / "build").glob("_try_*.pptx"))
+
+
+def test_card_lists_every_part_in_skeleton(work):
+    """骨組みに出てくる部品は、全部カードに書き方がある（無いと書き手が zemi.py を読みに行く）。"""
+    import re
+    for c in (work / "cards").glob("[0-9][0-9].md"):
+        t = c.read_text(encoding="utf-8")
+        if "## 使う部品の書き方" not in t:   # 想定質問・確認問題のカードは骨組みのコメントに書き方がある
+            continue
+        skel = t.split("## 骨組み", 1)[-1]
+        for name in set(re.findall(r"\bs\.([a-z_]+)\(", skel)) - {"heading", "at"}:
+            assert f"`s.{name}(" in t, (c.name, name)
+
+
+def test_producer_split_at_eight_cards(work):
+    """カードが8枚以上なら制作役を2人に：1人目は図と前半、2人目は後半。merge は仕上げ役が最初にする。"""
+    import brief
+    w = work.parent / "_work" / "zemi"
+    shutil.copytree(work, w)
+    work = w
+    nums = brief.card_numbers(work)
+    assert len(nums) >= brief.SPLIT_AT
+    a = brief.build("制作役", str(work), part="1/2")
+    b = brief.build("制作役", str(work), part="2/2")
+    one = brief.build("制作役", str(work))
+    h1, h2 = brief.halves(nums)
+    assert f"{h1[0]:02d}.md" in a and f"{h2[0]:02d}.md" not in a.split("②", 1)[1].split("\n", 1)[0]
+    assert "figs.py" in a and "figs.py" not in b and f"{h2[-1]:02d}.md" in b
+    assert "--merge" not in a and "--merge" not in b and "--merge" in one
+    assert "--merge" in brief.build("仕上げ役", str(work))

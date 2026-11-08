@@ -603,6 +603,8 @@ class Slide:
 
     def arrow(self, x: float, y: float, w: float = 0.6, h: float = 0.55, direction: str = "right") -> Box:
         """元デッキと同じ水色のブロック矢印（テーマ色 tx2 50%）。direction: right/down/left/up/both"""
+        if w <= 0 or h <= 0:   # マイナスの大きさの図形があると、PowerPoint はファイルごと開けない
+            raise ValueError(f"矢印の大きさが0以下（w={w:.2f}, h={h:.2f} in）。flow の gap は 0.35 in 以上にする")
         kind = {"right": MSO_SHAPE.RIGHT_ARROW, "down": MSO_SHAPE.DOWN_ARROW, "left": MSO_SHAPE.LEFT_ARROW,
                 "up": MSO_SHAPE.UP_ARROW, "both": MSO_SHAPE.LEFT_RIGHT_ARROW}[direction]
         sh = self.slide.shapes.add_shape(kind, Inches(x), Inches(y), Inches(w), Inches(h))
@@ -946,7 +948,7 @@ class Slide:
         """問い → 答え：「〜ではないのか？」（ラベルと同じ太字）の下に「⇒ 確かめた結果」。別の説明を1つずつ確かめる検証の筋に。"""
         x, y = self._xy(x, y)
         q = self.text(x, y, self._label(question), size=size, name="問い")
-        a = self.text(x + indent, q.bottom + 0.05, "⇒ " + answer, size=size, name="答え")
+        a = self.text(x + indent, q.bottom + 0.05, "⇒ " + re.sub(r"^\s*[⇒→]+\s*", "", answer), size=size, name="答え")   # 書き手が ⇒ を付けても二重にしない
         self.cur_x, self.cur_y = x, a.bottom + gap
         return Box(x, y, max(q.right, a.right) - x, a.bottom - y)
 
@@ -963,6 +965,7 @@ class Slide:
                 self.line(x, yy - gap / 2, SLIDE_W - x, yy - gap / 2, color="BFBFBF", width=0.75)
             qb = self.text(x, yy, self._label(f"{k}　{q}"), size=size, name="想定質問")
             head, *rest = a.split("\n")
+            head = re.sub(r"^\s*[⇒→]+\s*", "", head)
             ab = self.text(x + indent, qb.bottom + 0.05, "⇒ " + head + "".join("\n　 " + t for t in rest),
                            size=size, name="回答")   # 2行目からは矢印の後ろにそろえる
             bottom = ab.bottom

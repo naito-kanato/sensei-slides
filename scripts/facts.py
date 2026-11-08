@@ -26,8 +26,8 @@ HEAD = ["番号", "主張", "値・式", "出典（書名・URL）", "確認", "
 
 HOWTO = """# 裏取り（{name}・{k}/{n}）
 
-あなたは裏取りの担当です。ユーザーには質問しません。下の表の行を、上から1行ずつ確かめて、**1行終えるごとにこのファイルを書き直す**
-（途中で止まっても、確かめた行は残る）。ほかのファイルは書かない。設計メモ（memo.md）は、行の意味が分からないときだけ2節を読む。
+あなたは裏取りの担当です。ユーザーには質問しません。下の表の行を、上から1行ずつ確かめて、**1行終えるごとに、このファイルのその行だけを書き換える**
+（ファイル全体を書き直さない。全体を書くと、そのたびに表の全文が会話に積み上がる。途中で止まっても、確かめた行は残る）。ほかのファイルは書かない。設計メモ（memo.md）は、行の意味が分からないときだけ2節を読む。
 
 1行ごとに：
 - **値・式**を確かめて書く。**出典**は、ほかの人があとで同じ資料を開ける形で（URL・「題名」・発行者と年・頁や条番号）。「厚生労働省」だけ、は不可
@@ -76,9 +76,17 @@ def uses(memo: str) -> dict:
     return out
 
 
+# 「一般」の行でも、これがあれば確かめる（数値・年・版・制度・統計・記録は、知っているつもりで外しやすい）
+RISKY = re.compile(r"[0-9０-９]|[一二三四五六七八九十百千万億]+(?:年|人|件|種|頭|個|倍|割|%|％)|年|％|%|円|版|法|条|制度|基準|統計|最新|記録|世界一|最大|最小|初め|最初")
+PER_CHECKER = 6   # 1人に渡す行の目安。これ以下なら1人
+
+
 def unchecked(row, i_ok) -> bool:
-    """まだ確かめていない行（確認が空か「未確認」）。○・△・× や「図に（例）と書く」などは、決まった行として扱う。"""
+    """まだ確かめていない行（確認が空か「未確認」）。○・△・× や「図に（例）と書く」などは、決まった行として扱う。
+    「一般」（設計の担当が付ける：教科書に必ず載る、数値も年も無い定性的な事実）は確かめない。ただし数値・年・制度などを含めば確かめる。"""
     v = row[i_ok].strip() if len(row) > i_ok else ""
+    if "一般" in v:
+        return bool(RISKY.search(" ".join(row[:i_ok])))
     return v in ("", "-", "—") or "未確認" in v
 
 
@@ -95,9 +103,15 @@ def split(work: Path, n: int):
     i_ok = next((k for k, h in enumerate(head) if "確認" in h), 3)
     use = uses(memo)
     todo = [(k + 1, r) for k, r in enumerate(rows) if unchecked(r, i_ok)]
+    general = [k + 1 for k, r in enumerate(rows) if len(r) > i_ok and "一般" in r[i_ok]]
+    forced = [no for no, r in todo if len(r) > i_ok and "一般" in r[i_ok]]
+    if general:
+        print(f"「一般」の行 {len(general) - len(forced)} 件は確かめない" +
+              (f"（事実 {'・'.join(map(str, forced))} は「一般」でも数値・年・制度などを含むので確かめる）" if forced else ""))
     if not todo:
         print("確かめる行が無い（確認が空・未確認の行が無い）。裏取りの担当は要らない")
         return []
+    n = min(n, -(-len(todo) // PER_CHECKER))   # 行が少なければ1人（会話の始めの読み込みを2人分しない）
     for old in work.glob("facts_*.md"):
         if old.name != "facts_diff.md":
             old.unlink()

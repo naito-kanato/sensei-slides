@@ -20,7 +20,6 @@ import re
 import sys
 from pathlib import Path
 
-import pymupdf as fitz  # PyMuPDF（古い呼び名 fitz は将来なくなる）
 from PIL import Image
 from pptx import Presentation
 from pptx.enum.shapes import PP_PLACEHOLDER
@@ -82,6 +81,7 @@ def slide_questions(prs):
 
 
 def slide_images(pdf_path, width=1400, quality=82):
+    import pymupdf as fitz  # PyMuPDF（古い呼び名 fitz は将来なくなる）。PDF を使う所でだけ読む（無くても他は動く）
     doc = fitz.open(pdf_path)
     imgs = []
     for page in doc:
@@ -575,6 +575,7 @@ def export_temp_pdf(pptx, tmpdir):
 
 def main():
     import tempfile
+    import pymupdf as fitz
     fitz.TOOLS.mupdf_display_errors(False)   # LibreOffice の PDF の構造ツリーの警告（無害）を出さない
     ap = argparse.ArgumentParser()
     ap.add_argument("pptx")

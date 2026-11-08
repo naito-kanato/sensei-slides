@@ -26,6 +26,8 @@
       案と違う図・案に無い流れ図は ✘（変えたいなら、先に案を直して理由を書く）。流れ図が上限（本文4枚に1枚、最低2枚）を超えても ✘。
       図・表・大きな数字・比較のどれも無い本文のスライド（文だけの枚）も ✘。
       案に「本文の形」の列があれば、案の形（帰結・ラベル・展開…）の部品がその枚で使われているか。無ければ ✘
+  （最後に参考の2行：make_deck の回数と作り直した枚（build_log.py）、会話ごとのモデル・思考の強さ・トークン（run_record.py が
+   <work>/run_record.md に残す）。合否には使わない）
   6. 出典（講座の回だけ。<work>/memo.md の「事実と出典」の表）：確認が「○」の行の出典に、
      資料を特定できる手がかり（URL・DOI・「題名」・著者と年・条番号・頁や図の番号）がある。「厚生労働省」「薬機法」だけ、のような行は ✘
 作業フォルダの探し方：pptx のあるフォルダから上へたどって _work を見つけ、次の順に探す
@@ -107,6 +109,9 @@ def find_work(pptx: Path):
             return w
     return None
 
+
+# _work に残りやすい一時ファイル・フォルダ（原稿HTML・LibreOffice の描画・書き出しの途中でできる）
+TEMP_NAMES = re.compile(r"^(notes_html_tmp|render_lo_[0-9a-f]+|lo_profile.*|export_[0-9a-f]{16,}\.pptx|~\$.*)$")
 
 def check(pptx: Path, work: Path | None, record: bool = True):
     """[(✔/✘, 項目, 説明)] を返す。"""
@@ -271,9 +276,16 @@ def check(pptx: Path, work: Path | None, record: bool = True):
         fplan = structures.plan_forms(src.read_text(encoding="utf-8"), "memo" if src.name == "memo.md" else "outline")
         if fplan is not None:
             bad_form = structures.mismatches(prs, fplan, skip)
-            res.append(("✘" if bad_form else "✔", "本文の形",
-                        "；".join(f"[{i}] {m}" for i, m in bad_form[:6]) + "（案の形の部品で組むか、案を直す。references/structures.md）"
-                        if bad_form else f"{src.name} の本文の形と合っている"))
+            # 図・表・流れ図などがある枚は、図が案の形の中身を担っていることがある（本文と図で同じことを2回言わせない）→ △
+            hard = [(i, m) for i, m in bad_form if not figplan.actual_kinds(prs.slides[i - 1])]
+            soft = [(i, m) for i, m in bad_form if (i, m) not in hard]
+            if hard:
+                res.append(("✘", "本文の形", "；".join(f"[{i}] {m}" for i, m in hard[:6]) + "（案の形の部品で組むか、案を直す。references/structures.md）"))
+            if soft:
+                res.append(("△", "本文の形", "；".join(f"[{i}] {m}" for i, m in soft[:6])
+                            + "（図が同じ中身を担っているなら、本文で言い直さなくてよい。そのときは案の本文の形を「箇条」（短い要点だけ）に直し、plan_changes.md に1行）"))
+            if not bad_form:
+                res.append(("✔", "本文の形", f"{src.name} の本文の形と合っている"))
         n_flow = sum("流れ図" in figplan.actual_kinds(prs.slides[i - 1]) for i in body)
         mark, msg = figplan.flow_check(n_flow, len(body), src.read_text(encoding="utf-8"), src.name)
         res.append((mark or "✘", "流れ図の数", msg))
@@ -282,6 +294,18 @@ def check(pptx: Path, work: Path | None, record: bool = True):
                     "同じ型が続いている：" + "、".join(f"{a}〜{b}枚目が「{t}」" for a, b, t in runs_)
                     + f"（{figplan.MAX_RUN}枚まで。内容に合う別の型にできないか見直す。references/figures.md「スライドの型」）" if runs_
                     else f"同じ型が {figplan.MAX_RUN} 枚を超えて続いていない"))
+
+    # 5d. 後始末：同じ回の古い版の pptx と、_work に残った一時ファイル
+    m = re.match(r"^(\d{2})_", pptx.name)
+    if m:
+        old = [p.name for p in pptx.parent.glob(f"{m.group(1)}_*_スライド.pptx") if p.resolve() != pptx.resolve()]
+        if old:
+            res.append(("△", "古い版のスライド", f"同じ回の別の pptx が残る：{'・'.join(old)}（題名を変える前の版など。この回で作った古い版なら消し、"
+                        "迷うならユーザーに伝える）"))
+    if work and work.parent.name == "_work":
+        junk = [p.name for p in work.parent.iterdir() if TEMP_NAMES.match(p.name)]
+        if junk:
+            res.append(("△", "一時ファイル", f"_work に一時ファイル・フォルダが残る：{'・'.join(junk[:5])}（作業の途中でできたもの。消す）"))
 
     # 6. 出典（講座の回の設計メモだけ）
     memo = work / "memo.md" if work else None
@@ -301,6 +325,7 @@ def main(argv=None):
     ap.add_argument("pptx")
     ap.add_argument("--work", help="作業フォルダ（省略時は自動で探す）")
     ap.add_argument("--no-record", action="store_true", help="レビューの会話の記録を見ない（見本の確認など。ふだんは付けない）")
+    ap.add_argument("--all", action="store_true", help="✔ の行も1行ずつ出す（ふだんは ✔ を1行にまとめる）")
     a = ap.parse_args(argv)
     pptx = Path(a.pptx).resolve()
     if not pptx.exists():
@@ -308,8 +333,19 @@ def main(argv=None):
         return 1
     work = Path(a.work).resolve() if a.work else find_work(pptx)
     res = check(pptx, work, record=not a.no_record)
-    for mark, item, msg in res:
-        print(f"{mark} {item}：{msg}")
+    import report
+    report.show(res, a.all)
+    if work:
+        import build_log
+        t = build_log.line(work)
+        if t:
+            print(f"（記録）作り直し：{t}")
+    if work and not a.no_record:
+        try:
+            import run_record
+            print(f"（記録）会話：{run_record.short(run_record.save(work))}（{work.name}/run_record.md）")
+        except Exception as e:   # 記録が読めなくても確認の結果は出す
+            print(f"（記録）会話の記録を集められなかった（{type(e).__name__}）")
     bad = sum(m == "✘" for m, _, _ in res)
     print(f"\n{'渡してよい' if not bad else f'✘ が {bad} 件。直してから渡す'}（{pptx.name}）")
     return 1 if bad else 0

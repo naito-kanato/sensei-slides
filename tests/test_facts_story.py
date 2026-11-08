@@ -46,11 +46,24 @@ def _work(tmp_path):
 def test_split_only_unchecked_rows(tmp_path):
     w = _work(tmp_path)
     out = facts.split(w, 2)
-    assert [p.name for p in out] == ["facts_1.md", "facts_2.md"]
-    t1, t2 = (p.read_text(encoding="utf-8") for p in out)
-    assert "| 2 | 認定病院の数" in t1 and "| 3 | 改定の年" in t2      # ○ と「図に（例）」の行は渡さない
-    assert "| 3 | 改定の年 | 2013年 |  |  | 3 |" in t2                # 使う枚は2節の〔事実N〕から
+    assert [p.name for p in out] == ["facts_1.md"]                   # 2行だけなら1人（1人に6行まで）
+    t1 = out[0].read_text(encoding="utf-8")
+    assert "| 2 | 認定病院の数" in t1 and "| 3 | 改定の年" in t1      # ○ と「図に（例）」の行は渡さない
+    assert "| 3 | 改定の年 | 2013年 |  |  | 3 |" in t1                # 使う枚は2節の〔事実N〕から
     assert "1行終えるごとに" in t1                                    # やり方はファイルの先頭に
+
+
+def test_split_skips_general_rows_but_not_numbers(tmp_path):
+    w = _work(tmp_path)
+    m = (w / "memo.md").read_text(encoding="utf-8").replace(
+        "| 図の例 | 例 | | 図に（例）と書く |",
+        "| パンダは竹を主に食べる | 竹 | 教科書 | 一般 |\n| 竹を1日20kg食べる | 20kg | | 一般 |"
+        + "".join(f"\n| 数{i} | {i}件 | | 未確認 |" for i in range(6)))
+    (w / "memo.md").write_text(m, encoding="utf-8")
+    out = facts.split(w, 2)
+    text = "".join(p.read_text(encoding="utf-8") for p in out)
+    assert "竹を主に食べる" not in text and "1日20kg" in text      # 数値のある「一般」は回す
+    assert len(out) == 2                                             # 9行なら2人
 
 
 def test_merge_back_and_diff(tmp_path):
@@ -225,3 +238,37 @@ def test_story_arc_both_positions():
     assert _arc_mark(_arc_outline(swapped, "論文紹介（問題から）", "後"))[0] == "△"
     assert _arc_mark(_arc_outline(swapped, "論文紹介（問題から）", "後") + "\n型を外す理由：方法が見どころ\n")[0] == "✔"
     assert _arc_mark(_arc_outline(late, "ない型", "後"))[0] == "△"
+
+
+def test_answer_as_method_and_few_facts_are_flagged(tmp_path):
+    """答えが見方・方法だけ、事実の行が本文より少ない、図の案が架空の名前、を △ で拾う（具体の無い講座を防ぐ）。"""
+    import check_memo
+    import figplan
+    assert story.METHOD_ANSWER.search("系統樹で共通祖先の新しさを比べ、竹食は適応の例として扱う")
+    assert not story.METHOD_ANSWER.search("二種は約4000万年前に分かれた別の科で、竹食は別々に獲得した")
+    assert check_memo.fact_count(MEMO) == 4
+    assert figplan.generic_names({4: "階層：ツリー：架空の分類群で包含関係", 5: "比べる：表：パンダ2種の科と属"}) == [4]
+    assert figplan.generic_names({6: "仕組み：模式図：分類群Aと分類群Bの分岐"}) == [6]
+
+
+def test_data_sets_merge_check_and_cards(tmp_path):
+    """数字を探す段：data_N.md → 設計メモ3b節。書き方の抜け、図の案が指すデータ、カードにデータの表が写ること。"""
+    import data
+    import check_memo
+    w = _work(tmp_path)
+    (w / "data_1.md").write_text(
+        "## データ：自己評価と中間結果の差\n- 驚き：自己評価は8割が S・A、中間結果は半分が B・C\n- 問いの候補：なぜずれるのか？\n"
+        "- 単位：％／分母：判定のうち／時点：2019年4月\n- 出典：「審査結果」厚生労働省 2019 p.5\n- 確認：○\n"
+        "| 項目 | 自己評価 | 中間 |\n|---|---|---|\n| 2.1.2 | 79.5 | 52.1 |\n| 1.5.2 | 82 | 45 |\n", encoding="utf-8")
+    (w / "data_2.md").write_text("## データ：悪い例\n- 単位：件\n| 区分 | 値 |\n|---|---|\n| A | たくさん |\n", encoding="utf-8")
+    assert data.main(["check", str(w)]) == 1
+    assert data.merge(w) == 2
+    memo = (w / "memo.md").read_text(encoding="utf-8")
+    ds = data.datasets(memo)
+    assert ds[1]["rows"][0] == ["2.1.2", "79.5", "52.1"] and memo.index("## 3b.") < memo.index("## 4.")
+    marks = [m for m, item, _ in check_memo.data_rows(memo, w, [2, 3])]
+    assert "✘" in marks                                            # データ2 の書き方の抜け
+    (w / "data_2.md").unlink()
+    data.merge(w)
+    memo = (w / "memo.md").read_text(encoding="utf-8")
+    assert [m for m, item, _ in check_memo.data_rows(memo, w, [2, 3])] == ["△"]   # データがあるのに描く図が無い

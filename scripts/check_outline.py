@@ -226,7 +226,8 @@ def count(text: str, body):
 
 
 def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
+    import report
+    argv, full = report.take_all(sys.argv[1:] if argv is None else argv)
     if len(argv) != 1:
         print(__doc__)
         return 2
@@ -235,8 +236,7 @@ def main(argv=None):
         print(f"[ERROR] {p} が無い")
         return 1
     res = check(p)
-    for mark, item, msg in res:
-        print(f"{mark} {item}：{msg}")
+    report.show(res, full)
     bad = sum(m == "✘" for m, _, _ in res)
     warn = sum(m == "△" for m, _, _ in res)
     reviewed = p.with_name(REVIEW).exists()

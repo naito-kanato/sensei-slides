@@ -165,6 +165,18 @@ def slide_numbers(cell: str):
     return out
 
 
+# 図の案の中身に残った、置き換え用の名前（「分類群A」「要素B」「〇〇」「XX」）。テーマの固有の名前で書く
+GENERIC = re.compile(r"[一-龥ぁ-んァ-ヶー][A-ZＡ-Ｚ](?![A-Za-zＡ-Ｚａ-ｚ])|〇〇|○○|ＸＸ|XX|[A-ZＡ-Ｚ]・[A-ZＡ-Ｚ]|架空の|仮の(?:種|群|名前|例)")
+
+
+def generic_names(plan: dict) -> list[int]:
+    """図の案の中身に置き換え用の名前が残っている枚の番号。"""
+    def body(cell):   # 「目的：種類：中身」の中身（無ければセル全体）
+        parts = (cell or "").split("：")
+        return "：".join(parts[2:]) if len(parts) >= 3 and parts[0].strip() in PURPOSE_NAMES else cell
+    return sorted(n for n, cell in (plan or {}).items() if cell and GENERIC.search(body(cell)))
+
+
 def plan_from_text(text: str, kind: str):
     """{スライド番号: 図の案の一文}。kind="memo"（講座の設計メモ）か "outline"（発表の構成案）。表が無ければ None。"""
     from check_memo import table_rows

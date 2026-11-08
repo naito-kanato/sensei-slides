@@ -49,3 +49,17 @@ def test_answer_cards_and_inline_limit(zemi):
     c = (a / "cards" / "02.md").read_text(encoding="utf-8")
     assert "#2 中性子星2つではなぜだめ" in c and "元の枚：11枚目" in c and "{c:← 11枚目" in c
     assert "続きは元の notes.md" in c and c.count("長い原稿。") <= cards.INLINE_MAX // 5 + 1
+
+
+def test_quiz_card_ids_not_doubled(root, tmp_path):
+    """見出し（1-1〜1-3）と要点の両方に番号があっても、カードの問いは1-1・1-2・1-3を1回ずつ。"""
+    import re
+    src = root / "examples" / "course" / "_work" / "AI活用講座_01"
+    w = tmp_path / "AI活用講座_01"
+    w.mkdir()
+    for f in ("memo.md", "memo_review.md"):
+        shutil.copy2(src / f, w / f)
+    assert scaffold.main([str(w)]) == 0
+    for c in (w / "cards").glob("[0-9][0-9].md"):
+        heads = re.findall(r"^## (\d+-\d+)", c.read_text(encoding="utf-8"), re.M)
+        assert len(heads) == len(set(heads)), (c.name, heads)

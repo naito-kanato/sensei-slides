@@ -38,8 +38,9 @@ FORM_METHODS = {"帰結": ["lead"], "ラベル": ["block"], "展開": ["develop"
                 "問い": ["ask"], "手順": ["numbered"], "式の注釈": ["peq", "defs"], "箇条": ["p"]}
 
 
-def api_lines(forms: str, figure: bool, table: bool):
-    """カードに入れる、この枚で使う部品の書き方（zemi.py の引数と説明の1〜2行）。書き手が部品の説明を探しに行かずに済む。"""
+def api_lines(forms: str, figure: bool, table: bool, extra=()):
+    """カードに入れる、この枚で使う部品の書き方（zemi.py の引数と説明の1〜2行）。書き手が部品の説明を探しに行かずに済む。
+    extra：骨組みに出てくる部品（s.cards・s.compare など図の代わりの部品も）。カードに無い部品があると、書き手が zemi.py を読みに行く"""
     import inspect
     try:
         import zemi
@@ -48,7 +49,7 @@ def api_lines(forms: str, figure: bool, table: bool):
     names = []
     for k in [f.strip() for f in re.split(r"[・、,＋+]", forms or "") if f.strip()] or ["箇条"]:
         names += FORM_METHODS.get(k, [])
-    names += (["figure_beside"] if figure else []) + (["table"] if table else [])
+    names += (["figure_beside"] if figure else []) + (["table"] if table else []) + list(extra)
     out = ["- 文字の書式：{r:赤字} {u:下線} {b:太字} {i:変数}。改行は文字列の中の \\n（1行20字まで）"]
     for n in dict.fromkeys(names):
         f = getattr(zemi.Slide, n, None)
@@ -101,7 +102,7 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         not_image = fig_cell in EMPTY or figplan.pptx_part(fig_cell) is not None
         L = [f"# {n}枚目のカード（{work.name}）",
              "",
-             "このカードと、下の「資料」の所だけを見て、この1枚を書く。ほかの枚・SKILL.md 全体・scripts の中身（zemi.py など）は読まない。試しに組まない（仕上げ役が組む）。",
+             "このカードと、下の「資料」の所だけを見て、この1枚を書く。ほかの枚・SKILL.md 全体・scripts の中身（zemi.py・検査のスクリプトなど）は読まない。部品の書き方は下の「使う部品の書き方」にある。書いたこの1枚が構成案どおりか（本文の形・図・結論・字数）を確かめたいときは、`python <skill>/scripts/scaffold.py <work> --try NN` だけを使う（自分で組んだり、検査の中身を調べたりしない。仕上げ役が全体を組む）。",
              f"書くもの：`parts/{n:02d}.py`（下の骨組みの TODO を埋めた、この枚のコード）と `parts/{n:02d}.md`（この枚の原稿。「## {n}」の見出しは書かない）。",
              "青帯（結論）と●見出しは変えない。変えたくなったら書かずに、理由を1行で返す。",
              "",
@@ -170,6 +171,13 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
             L += ["", "## 資料", "- 設計メモ 3節「事実と出典」の表から、この枚の要点に当たる行だけを使う（表に無い事実は足さない）"]
         else:
             L += ["", "## 資料", "- 構成案の要点に当たる資料の所だけを読む"]
+        if kind == "memo":
+            import data as datamod
+            dsets = datamod.datasets(text)
+            for dn in datamod.refs(fig_cell):
+                if dn in dsets:
+                    L += [f"- 図に描くデータ（設計メモ 3b節のデータ{dn}。値・単位・分母・時点はこのとおりに描き、図の下に出典と時点の注記を入れる）：",
+                          "", datamod.render(dn, dsets[dn]), ""]
         if kind == "memo" and facts:
             used = sorted({int(x) for x in re.findall(r"事実\s*(\d+)", col(r, "本文の要点"))})
             rowsf = [f"  - 事実{i}：" + "｜".join(facts[i - 1]) for i in used if 0 < i <= len(facts)]
@@ -177,7 +185,9 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
                 L += ["- この枚の要点が使う事実（設計メモ 3節の表の行）："] + rowsf
         if terms:
             L += ["- 用語・記号の決め事（設計メモ 4節）：", terms]
-        api = api_lines(col(r, "本文の形"), not not_image, bool(re.match(r"\s*表", fig_cell)))
+        used = re.findall(r"\bs\.([a-z_]+)\b", skel[a:b])
+        api = api_lines(col(r, "本文の形"), not not_image, bool(re.match(r"\s*表", fig_cell)),
+                        [u for u in used if u not in ("heading", "at")])
         if api:
             L += ["", "## 使う部品の書き方（これ以上の説明は要るときだけ `guide.py structures`）"] + api
         L += ["", "## 目安",
@@ -258,6 +268,7 @@ def quiz_cards(work: Path, rows, text: str, code: dict, skel: str):
             continue
         n = r["#"]
         ids = re.findall(r"\d+-\d+", col(r, "●見出し") + " " + col(r, "本文の要点"))
+        ids = list(dict.fromkeys(ids))   # 見出し（1-1〜1-3）と要点の両方に出る番号を1つに
         lo_hi = [x for x in ids]
         if len(lo_hi) == 2 and lo_hi[0].split("-")[0] == lo_hi[1].split("-")[0]:
             a0, b0 = int(lo_hi[0].split("-")[1]), int(lo_hi[1].split("-")[1])

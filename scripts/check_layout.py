@@ -54,6 +54,7 @@ TEXT_MIN_CHARS = 70      # 本文の枚で、これより少なければ「本�
 TEXT_MIN_CHARS_FIG = 50  # 図が面積の2割以上の枚（図が主役）の下限
 TEXT_FULL_CHARS = 100    # 目安（100〜150字）の下端。これより少ない枚には、行数だけで「目安超え」を出さない（短い行が並ぶと行数で削らせていた）
 TEXT_MEDIAN_MIN = 100    # 本文の枚の中身の字数の中央値の下限（実際のデッキは 120字前後。Codex の試作は 66字で、全体に薄かった）
+LO_GAP_SHIFT = 4.0      # LibreOffice の描画で、縦に並ぶ文字どうしの間隔に足す分（pt）。PowerPoint との差の実測の最小
 BRIEF = False            # --brief：直す所（ERROR・WARN と「←」の行）だけを出す。make_deck.py が使う（会話を短く保つ）
 TEXT_MAX_LINES = 12      # 本文の行数の上限
 LINE_MAX_BESIDE_FIG = 22  # 図・表の横にある本文の1行の長さ（全角。目安は18〜20字、これを超えたら WARN）
@@ -1124,6 +1125,8 @@ def main(path, pptx_path=None, template=None):
                 # 縦に並ぶテキストどうしの隙間が極端に狭い
                 hov = min(ra[2], rb[2]) - max(ra[0], rb[0])
                 gap = max(rb[1] - ra[3], ra[1] - rb[3])
+                if lo:   # LibreOffice は縦の間隔を PowerPoint より約4〜6pt 狭く測る（2つのデッキで実測、最小 3.9pt）
+                    gap += LO_GAP_SHIFT
                 if hov > 0 and 0 <= gap < 3:
                     msgs.append(("WARN", f"間隔が狭い({gap:.1f}pt): {label(a)} / {label(b)}"))
         if msgs:

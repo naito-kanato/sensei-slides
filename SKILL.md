@@ -9,7 +9,7 @@ description: 資料やテーマから、スライド（PowerPoint .pptx）・読
 （`python <skill>/scripts/guide.py steps 2`。`<skill>` はこのファイルのあるフォルダ、`<work>` はデッキの作業フォルダ `_work/<資料名>/`）。
 
 **【】で囲んだ言葉**（【質問】【別のエージェント】【続けて頼む】【画像を見る】【ファイルを書き換える】）は、使っているエージェントの道具に読み替える。
-**最初に `references/agents.md` の対応表を読む。**
+**最初に `python <skill>/scripts/guide.py agents 道具` で対応表を読む**（agents.md のほかの節は、要るときだけ）。
 見本：発表は `examples/zemi/`（論文紹介）、講座は `examples/course/`、本文の形と図解の型は `examples/structures/`。
 テンプレートは同梱の `assets/templates/テンプレート1〜8.pptx` をそのまま使い、部品は `scripts/zemi.py` で置く（色やフォントを自分で再現しない）。
 
@@ -76,7 +76,9 @@ AI は操作のたびに会話をまるごと読み直すので、メインが�
 （以前の講座の1回では、メインが手順書・検索結果・設計メモを抱えて会話が43万トークンまで伸び、使用量の約4割を占めた）。
 - **メインが読むのは、この SKILL.md と `next_step.py` の出力と、聞く項目の節だけ**（発表は `guide.py steps 0`、講座は `guide.py course 1`）。
   ほかの references・見本・資料・Web は開かない（担当が開く）
-- **メインはファイルを書かない・直さない**（走らせるのは next_step・facts.py merge・check_done だけ）
+- **メインはファイルを書かない・直さない**（走らせるのは next_step・facts.py merge・check_done だけ）。担当の依頼文は担当自身が brief.py で受け取る（メインが中身を確かめるなら `--peek`。付けないと起動1回と数える）
+- **動いている担当を急かさない・追加の注文を送らない**（止まった・戻ったときだけ声をかける。「警告も潰して」のような注文は、担当の会話を何倍にも伸ばす）
+- **使いすぎを防ぐ**：担当の起動と make_deck には回数の上限がある（budget.py。brief.py・make_deck.py が上限で ✘ を出して止まる）。止まったら、続ける前にユーザーに【質問】（続ける・ここで止める）。続けるときだけ --over。トークン（オプション「トークンの上限」：既定 Codex 250万・Antigravity 200万・Claude Code 700万）も、brief.py・make_deck.py が上限で止める。ユーザーが続けてよいと言ったら `budget.py <work> --allow-tokens` で記録して再開（上限が同じ量だけ増える）。next_step が出す「この回で使った枠」がオプション「使用量の上限」（既定 月20%・週40%）を超えたときも同じ
 - **講座の次の回・質問回答デッキは、新しい会話で始める**（前の回を作った会話を続けない）。1回を作り終えたメインの会話は10万トークンを超え、続けると次の回の操作のたびにそれを読み直す。要るものはファイルにある。新しい会話のメインが最初に見るのは、この SKILL.md、`python <skill>/scripts/next_step.py <講座フォルダ>` の出力、README の地図と「つまずき一覧」だけ。1回を渡すときに、ユーザーへ「コメントを書いたら、新しい会話で『コメントした』か『次の回を作って』と頼んでください」と一言添える
 - **レビューのあとの直しは、新しい担当に頼む**（作った担当を続けない）。レビュー担当が結果をファイルに書き（outline_review.md・memo_review.md・review.md）、
   メインは判定と件数の1行だけを受け取って、新しい担当に「直すファイルとレビューのファイルを読み、採否を決めて直し、採らなかった指摘と理由を返す」と頼む。
@@ -89,11 +91,12 @@ AI は操作のたびに会話をまるごと読み直すので、メインが�
 |---|---|---|---|
 | 1 | メイン | 聞き手の詳しさなど必須を【質問】（発表は手順0、講座はヒアリング） | — |
 | 2 | 地図の担当（講座だけ） | `brief.py 地図の担当 <講座名>` ＋ヒアリングの答え。講座フォルダ・README・全体の地図（数値などの具体の事実は書かない） | 地図の短い表（回・題・中身・橋渡し）。メインがユーザーに見せ、直しは同じ担当に続けて頼む |
-| 3 | 設計の担当（`brief.py 設計の担当 <work>`） | 上から書く（筋の4行 → 青帯の並び → 本文の形と図 → 要点と事実。story.md）。発表：資料を読み、方針と outline.md（`guide.py steps 1`・`2`）／講座：その回の設計メモの骨（`guide.py course 4` の①。事実の表は行を並べるだけ）。check_outline／check_memo まで、講座は `facts.py split <work> --n 2` も | 青帯の列と、迷った所 |
+| 2b | 数字を探す担当2人（講座だけ） | 地図の OK のあと同時に起動（`brief.py 数字を探す担当 <work> --n 1`、もう1人は `--n 2`）。問いの候補に効く、比べられる数字の組を data_N.md に3組まで | 組ごとの題と驚きの一言 |
+| 3 | 設計の担当（`brief.py 設計の担当 <work>`） | 講座は data_N.md を読んでから。上から書く（筋の4行 → 青帯の並び → 本文の形と図 → 要点と事実。story.md）。発表：資料を読み、方針と outline.md（`guide.py steps 1`・`2`）／講座：その回の設計メモの骨（`guide.py course 4a`。事実の表は行を並べるだけ）。check_outline／check_memo まで、講座は `facts.py split <work> --n 2` も | 青帯の列と、迷った所 |
 | 3b | 裏取りの担当2人（講座だけ） | 3が終わったら同時に起動（`brief.py 裏取りの担当 <work> --n 1`、もう1人は `--n 2`）。全員が戻ったら、メインが `facts.py merge <work>` | ○△× と違った行の数 |
 | 4 | レビュー担当 | 3と同時に起動（`brief.py レビュー担当の先読み <work>`）。3（講座は merge）が終わったら、メインが【続けて頼む】で `brief.py レビュー担当 <work>` の出力を送る | 判定と件数 |
 | 5 | 直しの担当（新しく起動。`brief.py 直しの担当 <work>`） | outline_review.md（講座は memo_review.md と facts_diff.md）と outline.md／memo.md を読み、違った事実に合わせて青帯と筋を直し、レビューの採否を決めて直し、検査し直して `scaffold.py <work> [--source <資料.pdf>]` まで | 採らなかった指摘と理由。発表は、メインが構成案をユーザーに見せる |
-| 6 | 制作役 | `brief.py 制作役 <work>`（図 → カードを1枚ずつ → merge） | 迷った所 |
+| 6 | 制作役 | `brief.py 制作役 <work>`（図 → カードを1枚ずつ → merge）。カードが8枚以上なら2人を同時に（`--part 1/2` が図と前半、`--part 2/2` が後半。merge は仕上げ役） | 迷った所 |
 | 7 | 仕上げ役 | `brief.py 仕上げ役 <work>`（make_deck で直す → 原稿HTML。図の案を変えたら plan_changes.md に理由） | 残った △ と迷った所 |
 | 8 | 完成後のレビュー担当 | `brief.py 完成後のレビュー担当 <work>`（指摘の型で見て review.md に。plan_changes.md の理由も見る） | 判定と件数 |
 | 9 | 仕上げの直しの担当（新しく起動） | `brief.py 仕上げの直しの担当 <work>`（review.md の採否を決めて直し、make_deck・notes_html をやり直す） | 採らなかった指摘と理由 |
@@ -101,7 +104,7 @@ AI は操作のたびに会話をまるごと読み直すので、メインが�
 
 依頼文の中身は `assets/briefs/` の雛形にある（直すときは雛形を直す）。
 
-書く所（制作役）を1人にするのは、書き手を並べても質も使用量も変わらなかったから（軽いモデルで比べたとき、質はほぼ互角・使用量もほぼ同じで、並べると時間だけ短い）。
+書く所（制作役）は、カードが8枚未満なら1人、8枚以上なら前半と後半の2人にする。1つの会話が長くなると、呼び出しのたびに読み直す量が増えて使用量が膨らむため（2人の書きぶりのぶれは、完成後のレビューが指摘の型 F2 で見る）。
 仕上げを別の担当にするのは、図とカード全部を書いた長い会話のまま、検査と直しを何十回も繰り返さないため（仕上げに要るのは build.py・notes.md と検査の出力だけ）。
 ユーザーが「急いで」と言ったときだけ、②を書き手（続いた枚を1人6枚まで）に分けて並べてよい（そのときは図も別の1人、③は書き手が全員終わってから仕上げ役が最初に行う）。
 
@@ -112,77 +115,12 @@ AI は操作のたびに会話をまるごと読み直すので、メインが�
 - レビューは `references/agents.md`「別のエージェントが無いとき」のどちらか（新しい会話に頼む／自分で見直してユーザーにそう伝える）
 - 設計メモ（構成案）とそのレビューまで終えたら、ユーザーに「新しい会話で『続きを作って』と頼んでください」と伝えて止まる（新しい会話は `next_step.py` から再開する）
 
-## 依頼の大きさで読む量を変える
+## 道具とコマンド（中身は `guide.py tools`）
 
-| 依頼 | 読むもの | 省けるもの |
-|---|---|---|
-| **小さな依頼**：本文5枚以下、既存デッキの一部修正、図を1枚描き直すだけ | style-guide.md の 2・3節、figures.md の 1・2節だけ | 構成案のレビュー（手順2のチェックリストを自分で当てる）・話の筋の表・見本 |
-| **大きな依頼**：節1つ分、論文1本分、それ以上 | 手順0〜8のそれぞれの節 | なし |
-
-小さな依頼でも、**描画確認（手順5）、完成後のレビュー（手順5b）、原稿HTML（手順6）は省略しない**。
-
-## 手順の要約（中身は `guide.py steps <番号>`）
-
-- **0. 聞き手と設定**：必須は**聞き手のテーマへの詳しさ**（初学者／多少知っている／かなり知っている）だけ。資料（既定はなし）と任意のプロフィールを勧め、`slide_profile.py --table` の一覧を貼る。必須の抜けは先へ進まない。資料は「資料の受け取り」で発表フォルダの `資料/` に写す（元は消さない）
-- **1. 資料を読む**：全部読む。ページ画像ができたらすぐ構成案レビュー担当に先読みさせる
-- **2. 構成案を先に作る**（中身はまだ作らない）：話の筋（状況・複雑化・問い・答え）→ 1枚1行の表。青帯の一文を先に決め、前の枚からのつながり（そして・しかし・だから）、本文の要点3〜4個と出どころ〔…〕、本文の形、役割。`check_outline.py` の ✘ を直し、【別のエージェント】のレビュー（推論距離）を `outline_review.md` に残し、手当てを `## 引っかかりへの手当て` に。ユーザーに見せて OK をもらってから先へ（「任せる」なら省く）
-- **3. 図**：`figs/sNN.png`、`figkit.save` で保存、文字14pt・ラベルは名詞だけで5個まで・描いた幅のまま置く。論文・教科書の図は出典を付ける
-- **4. 本文と原稿**：カードを1枚ずつ、parts に書いて merge。本文は1枚100〜150字・体言止め・本文の形は部品で組む
-- **5. 描画して確認**：`make_deck.py`。ERROR は全部、一覧の「←」も全部直す（ERROR 0 は合格ではない）。一覧の画像を全部見る
-- **5b. 完成後のレビュー**：【別のエージェント】に一覧の画像と final-review.md の「指摘の型」を渡す。結果は `review.md`
-- **6. 原稿HTML**：`notes_html.py`。原稿は読み上げる文（発表モード／AI講義モード）。PDF は作らない
-- **7. 渡す**：`check_done.py` が「渡してよい」を出してから「できた」と言う。スキルの部品は書き換えない・代わりを作らない
-- **8. 質問回答デッキ**：`references/answer-deck.md` を読んでから
-
-## 道具
-
-検査の部品は、何を見るか・直し方を自分の出力（とファイル冒頭の説明）に書いてある。✘・ERROR・△・WARN が出たら、その文を読んで直す。
-
-| ファイル | いつ使うか |
-|---|---|
-| `scripts/next_step.py` | 今どこまで済み、次に何をするか。迷ったとき・再開するときに最初に |
-| `scripts/guide.py` | 手順書・references の今要る節だけを出す |
-| `scripts/check_env.py` | 初めて使うとき・「環境を確かめて」（手順0） |
-| `scripts/materials.py` | 資料を発表フォルダの `資料/` に写し、足りないもの（研究発表の方針.md・図）を確かめる |
-| `scripts/slide_profile.py` | 設定の一覧（手順0）。build.py からも `load_profile`・`author`・`deck_options` |
-| `scripts/pdf_pages.py` | PDF のページ画像化（`extract`）と図の切り出し（`crop`） |
-| `scripts/check_outline.py`・`check_memo.py` | 構成案・講座の設計メモの確認（話の筋・前の枚から・要点の出どころ・推論距離の手当て・確認問題のひもづけまで） |
-| `scripts/scaffold.py`・`cards.py`・`excerpt.py` | 骨組みと枚ごとのカード、資料の抜き出し、書き手の parts を戻す `--merge` |
-| `scripts/figkit.py`・`figlib.py`・`figgrid.py`・`catalog.py` | 図の共通設定と小道具・よく使う図の型・図の一覧画像・これまでの図のカタログ |
-| `scripts/zemi.py` | build.py で使う `Deck`・`Slide`・`Eq`（部品の一覧はファイル冒頭） |
-| `scripts/make_deck.py` | 図→組む→描く→検査を1回で（render_check.ps1・render_check_lo.py・check_layout.py・grid.py・check_notes.py をまとめて呼ぶ） |
-| `scripts/notes_html.py`・`set_notes.py` | 原稿HTML・notes.md を発表者ノートに入れる |
-| `scripts/check_done.py` | 渡す前の確認（手順7） |
-| `scripts/comments_read.py` | 原稿HTMLのコメントを読む（手順8） |
-| `scripts/make_template.py`・`analyze_template.py`・`analyze_structure.py` | テンプレートを作る（`references/templates.md`） |
-| `references/steps.md` | 手順0〜8の中身 |
-| `references/story.md`・`structures.md`・`figures.md`・`style-guide.md` | 話の筋／本文の形と図解の型／図の作り方／書式と文章 |
-| `references/outline-review.md`・`final-review.md` | 構成案のレビュー（推論距離）・完成後のレビュー（指摘の型） |
-| `references/course.md`・`answer-deck.md`・`series.md`・`templates.md`・`agents.md` | 講座／質問回答／続きもの／テンプレート／道具の対応表と許可リスト |
-
-依存：`<skill>/requirements.txt`。`No module named 'pptx'` などと出たら、`.venv` の Python でなく `python` のまま動かした可能性が高い。
-`.venv` が無く部品が足りなければ、手順0のとおり聞いてから `.venv` を作って入れる（配布の一式なら、ユーザーが `.setup/準備.bat`・`.setup/準備.sh` を走らせても入る）。
-
-### PowerPoint の決まり
-
-- Windows 版 PowerPoint を使うのは `render_check.ps1`・`export_pdf.ps1`（と内部でそれを使う `notes_html.py`）だけ。画面に出さずに裏で使う。画面操作で開かない
-- **PowerPoint が開けない（アクセス拒否 0x80070005 など）ときに、描画の検査や原稿HTMLを別の方法（自作の HTML・PIL の画像）で代えない。**
-  サンドボックスで止められているなら、ユーザーの許可を得てサンドボックスの外で同じスクリプトを動かす（`references/agents.md`）。動かせないなら止めて伝える
-- PowerPoint が無いとき（Mac・Linux など）だけ LibreOffice で代える（`render_check_lo.py`、原稿のページは `notes_html.py` が自動で）。最後は画像を目で見る
-- PowerPoint も LibreOffice も無いときは、聞かずに `make_deck.py <work> --no-render` で pptx だけを作る（作る前に一言伝える）。
-  渡すときに「描画の検査・原稿のページ・完成後の画像のレビューはしていない。LibreOffice（無料）を入れれば、あとから検査できる」とはっきり書く（このときだけ、check_done の描画・原稿のページ・レビューの ✘ は残ったままでよい。ほかの ✘ は直す）
-
-### コマンドの書き方
-
-エージェントの許可リストに当たるように、いつもこの形にそろえる（`references/agents.md`「許可リスト」）。
-- スキルの部品は、作業ディレクトリ（スライドを作るフォルダの一番上）から `python <skill>/scripts/<名前>.py ...` で呼ぶ。
-  `<skill>` は作業ディレクトリからの相対パス（例 `.agents/skills/sensei-slides`）で、区切りは `/`。フルパスにしない
-- デッキごとの `figs.py`・`build.py` は、その作業フォルダ（`_work/<資料名>/`）に移ってから `python figs.py`・`python build.py` で動かす
-- PowerShell の部品は `powershell -ExecutionPolicy Bypass -File <skill>/scripts/render_check.ps1 ...`（`export_pdf.ps1` も同じ形）
-- **作業ディレクトリに `.venv` があれば、いつもその Python をパスで書く**（仮想環境が有効かどうかは確かめない）：Windows は `.venv/Scripts/python <skill>/scripts/<名前>.py ...`、
-  Mac・Linux は `.venv/bin/python ...`。デッキの作業フォルダに移ったときは `../../.venv/Scripts/python figs.py`（Mac・Linux は `../../.venv/bin/python`）。`.venv` が無ければ `python` のまま
-- 日本語を含む使い捨てのスクリプトは、ファイルに書いて `python -X utf8 <ファイル>` で動かす。ヒアドキュメント（`python - <<EOF`）で流さない
-  （Windows では標準入力が cp932 で読まれて文字化けし、`\\n` も改行に化けて置換が当たらない）。改行や `\` を含む置換は【ファイルを書き換える】で行う
+- 部品の一覧・PowerPoint の決まり・コマンドの書き方・依頼の大きさで読む量は `references/tools.md` にある（1人で回すとき・担当が迷ったときに、その節だけ読む）
+- **PowerPoint が開けないときに、描画の検査や原稿HTMLを別の方法（自作の HTML・PIL の画像）で代えない**（`guide.py tools PowerPoint`）
+- コマンドは作業ディレクトリから `python <skill>/scripts/<名前>.py ...`。**作業ディレクトリに `.venv` があれば、いつもその Python をパスで書く**（`guide.py tools コマンドの書き方`）
+- 小さな依頼（本文5枚以下・既存デッキの一部の直し）は `guide.py tools 依頼の大きさ`。小さくても描画の検査・完成後のレビュー・原稿HTMLは省かない
 
 ## 判断に迷ったら
 

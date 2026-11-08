@@ -20,21 +20,18 @@
 表の道具の名前は、それぞれのツールでこのスキルを試したときの記録から取った。道具の名前はツールの版で変わることがある。名前が違っても、同じ働きの道具を使う。
 どのエージェントでも、モデルが分からなければユーザーに聞く。`render_check.ps1`・`export_pdf.ps1` は、どのエージェントでも Windows の PowerShell で動かす。
 
-**PowerPoint を使うスクリプト（`render_check.ps1`・`export_pdf.ps1`・`notes_html.py`・`make_deck.py`）は、サンドボックスの中では止められることがある**（PowerPoint が無い PC では、代わりに LibreOffice 版の `render_check_lo.py` を使う。SKILL.md）（Codex では「Retrieving the COM class factory … 80070005 Access is denied」）。Codex なら exec_command に `sandbox_permissions: "require_escalated"` を付けて、ユーザーの許可を得てサンドボックスの外で動かす（試験ではこれで通った）。毎回の許可を省くには、同梱の `assets/codex/sensei-slides.rules` を、スライドを作るフォルダの `.codex/rules/` に置いてもらう（Codex がそのフォルダを信頼しているときに読む。この3つのスクリプトだけを、確認なしでサンドボックスの外で動かす決まり）。止められても、自作の HTML や別の描き方で代えない（SKILL.md）。また、画面操作の機能（Codex の Computer Use など）で PowerPoint を開かない。サンドボックスの外での実行は、画面は変わらず、コマンドの許可を求める確認が出るだけ。
+**PowerPoint を使うスクリプト（`render_check.ps1`・`export_pdf.ps1`・`notes_html.py`・`make_deck.py`）は、サンドボックスの中では止められることがある**（PowerPoint が無い PC では、代わりに LibreOffice 版の `render_check_lo.py` を使う。references/tools.md「PowerPoint の決まり」）（Codex では「Retrieving the COM class factory … 80070005 Access is denied」）。Codex なら exec_command に `sandbox_permissions: "require_escalated"` を付けて、ユーザーの許可を得てサンドボックスの外で動かす（試験ではこれで通った）。毎回の許可を省くには、同梱の `assets/codex/sensei-slides.rules` を、スライドを作るフォルダの `.codex/rules/` に置いてもらう（Codex がそのフォルダを信頼しているときに読む。この3つのスクリプトだけを、確認なしでサンドボックスの外で動かす決まり）。止められても、自作の HTML や別の描き方で代えない（SKILL.md）。また、画面操作の機能（Codex の Computer Use など）で PowerPoint を開かない。サンドボックスの外での実行は、画面は変わらず、コマンドの許可を求める確認が出るだけ。
 
 **表にないツール（VS Code の Copilot など）**では、同じ働きの道具を探して使う。無いときは次のようにする。
 - 【質問】：チャットに選択肢を番号つきで並べて聞き、答えを待つ
 - 【別のエージェント】：下の「別のエージェントが無いとき」
 - 【続けて頼む】：レビューのたびに資料と観点を渡し直す（先読みは省く）
 - 【画像を見る】：画像を読めないなら、ユーザーに `render/` の画像を見てもらい、気になる所を言ってもらう
-- 【ファイルを書き換える】：ファイルを書き換える道具を使う。シェルのヒアドキュメントで置換しない（改行と日本語が壊れやすい。SKILL.md「コマンドの書き方」）
+- 【ファイルを書き換える】：ファイルを書き換える道具を使う。シェルのヒアドキュメントで置換しない（改行と日本語が壊れやすい。references/tools.md「コマンドの書き方」）
 
 ## モデル
 
-**全部、メインのセッションのモデルで進める。【別のエージェント】にモデルを指定しない**（指定しなければメインと同じモデルで動く。Codex の spawn_agent も、Claude Code の Agent ツールも同じ）。
-- 重いモデルを自分の判断で選ばない：同じ作業でも使用量の上限を何倍も速く使う（Codex で、スライド作りの別のエージェントに選べる中でいちばん重いモデルを指定したら、講座の1回の途中で月の上限に達した）
-- ユーザーが「レビューは〇〇で」「制作は〇〇で」とモデルを言ったときだけ、そのモデルを指定する。質を上げたいときは、ユーザーがメインのモデルを選び直す
-- レビューの質は、モデルの違いより「どこを疑うか」で決まる。同じデッキを比べたとき、指摘の型（final-review.md）を渡した軽めのモデルのレビューが、型なしの上位のモデルとほぼ同じだけ拾った
+決まりは SKILL.md「モデル」（メインのモデルで全部。【別のエージェント】にモデルを指定しない）。ここには道具ごとの注意だけを置く。
 - **軽量モデル（例：Codex・GitHub Copilot の GPT-6 Luna）は非推奨（使うことはできる）。** 試したところ、手順は最後まで進められたが、図の中身が薄く、
   資料にない仕組みを簡単にしすぎることがあった。軽いモデルで作るときは、ユーザーに図と事実の確認を頼む
 
@@ -60,7 +57,7 @@ Codex の Web 検索（web__run）は、`response_length` を短くして、要�
 ## 許可リスト（コマンドを確認なしで動かしたいとき）
 
 エージェントの設定でコマンドの許可リスト（Allow list）を使うときは、次の頭の部分を登録する。スキルを `.agents/skills/sensei-slides/` に置いた場合の書き方で、
-ほかの場所に置いたときは `<skill>` の部分をその場所に変える。手順書はコマンドをこの形にそろえるよう指示している（SKILL.md「コマンドの書き方」）。
+ほかの場所に置いたときは `<skill>` の部分をその場所に変える。手順書はコマンドをこの形にそろえるよう指示している（references/tools.md「コマンドの書き方」）。
 
 ```
 .venv/Scripts/python .agents/skills/sensei-slides/scripts/

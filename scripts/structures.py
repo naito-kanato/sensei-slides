@@ -328,6 +328,17 @@ def check_plan(text: str, kind: str, body_no: list, where: str, folder=None):
     res += check_slots(text, kind, body_no, where)
     import figplan
     res += figplan.check_menu(text, kind, body_no)
+    figs_ = dict(figplan.plan_from_text(text, kind) or {})
+    rows_ = _plan_table(text, kind) or []
+    i_fig = next((k for k, h in enumerate(rows_[0]) if "図で見せる" in h), None) if rows_ else None
+    for r in rows_[1:] if i_fig is not None else []:   # 講座は5節「図の案」のほかに、2節の表の「図で見せるもの」の列も見る
+        if r and r[0].strip().isdigit() and len(r) > i_fig:
+            n_ = int(r[0])
+            figs_[n_] = (figs_.get(n_, "") + " " + r[i_fig]).strip()
+    gn = [n for n in figplan.generic_names(figs_) if n in body_no]
+    if gn:
+        res.append(("△", "図の中身", f"図の案に置き換え用・架空の名前（「分類群A」「〇〇」「架空の…」）が残る枚：{'・'.join(map(str, gn))}。"
+                    "このテーマの固有の名前（種・装置・人・年）で書く。汎用の図は、聞き手が自分の話に置き換えられない"))
     if folder is not None:
         res += compat(plan, body_no, template_of(folder, text))
     return res

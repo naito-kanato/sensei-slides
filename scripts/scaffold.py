@@ -4,6 +4,7 @@
     python <skill>/scripts/scaffold.py <work>           # <work>/build.py と <work>/notes.md を作る（すでにあれば作らない）
     python <skill>/scripts/scaffold.py <work> --force   # 上書きする（書きかけを捨てるので、ふつうは使わない）
     python <skill>/scripts/scaffold.py <work> --merge   # 書き手が書いた parts/NN.py・parts/NN.md を build.py・notes.md の N 枚目に戻す
+    python <skill>/scripts/scaffold.py <work> --try NN  # parts/NN.py の1枚だけを組み、本文の形・図・結論・字数を短く出す（描かない）
     python <skill>/scripts/scaffold.py <work> --source <資料.pdf|.txt>   # カードに入れる抜き出しの資料（省くと 資料/ に1つだけある PDF・テキスト）
 
 骨組みに入るもの
@@ -337,9 +338,79 @@ def cards(work: Path, kind, rows, care, minutes=None, source=None):
     return cardmod.writer(work, kind, rows, care, minutes, source)
 
 
-def api_lines(forms: str, figure: bool, table: bool):
+def api_lines(forms: str, figure: bool, table: bool, extra=()):
     import cards as cardmod
-    return cardmod.api_lines(forms, figure, table)
+    return cardmod.api_lines(forms, figure, table, extra)
+
+
+def _flat(t: str) -> str:
+    return re.sub(r"\{[rubi]:([^{}]*)\}", r"\1", t)
+
+
+def try_part(work: Path, n: int) -> int:
+    """parts/NN.py の1枚だけを組んで、構成案どおりか（本文の形・図・結論）と字数を短く出す。描かない。
+    書き手が部品のソースや検査のスクリプトを読みに行かずに、自分の1枚を確かめるための道具。"""
+    import subprocess
+    part = work / "parts" / f"{n:02d}.py"
+    if not part.exists():
+        print(f"✘ {part} が無い")
+        return 1
+    b = (work / "build.py").read_text(encoding="utf-8")
+    bl = blocks(b)
+    if not bl:
+        print("✘ build.py に枚の印（# ---- N）が無い")
+        return 1
+    head = b[:min(a for a, _ in bl.values())]
+    code = MARK.sub("", part.read_text(encoding="utf-8")).strip("\n")
+    tmp = work / f"_try_{n:02d}.py"
+    out = work / "build" / f"_try_{n:02d}.pptx"
+    tmp.write_text(head + "\n" + code + "\n\n(HERE / \"build\").mkdir(exist_ok=True)\n"
+                   f"deck.save(HERE / \"build\" / \"{out.name}\", title=T, author=AUTHOR)\n", encoding="utf-8")
+    try:
+        r = subprocess.run([sys.executable, "-X", "utf8", tmp.name], cwd=work, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+    finally:
+        tmp.unlink(missing_ok=True)
+    if r.returncode or not out.exists():
+        err = [l for l in (r.stderr or r.stdout).strip().splitlines() if l.strip()][-4:]
+        if re.search(r"(FileNotFoundError|No such file|見つから).*figs|figs.*(FileNotFoundError|No such file|見つから)", " ".join(err)):
+            print(f"△ parts/{part.name}：図の画像がまだ無い（制作役が2人なら1人目が描く）。この枚は確かめずに次の枚へ")
+            return 0
+        print(f"✘ parts/{part.name} が組めない：\n  " + "\n  ".join(err))
+        return 1
+    import figplan
+    import structures
+    from pptx import Presentation
+    prs = Presentation(str(out))
+    out.unlink(missing_ok=True)
+    kind = "memo" if (work / "memo.md").exists() else "answers" if (work / "answers.md").exists() else "outline"
+    text = (work / {"memo": "memo.md", "answers": "answers.md"}.get(kind, "outline.md")).read_text(encoding="utf-8")
+    rows_ = []
+    fp = structures.plan_forms(text, kind) or {}
+    if n in fp:
+        bad = structures.mismatches(prs, {1: fp[n]})
+        rows_.append(("✘" if bad else "✔", "本文の形", bad[0][1] if bad else "・".join(k for k in fp[n] if isinstance(k, str)) + " の部品がある"))
+    pl = figplan.plan_from_text(text, kind) or {}
+    if pl.get(n):
+        bad = figplan.mismatches(prs, {1: pl[n]})
+        rows_.append(("✘" if bad else "✔", "図", bad[0][1] if bad else f"案（{pl[n][:20]}）どおり"))
+    roles = structures.plan_roles(text, kind) or {}
+    if roles.get(n) == "本文":
+        bad = structures.role_mismatches(prs, {1: "本文"})
+        rows_.append(("✘" if bad else "✔", "結論の一文", bad[0][1] if bad else "ある"))
+    lines = []
+    for sh in prs.slides[0].shapes:
+        tx = sh.has_text_frame and sh.text_frame.text.strip()
+        if tx and not sh.is_placeholder and sh.name != "見出し":   # 上の帯・ページ番号・青帯は数えない
+            lines += [l.strip() for l in sh.text_frame.text.splitlines() if l.strip()]
+    chars = sum(len(_flat(l)) for l in lines)
+    long_ = [l for l in lines if len(_flat(l)) > 20]
+    rows_.append(("△" if long_ else "✔", "1行20字", "超える行：" + "／".join(l[:24] for l in long_[:3]) if long_ else "すべて20字まで"))
+    rows_.append(("・", "本文の字数", f"{chars}字（図の代わりの部品の文字も含む参考値。字数の合否は仕上げ役の make_deck が見る）"))
+    for mk, item, msg in rows_:
+        print(f"{mk} {item}：{msg}")
+    print("（描画の検査は仕上げ役の make_deck が見る。これ以上は確かめずに次の枚へ）")
+    return 1 if any(mk == "✘" for mk, _, _ in rows_) else 0
 
 
 def merge(work: Path):
@@ -388,6 +459,22 @@ def main(argv=None):
         return 1
     work = Path(argv[0]).resolve()
     force = "--force" in argv
+    if "--try" in argv:
+        which = argv[argv.index("--try") + 1]
+        if which != "all":
+            return try_part(work, int(which))
+        import contextlib
+        import io
+        bad = 0
+        for f in sorted((work / "parts").glob("[0-9][0-9].py")):   # 全部の枚：直す所がある枚だけ中身を出す
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                code = try_part(work, int(f.stem))
+            rows = [l for l in buf.getvalue().splitlines() if l[:1] in ("✘", "△")]
+            bad += code
+            print(f"[{f.stem}] " + ("✔" if not rows else "\n  " + "\n  ".join(rows)))
+        print(f"\n✘ のある枚：{bad}。✘ と「1行20字」の △ を直してから渡す（字数の値は参考）")
+        return 1 if bad else 0
     if "--merge" in argv:
         done, refused = merge(work)
         b = (work / "build.py").read_text(encoding="utf-8")

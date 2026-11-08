@@ -302,6 +302,9 @@ def body_numbers(text: str, kind: str):
     return sorted(n for n, c in cons.items() if c not in EMPTY)
 
 
+METHOD_ANSWER = re.compile(r"(で|を)(比べ|見れば|読め|読む|確かめ|調べ|判断す)[るれ]?(ばよい|とよい|る|。|$)|として扱う|を見ればよい|で判断する|に注目する")
+
+
 def check(text: str, kind: str, body_no: list, where: str):
     """[(印, 項目, 説明)]。kind は "outline" か "memo"。body_no は本文の枚の番号（並び順）。"""
     import structures
@@ -324,6 +327,10 @@ def check(text: str, kind: str, body_no: list, where: str):
             q, qn = st["問い"]
             if not re.search(r"[？?]\s*$", q):
                 notes.append("問いが疑問の形でない（「…か？」「なぜ…？」で終える）")
+            ans = st["答え"][0]
+            if METHOD_ANSWER.search(ans):
+                notes.append("答えが見方・方法になっている（「〜で比べる」「〜を見ればよい」「〜として扱う」）。"
+                             "対象について分かったこと（「〜だった」「〜である」と数値・年・固有の名前）で答える。方法を教える回でも、それで何が分かるかまで言う")
             third = max(3, -(-len(body_no) // 3))
             head, tail = body_no[:third], body_no[-max(2, len(body_no) // 3):]
             an = st["答え"][1]

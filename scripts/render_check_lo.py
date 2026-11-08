@@ -36,9 +36,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-import pymupdf as fitz
 
-fitz.TOOLS.mupdf_display_errors(False)   # 構造ツリーの警告（無害）を出さない
 from pptx import Presentation
 
 EMU_PT = 12700.0
@@ -274,6 +272,8 @@ def main():
         prs = Presentation(str(copy))
         W = prs.slide_width / EMU_PT
         H = prs.slide_height / EMU_PT
+        import pymupdf as fitz  # PyMuPDF（古い呼び名 fitz は将来なくなる）。PDF を使う所でだけ読む（無くても他は動く）
+        fitz.TOOLS.mupdf_display_errors(False)   # 構造ツリーの警告（無害）を出さない
         doc = fitz.open(pdf)
         n = len(prs.slides)
         if doc.page_count != n:
