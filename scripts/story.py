@@ -272,16 +272,14 @@ def beat_map(text: str, kind: str):
     links = link_cells(rows) if rows else None
     if not arc or links is None:
         return {}
-    body = body_numbers(text, kind)
-    out, k = {}, 0
+    body = body_numbers(text, kind)[1:]
+    out, pos = {}, 0
     beats = arc_beats(arc, answer_position(text, kind), arc_rounds(text))
-    for n in body[1:]:
-        if k >= len(beats):
-            break
-        w, kd = split_link(links.get(n, ""))
-        if (w, kd) == beats[k][:2]:
-            out[n] = (k + 1,) + beats[k]
-            k += 1
+    for k, beat in enumerate(beats):   # 拍を順に、前の拍の枚より後ろで探す。見つからない拍は飛ばして、次の拍を探し続ける
+        hit = next((i for i in range(pos, len(body)) if split_link(links.get(body[i], "")) == beat[:2]), None)
+        if hit is not None:
+            out[body[hit]] = (k + 1,) + beat
+            pos = hit + 1
     return out
 
 
@@ -309,8 +307,9 @@ def arc_check(text: str, kind: str, body_no: list):
     got = beat_map(text, kind)
     done = len(got)
     if done < len(beats):
-        rest = beats[done:]
-        notes.append(f"型の拍が {done}/{len(beats)} しか順に出ていない（答えの位置「{pos}」" + (f"・{rounds}周" if rounds > 1 else "") + "）。次に要る拍："
+        found = {v[0] for v in got.values()}
+        rest = [x for i, x in enumerate(beats) if i + 1 not in found]
+        notes.append(f"型の拍が {done}/{len(beats)} しか順に出ていない（答えの位置「{pos}」" + (f"・{rounds}周" if rounds > 1 else "") + "）。足りない拍："
                      + " → ".join(f"{w}（{kd}：{role}" + (f"・{r}周目" if r else "") + "）" for w, kd, role, r in rest)
                      + "（「前の枚から」をこの順に。間に そして の枚を挟んでよい）")
     if pos == "先" and got:
