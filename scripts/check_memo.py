@@ -184,10 +184,7 @@ def data_rows(text: str, work: Path, body_no, kind: str = "memo") -> list:
     missing = sorted(used - set(ds))
     if missing:
         res.append(("✘", "データ", f"図の案が指すデータが3b節に無い：{'・'.join(f'データ{n}' for n in missing)}"))
-    import story
-    if not ds and story.arc_of(text)[0] == "数字で崩す":   # 型を選んだ＝数字で崩すと決めた。組が無ければ型が成り立たない
-        res.append(("✘", "データ", "話の型が「数字で崩す」なのに、3b節に比べられる数字の組が無い（組を探し直すか、別の型にする）"))
-    elif not ds:
+    if not ds:
         res.append(("・", "データ", f"比べられる数字の組は見つからなかった（{'／'.join(nf)}）。しかし はデータ無しで組む" if nf else "3b節に組が無い"))
     elif not used and not re.search(r"データを使わない理由[：:]\s*\S", text):
         res.append(("△", "データ", "3b節にデータがあるのに、描く図が無い。強い組なら、図の案を「目的：種類：データN」（棒グラフ・折れ線・帯など）にして見せる。"

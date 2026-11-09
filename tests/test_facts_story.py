@@ -257,30 +257,16 @@ def test_story_arc_rounds():
     assert sum(b[2] == "答えと柱の一覧" for b in beats) == 1                # 答えの拍は1回だけ
 
 
-def test_data_arc_needs_a_number_figure_on_the_surprise():
-    """話の型「数字で崩す」：意外の拍の枚の図は、数字の比べ（比べる・推移・内訳のグラフ）。"""
-    links = ["—", "そして（詳しく）", "しかし（意外）", "だから（問い）", "だから（帰結）", "しかし（限り）"]
-
-    def outline(fig3):
-        rows = "\n".join(f"| {n} | 見出し{n} | {l} | 青帯{n}の一文 | {fig3 if n == 4 else '—'} | 本文 |" for n, l in enumerate(links, start=2))
-        return (_arc_outline(links, "数字で崩す").split("## 構成")[0]
-                + "## 構成\n\n| 番号 | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 役割 |\n|---|---|---|---|---|---|\n"
-                "| 1 | 表紙 | — | — | — | 表紙 |\n" + rows + "\n")
-    assert _arc_mark(outline("比べる：棒グラフ：自己評価と中間結果（論文 Table 2）"))[0] == "✔"
-    mark, msg = _arc_mark(outline("仕組み：模式図：審査の流れ"))
-    assert mark == "△" and "数字の比べ" in msg
-
-
 def test_presentation_data_from_the_source(tmp_path):
     """発表：設計の担当が資料の表・図から書いた data_1.md を、構成案の3b節（構成の表の前）に入れる。3b節が無くても何も言わない。"""
     import data
     import check_memo
     w = tmp_path / "_work" / "論文"
     w.mkdir(parents=True)
-    links = ["—", "そして（詳しく）", "しかし（意外）", "だから（問い）", "だから（帰結）", "しかし（限り）"]
+    links = ["—", "そして（詳しく）", "しかし（意外）", "だから（問い）", "だから（手段）"]
     rows = "\n".join(f"| {n} | 見出し{n} | {l} | 青帯{n}の一文 | {'比べる：棒グラフ：データ1' if n == 4 else '—'} | 本文 |"
                      for n, l in enumerate(links, start=2))
-    text = (_arc_outline(links, "数字で崩す").split("## 構成")[0]
+    text = (_arc_outline(links, "素朴な見方を崩す").split("## 構成")[0]
             + "## 構成\n\n| 番号 | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 役割 |\n|---|---|---|---|---|---|\n"
             "| 1 | 表紙 | — | — | — | 表紙 |\n" + rows + "\n")
     (w / "outline.md").write_text(text, encoding="utf-8")
@@ -289,9 +275,9 @@ def test_presentation_data_from_the_source(tmp_path):
     data.merge(w)
     nf = (w / "outline.md").read_text(encoding="utf-8")
     rows = check_memo.data_rows(nf, w, [2, 3], "outline")
-    assert any(m == "✘" and "数字で崩す" in x for m, _, x in rows)      # 型が数字で崩すなのに組が無い
-    other = nf.replace("話の型：数字で崩す", "話の型：原因を探る").replace("比べる：棒グラフ：データ1", "比べる：棒グラフ：x")
-    assert [m for m, _, _ in check_memo.data_rows(other, w, [2, 3], "outline")] == ["・"]
+    assert any(m == "✘" and "データ1" in x for m, _, x in rows)        # 図の案が指すデータが3b節に無い
+    other = nf.replace("比べる：棒グラフ：データ1", "比べる：棒グラフ：x")
+    assert [m for m, _, _ in check_memo.data_rows(other, w, [2, 3], "outline")] == ["・"]   # 見つからなかった（型は問わない）
     (w / "data_1.md").write_text(
         "## データ：条件ごとの正答率\n- 驚き：手がかりを足すと下がる\n- 単位：％／分母：問題のうち／時点：論文の実験\n- 出典：Table 2\n- 確認：○\n"
         "- 別の読み方：1つのデータセットだけ\n| 条件 | 値 |\n|---|---|\n| なし | 62 |\n| あり | 48 |\n", encoding="utf-8")
