@@ -16,6 +16,7 @@ check_outline.py・check_memo.py から呼ばれる。面白いかどうかは�
     - しかし（壁）・しかし（疑い）のあと、次の「しかし」か本文の最後までに「だから」が無ければ △（出しっぱなし）
 """
 import re
+import sys
 
 STORY_KEYS = ("状況", "複雑化", "問い", "答え")
 LINKS = ("そして", "しかし", "だから")
@@ -89,6 +90,40 @@ ARCS = [
      [("しかし", "意外", "不思議な現象"), ("しかし", "疑い", "よくある説明"), ("だから", "帰結", "確かめた結果"), ("だから", "問い", "本当の原因")]),
 ]
 ARC_NAMES = [a[0] for a in ARCS]
+# 回のねらい（講座は地図の「ねらい」の列、発表は構成案のオプション「ねらい」）→ 既定の話の型。
+# 型を自由に選ばせると、強い数字や目立つ話に筋が引っぱられる（ゴールが「なぜこの形か」の回で数字の型が選ばれた）。
+# ねらいは学習者・発表者が地図や一覧で見て直せる言葉にし、型はそこから決める。別の型にするなら「型を外す理由：…」
+AIMS = [
+    # (ねらい, 既定の型, どんな回か)
+    ("なぜこの形か", "今の形から由来へ", "制度・規格・設計の由来。今の形から入り、なぜそうなったかをたどる"),
+    ("仕組みが分かる", "素朴な見方を崩す", "どう動くか。素朴な見方が外れる所を山場に"),
+    ("原因が分かる", "原因を探る", "なぜ起きるか。よくある説明を退けながら"),
+    ("正しく判断できる", "誤解を正す", "よくある誤解と、言える範囲"),
+    ("使えるようになる", "手順を身につける", "やり方と、つまずく所の越え方"),
+    ("新しい考え方を使える", "定義から応用へ", "定義・式から、使える所と使えない場合まで"),
+    ("選べるようになる", "比べて選ぶ", "候補を並べ、弱みを見て、選び方を決める"),
+    ("事例から学ぶ", "事例・問題解決", "現場の問題をどう解いたか"),
+    ("論文を紹介する（問題から）", "論文紹介（問題から）", "未解決の問題を論文が解いた"),
+    ("論文を紹介する（方法から）", "論文紹介（方法から）", "方法・装置そのものが見どころ"),
+    ("自分の研究を伝える", "研究発表", "自分の研究。予想と違う結果が山場"),
+    ("提案して納得してもらう", "提案", "やり方・予算・方針の提案"),
+    ("教科書の節を読む", "輪読（節の筋）", "教科書の1節を、定義から例・使えない場合・まとめへ"),
+]
+AIM_LINE = re.compile(r"^\s*-\s*ねらい\s*[：:]\s*(.+?)\s*$|^\|\s*ねらい\s*\|\s*([^|]+?)\s*\|", re.M)
+
+
+def aim_of(text: str):
+    """「- ねらい：…」（設計メモの1節）か、オプションの表の「| ねらい | … |」→ (ねらい, 既定の型)。無い・一覧に無ければ (書いた値 or None, None)。"""
+    m = AIM_LINE.search(text)
+    if not m:
+        return None, None
+    val = (m.group(1) or m.group(2) or "").strip()
+    hit = next((a for a in sorted(AIMS, key=lambda a: -len(a[0])) if a[0] in val), None)
+    return (hit[0], hit[1]) if hit else (val or None, None)
+
+
+def aims_table() -> str:
+    return "\n".join(["| ねらい | 既定の話の型 | どんな回か |", "|---|---|---|"] + [f"| {a} | {t} | {d} |" for a, t, d in AIMS])
 ANSWER_BEAT = ("だから", "帰結", "答えと柱の一覧")
 # 「話の型：<名前>×N」で何周かするときに、くり返す拍（ARCS の拍の番号で [始め, 終わり)）。書いていない型は全部をくり返す。
 # 例：輪読は小節ごとに全部、論文紹介は実験・結果ごとに「結果 → 疑い → 確かめた結果」
@@ -166,7 +201,10 @@ def arc_check(text: str, kind: str, body_no: list):
     """[(印, 項目, 説明)]：話の型が選んであり、「前の枚から」の並びに型の拍がこの順で全部あるか。"""
     small = len(body_no) <= 5
     name, arc = arc_of(text)
+    aim, want = aim_of(text)
     if name is None:
+        if want:
+            return [("△", "話の型", f"話の型が無い。ねらい「{aim}」の既定の型は「{want}」。筋の表の下に「話の型：{want}」を1行")]
         if small:
             return []
         return [("△", "話の型", "話の型が無い。筋の表の下に「話の型：<名前>」を1行（" + "・".join(ARC_NAMES)
@@ -174,6 +212,8 @@ def arc_check(text: str, kind: str, body_no: list):
     if arc is None:
         return [("△", "話の型", f"「{name}」は話の型に無い（" + "・".join(ARC_NAMES) + "）")]
     notes = []
+    if want and arc[0] != want:   # ねらいと型が合わない（強い数字・目立つ話に引っぱられた など）
+        notes.append(f"ねらい「{aim}」の既定の型は「{want}」なのに「{arc[0]}」を選んでいる（データの驚きは、既定の型の しかし の拍に入れる）")
     pos = answer_position(text, kind)
     rounds = arc_rounds(text)
     beats = arc_beats(arc, pos, rounds)
@@ -418,3 +458,12 @@ def check(text: str, kind: str, body_no: list, where: str):
         res.append(("✔", "前の枚から", "・".join(f"{w} {c}" for w, c in cnt.items()) + f"（しかし：{buts}）"))
     res += arc_check(text, kind, body_no)
     return res
+
+
+if __name__ == "__main__":   # python story.py --aims：ねらいと既定の型の一覧（地図の担当・設計の担当が見る）
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if "--aims" in sys.argv:
+        print(aims_table())
+    else:
+        print("python story.py --aims   # 回のねらいと、既定の話の型の一覧")

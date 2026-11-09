@@ -151,6 +151,9 @@ def check(pptx: Path, work: Path | None, record: bool = True):
                 if item == "データ" and msg.startswith("data_1.md が無い"):
                     mark = "△"   # 渡す前に筋を組み直させない（数字の組を探すのは構成案の段。前の版の構成案にも無い）
                 res.append((mark, f"構成案：{item}", msg))
+        import slide_profile
+        if not slide_profile.author(slide_profile.load_profile(work)):   # 仮の名前は入れない。渡すときに一言添えるため
+            res.append(("・", "表紙の名前", "無し（名前の行を作らずに組んだ。入れるなら outline.md のオプションの表に「発表者名」を書いて組み直す）"))
     memo = work / "memo.md" if work else None
     if memo and memo.exists() and not qa:
         import check_memo

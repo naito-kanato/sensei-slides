@@ -210,7 +210,7 @@ def build_py(work: Path, kind, title, rows) -> str:
          out_line,
          "",
          "P = load_profile(HERE)",
-         'AUTHOR = author(P) or "TODO 名前"',
+         'AUTHOR = author(P)   # 表紙の名前（発表は一覧の「発表者名」、無ければ空。講座は「講座名（全N回）」。仮の名前を入れない）',
          'deck = Deck(workdir=HERE / "build", **deck_options(P))   # テンプレートを選ぶなら deck_options(P, name="テンプレート2") など',
          ""]
     if any(col(r, "役割") in ("確認問題", "解答") for r in rows):

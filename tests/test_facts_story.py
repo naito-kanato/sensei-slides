@@ -359,3 +359,36 @@ def test_data_left_unmerged_under_the_template_heading(tmp_path):
     data.merge(w)
     rows = check_memo.data_rows((w / "memo.md").read_text(encoding="utf-8"), w, [2, 3])
     assert [r[0] for r in rows] == ["・"]
+
+
+def test_aim_sets_the_default_arc():
+    """ねらい → 既定の話の型。違う型なら △（型を外す理由があれば ✔）。型が無ければ既定の型を勧める。"""
+    late = ["—", "しかし（壁）", "だから（手段）", "そして（次へ）", "しかし（疑い）", "だから（帰結）", "しかし（限り）"]
+    text = _arc_outline(late, "論文紹介（問題から）").replace("| 答えの位置 | 後 |", "| 答えの位置 | 後 |\n| ねらい | 論文を紹介する（問題から） |")
+    assert story.aim_of(text) == ("論文を紹介する（問題から）", "論文紹介（問題から）")
+    assert _arc_mark(text)[0] == "✔"
+    other = text.replace("| ねらい | 論文を紹介する（問題から） |", "| ねらい | 教科書の節を読む |")
+    mark, msg = _arc_mark(other)
+    assert mark == "△" and "輪読（節の筋）" in msg
+    assert _arc_mark(other + "\n型を外す理由：教科書だが論文の結果を紹介する節\n")[0] == "✔"
+    mark, msg = _arc_mark(other.replace("話の型：論文紹介（問題から）", ""))
+    assert mark == "△" and "話の型：輪読（節の筋）" in msg
+    assert story.aim_of("## 1. ゴール\n- ねらい：なぜこの形か\n")[1] == "今の形から由来へ"
+
+
+def test_cover_name_defaults(tmp_path):
+    """表紙の名前：発表は無ければ空。講座は「講座名（全N回）」、学習者の名前があれば「・〇〇さん向け」。"""
+    import slide_profile as sp
+    c = tmp_path / "病院講座"
+    c.mkdir()
+    (c / "00_README.md").write_text("# 病院講座\n\n- 回数：全3回\n", encoding="utf-8")
+    w = tmp_path / "_work" / "病院講座_01"
+    w.mkdir(parents=True)
+    (w / "memo.md").write_text("## 1. この回のゴールと前提\n\n- 丁寧さ：2\n", encoding="utf-8")
+    assert sp.author(sp.load_profile(w)) == "病院講座（全3回）"
+    (w / "memo.md").write_text("## 1. この回のゴールと前提\n\n- 学習者の名前：内藤\n", encoding="utf-8")
+    assert sp.author(sp.load_profile(w)) == "病院講座（全3回）・内藤さん向け"
+    z = tmp_path / "_work" / "ゼミ"
+    z.mkdir()
+    (z / "outline.md").write_text("## オプション\n\n| オプション | 今の値 |\n|---|---|\n| 答えの位置 | 先 |\n", encoding="utf-8")
+    assert sp.author(sp.load_profile(z)) == ""

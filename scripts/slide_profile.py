@@ -90,6 +90,16 @@ def load_profile(start=None):
             d["オプション"] = read_options(f.read_text(encoding="utf-8"))
             d["_options_path"] = str(f)
             break
+    if (folder / "memo.md").exists() and re.search(r"_\d{2}$", folder.name):   # 講座の回：講座名と回数（表紙の名前の既定）
+        course = re.sub(r"_\d{2}$", "", folder.name)
+        root = folder.parent.parent if folder.parent.name == "_work" else folder.parent
+        readme = root / course / "00_README.md"
+        total = None
+        if readme.exists():
+            t = readme.read_text(encoding="utf-8")
+            m = re.search(r"全\s*(\d+)\s*回", t)
+            total = int(m.group(1)) if m else (len(re.findall(r"^\|\s*\d+\s*\|", t, re.M)) or None)
+        d["_course"] = (course, total)
     reg = find_registry(folder)
     if reg:
         d["テンプレート"] = parse(reg.read_text(encoding="utf-8")).get("テンプレート", {})
@@ -102,7 +112,13 @@ def option(p, key, default=None):
 
 
 def author(p):
-    """表紙の名前：一覧の「発表者名」（講座なら「学習者の名前」）。無ければ空文字。"""
+    """表紙の名前。発表：一覧の「発表者名」、無ければ空（表紙に名前の行を作らない。仮の名前を入れない）。
+    講座：「講座名（全N回）」、学習者の名前があれば「講座名（全N回）・〇〇さん向け」。"""
+    if p.get("_course"):
+        course, total = p["_course"]
+        head = f"{course}（全{total}回）" if total else course
+        who = option(p, "学習者の名前")
+        return option(p, "発表者名") or (f"{head}・{who}さん向け" if who else head)
     return option(p, "発表者名") or option(p, "学習者の名前") or ""
 
 
