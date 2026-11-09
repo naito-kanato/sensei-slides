@@ -166,6 +166,14 @@ def steps_for(work: Path):
                "制作役1人（`brief.py 制作役 <work>`）が figs.py で図、カードを1枚ずつ読んで parts/NN.py・parts/NN.md、scaffold.py <work> --merge で戻す")
         nxt = ("手順3〜5（SKILL.md「手順と担当」）：" + ("" if nc else "python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、") + who +
                "。そのあと仕上げ役1人が python <skill>/scripts/make_deck.py <work> で組んで検査して直し、原稿HTMLまで")
+        try:   # もう起動していれば、起動し直させずに待たせる（図の担当がまだ描いている間など）
+            import budget
+            launched = {r.get("role") for r in budget.load(work)}
+        except Exception:
+            launched = set()
+        if nc and launched & {"制作役", "図の担当"} and not (launched & {"仕上げ役"}):
+            nxt = ("手順3〜4：制作役・図の担当が書き終えるのを待つ（図：" + ("figs.py がまだ" if not figs.exists() else "描き直しがまだ")
+                   + "）。担当がもう戻っていて残っているなら、図の担当を新しく起動する")
     # 3. ビルド
     build = work / "build.py"
     notes = work / "notes.md"
@@ -175,8 +183,17 @@ def steps_for(work: Path):
     if pptx is None:
         add(False, "スライド（*_スライド.pptx）", "まだ組んでいない")
         if not nxt:
-            nxt = ("手順4：python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、カードを1枚ずつ読んで parts/NN.py・parts/NN.md を書き、"
-                   "scaffold.py <work> --merge で戻して、python <skill>/scripts/make_deck.py <work> で組んで検査する（`guide.py steps 4`）")
+            import brief
+            nums = brief.card_numbers(work)
+            left = [n for n in nums if not (work / "parts" / f"{n:02d}.py").exists()]
+            if nums and not left:   # 制作役（と図の担当）が書き終えた：組むのは仕上げ役（merge から）
+                nxt = "手順5：仕上げ役を起動（`brief.py 仕上げ役 <work>`。scaffold.py --merge → make_deck.py → 原稿HTML）"
+            elif nums:
+                nxt = (f"手順3〜4：制作役（と図の担当）が書き終えるのを待つ（parts がまだの枚：{'・'.join(map(str, left[:10]))}{'…' if len(left) > 10 else ''}）。"
+                       "担当がもう戻っていて残っているなら、その枚だけを新しい制作役に頼む")
+            else:
+                nxt = ("手順4：python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、カードを読んで parts/NN.py・parts/NN.md を書き、"
+                       "scaffold.py <work> --merge で戻して、python <skill>/scripts/make_deck.py <work> で組んで検査する（`guide.py steps 4`）")
         return out, nxt
     add(_newer(pptx, build) and (not notes.exists() or _newer(pptx, notes)), "スライド", f"{pptx.name}" + ("" if _newer(pptx, build) else "（build.py より古い。組み直す）"))
     # 4. 描画の検査
