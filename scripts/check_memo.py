@@ -164,8 +164,9 @@ def data_rows(text: str, work: Path, body_no, kind: str = "memo") -> list:
     if data.section(text) is None:
         if data.files(work):
             return [("✘", "データ", "data_N.md があるのに3b節が無い（python <skill>/scripts/data.py merge <work>）")]
-        if kind == "outline":
-            return []
+        if kind == "outline":   # 発表も、探したかどうかは必ず残す（組が無ければ「見つからなかった：理由」でよい）
+            return [("✘", "データ", "data_1.md が無い。資料の表・図から比べられる数字の組を2組まで書く。無ければ「## 見つからなかった：理由」と"
+                     "「- 調べたこと：」。書いたら python <skill>/scripts/data.py merge <work>")]
         return [("・", "データ", "3b節が無い（講座は、設計の前に数字を探す担当が比べられる数字の組を探す。references/course.md 手順4⓪）")]
     ds = data.datasets(text)
     nf = data.memo_not_found(text)
@@ -183,7 +184,10 @@ def data_rows(text: str, work: Path, body_no, kind: str = "memo") -> list:
     missing = sorted(used - set(ds))
     if missing:
         res.append(("✘", "データ", f"図の案が指すデータが3b節に無い：{'・'.join(f'データ{n}' for n in missing)}"))
-    if not ds:
+    import story
+    if not ds and story.arc_of(text)[0] == "数字で崩す":   # 型を選んだ＝数字で崩すと決めた。組が無ければ型が成り立たない
+        res.append(("✘", "データ", "話の型が「数字で崩す」なのに、3b節に比べられる数字の組が無い（組を探し直すか、別の型にする）"))
+    elif not ds:
         res.append(("・", "データ", f"比べられる数字の組は見つからなかった（{'／'.join(nf)}）。しかし はデータ無しで組む" if nf else "3b節に組が無い"))
     elif not used and not re.search(r"データを使わない理由[：:]\s*\S", text):
         res.append(("△", "データ", "3b節にデータがあるのに、描く図が無い。強い組なら、図の案を「目的：種類：データN」（棒グラフ・折れ線・帯など）にして見せる。"

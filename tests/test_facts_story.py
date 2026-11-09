@@ -267,7 +267,14 @@ def test_presentation_data_from_the_source(tmp_path):
             + "## 構成\n\n| 番号 | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 役割 |\n|---|---|---|---|---|---|\n"
             "| 1 | 表紙 | — | — | — | 表紙 |\n" + rows + "\n")
     (w / "outline.md").write_text(text, encoding="utf-8")
-    assert check_memo.data_rows(text, w, [2, 3], "outline") == []        # 発表では任意
+    assert [m for m, _, _ in check_memo.data_rows(text, w, [2, 3], "outline")] == ["✘"]   # 発表も data_1.md は必須
+    (w / "data_1.md").write_text("## 見つからなかった：比べる表が無い\n- 調べたこと：Table 1〜3\n", encoding="utf-8")
+    data.merge(w)
+    nf = (w / "outline.md").read_text(encoding="utf-8")
+    rows = check_memo.data_rows(nf, w, [2, 3], "outline")
+    assert any(m == "✘" and "数字で崩す" in x for m, _, x in rows)      # 型が数字で崩すなのに組が無い
+    other = nf.replace("話の型：数字で崩す", "話の型：原因を探る").replace("比べる：棒グラフ：データ1", "比べる：棒グラフ：x")
+    assert [m for m, _, _ in check_memo.data_rows(other, w, [2, 3], "outline")] == ["・"]
     (w / "data_1.md").write_text(
         "## データ：条件ごとの正答率\n- 驚き：手がかりを足すと下がる\n- 単位：％／分母：問題のうち／時点：論文の実験\n- 出典：Table 2\n- 確認：○\n"
         "- 別の読み方：1つのデータセットだけ\n| 条件 | 値 |\n|---|---|\n| なし | 62 |\n| あり | 48 |\n", encoding="utf-8")

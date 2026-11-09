@@ -165,7 +165,8 @@ def main(argv=None):
     if argv[0] == "merge":
         n = merge(work)
         nf = sum(len(not_found(f.read_text(encoding="utf-8"))) for f in files(work))
-        print(f"設計メモの3b節に {n} 組を入れた（データ1〜{n}）。強い組だけ、図の案から「目的：種類：データN」で指す" if n else
+        where = "設計メモ" if (work / "memo.md").exists() else "構成案"
+        print(f"{where}の3b節に {n} 組を入れた（データ1〜{n}）。強い組だけ、図の案から「目的：種類：データN」で指す" if n else
               "比べられる数字の組は見つからなかった（理由を3b節に書いた）。筋の しかし は、データ無しの意外・疑い・限りで組む" if nf else
               "data_N.md に組が無い（数字を探す担当の結果を待つ）")
         return 0
