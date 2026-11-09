@@ -178,6 +178,8 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
                 if dn in dsets:
                     L += [f"- 図に描くデータ（設計メモ 3b節のデータ{dn}。値・単位・分母・時点はこのとおりに描き、図の下に出典と時点の注記を入れる）：",
                           "", datamod.render(dn, dsets[dn]), ""]
+                    if dsets[dn]["fields"].get("別の読み方"):   # つまみ食いを防ぐ：数字の限りを、図の注記か原稿で一言
+                        L += [f"- この数字の限り：{dsets[dn]['fields']['別の読み方']}（図の下の注記か原稿で一言いう。この限りを越えて言わない）", ""]
                     if dsets[dn]["fields"].get("驚き"):   # 図の下書きの「気づく」と同じ差を、本文・原稿の「図の読み方」でも言う
                         L += [f"- この図で目立たせる差：{dsets[dn]['fields']['驚き']}（図ではその棒・点だけ強調の色。原稿の②図の読み方で、まずそこを指す）", ""]
         if kind == "memo" and facts:

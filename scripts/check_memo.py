@@ -166,6 +166,7 @@ def data_rows(text: str, work: Path, body_no) -> list:
             return [("✘", "データ", "data_N.md があるのに3b節が無い（python <skill>/scripts/data.py merge <work>）")]
         return [("・", "データ", "3b節が無い（講座は、設計の前に数字を探す担当が比べられる数字の組を探す。references/course.md 手順4⓪）")]
     ds = data.datasets(text)
+    nf = data.memo_not_found(text)
     res = []
     bad = [f"データ{n}：{'・'.join(p)}" for n, d in ds.items() if (p := data.problems(d))]
     if bad:
@@ -180,8 +181,11 @@ def data_rows(text: str, work: Path, body_no) -> list:
     missing = sorted(used - set(ds))
     if missing:
         res.append(("✘", "データ", f"図の案が指すデータが3b節に無い：{'・'.join(f'データ{n}' for n in missing)}"))
-    if ds and not used:
-        res.append(("△", "データ", "3b節にデータがあるのに、描く図が無い。思い込みを崩す数字の比べは、図の案を「目的：種類：データN」（棒グラフ・折れ線・帯など）にして見せる"))
+    if not ds:
+        res.append(("・", "データ", f"比べられる数字の組は見つからなかった（{'／'.join(nf)}）。しかし はデータ無しで組む" if nf else "3b節に組が無い"))
+    elif not used and not re.search(r"データを使わない理由[：:]\s*\S", text):
+        res.append(("△", "データ", "3b節にデータがあるのに、描く図が無い。強い組なら、図の案を「目的：種類：データN」（棒グラフ・折れ線・帯など）にして見せる。"
+                    "弱い組（別の読み方で驚きが消える）なら使わずに、1節に「データを使わない理由：…」と書く"))
     elif not bad and not missing:
         res.append(("✔", "データ", f"{len(ds)}組。図で使うもの：{'・'.join(f'データ{n}' for n in sorted(used)) or 'なし'}"))
     return res

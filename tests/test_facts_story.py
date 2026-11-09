@@ -240,6 +240,20 @@ def test_story_arc_both_positions():
     assert _arc_mark(_arc_outline(late, "ない型", "後"))[0] == "△"
 
 
+def test_data_arc_needs_a_number_figure_on_the_surprise():
+    """話の型「数字で崩す」：意外の拍の枚の図は、数字の比べ（比べる・推移・内訳のグラフ）。"""
+    links = ["—", "そして（詳しく）", "しかし（意外）", "だから（問い）", "だから（帰結）", "しかし（限り）"]
+
+    def outline(fig3):
+        rows = "\n".join(f"| {n} | 見出し{n} | {l} | 青帯{n}の一文 | {fig3 if n == 4 else '—'} | 本文 |" for n, l in enumerate(links, start=2))
+        return (_arc_outline(links, "数字で崩す").split("## 構成")[0]
+                + "## 構成\n\n| 番号 | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 役割 |\n|---|---|---|---|---|---|\n"
+                "| 1 | 表紙 | — | — | — | 表紙 |\n" + rows + "\n")
+    assert _arc_mark(outline("比べる：棒グラフ：自己評価と中間結果（論文 Table 2）"))[0] == "✔"
+    mark, msg = _arc_mark(outline("仕組み：模式図：審査の流れ"))
+    assert mark == "△" and "数字の比べ" in msg
+
+
 def test_answer_as_method_and_few_facts_are_flagged(tmp_path):
     """答えが見方・方法だけ、事実の行が本文より少ない、図の案が架空の名前、を △ で拾う（具体の無い講座を防ぐ）。"""
     import check_memo
@@ -259,6 +273,7 @@ def test_data_sets_merge_check_and_cards(tmp_path):
     (w / "data_1.md").write_text(
         "## データ：自己評価と中間結果の差\n- 驚き：自己評価は8割が S・A、中間結果は半分が B・C\n- 問いの候補：なぜずれるのか？\n"
         "- 単位：％／分母：判定のうち／時点：2019年4月\n- 出典：「審査結果」厚生労働省 2019 p.5\n- 確認：○\n"
+        "- 別の読み方：資料が挙げた2項目で、全項目の平均ではない\n"
         "| 項目 | 自己評価 | 中間 |\n|---|---|---|\n| 2.1.2 | 79.5 | 52.1 |\n| 1.5.2 | 82 | 45 |\n", encoding="utf-8")
     (w / "data_2.md").write_text("## データ：悪い例\n- 単位：件\n| 区分 | 値 |\n|---|---|\n| A | たくさん |\n", encoding="utf-8")
     assert data.main(["check", str(w)]) == 1
@@ -272,3 +287,26 @@ def test_data_sets_merge_check_and_cards(tmp_path):
     data.merge(w)
     memo = (w / "memo.md").read_text(encoding="utf-8")
     assert [m for m, item, _ in check_memo.data_rows(memo, w, [2, 3])] == ["△"]   # データがあるのに描く図が無い
+    memo = memo.replace("## 2.", "データを使わない理由：差が2項目だけで弱い\n\n## 2.", 1)
+    assert [m for m, item, _ in check_memo.data_rows(memo, w, [2, 3])] == ["✔"]   # 弱い組を使わないと書けば △ にしない
+
+
+def test_data_not_found_is_a_result(tmp_path):
+    """比べられる数字が無い回：「見つからなかった：理由」も正規の結果。設計の担当へ進み、△ を出さない。"""
+    import data
+    import check_memo
+    w = _work(tmp_path)
+    (w / "data_1.md").write_text("## 見つからなかった：定義の導入で、統計の対象でない\n", encoding="utf-8")
+    assert data.main(["check", str(w)]) == 1                       # 調べたことが無い
+    (w / "data_1.md").write_text("## 見つからなかった：定義の導入で、統計の対象でない\n- 調べたこと：問い2つ・検索6回\n", encoding="utf-8")
+    assert data.main(["check", str(w)]) == 0
+    assert data.merge(w) == 0
+    memo = (w / "memo.md").read_text(encoding="utf-8")
+    rows = check_memo.data_rows(memo, w, [2, 3])
+    assert [m for m, _, _ in rows] == ["・"] and "統計の対象でない" in rows[0][2]
+
+
+def test_data_without_other_reading_is_flagged():
+    import data
+    d = data.parse("## データ：x\n- 驚き：a\n- 単位：件\n- 時点：2020\n- 出典：b\n- 確認：○\n| 区分 | 値 |\n|---|---|\n| a | 1 |\n| b | 2 |\n")[0]
+    assert data.problems(d) == ["「別の読み方」が無い"]

@@ -12,12 +12,18 @@
     - 単位：<％・件・床…>／分母：<何に対する割合か（割合でなければ —）>／時点：<2026年3月31日現在 など>
     - 出典：<「題名」発行者 年 URL 頁>
     - 確認：○（出典で確かめた）／△（出典どうしで違う。値の欄に両方）
+    - 別の読み方：<この数字が驚きに見えない読み方（極端な条件だけ・分母が違う・資料が選んだ項目だけ・古い時点 など）>
     | 区分 | 値 |
     |---|---|
     | <区分1> | <数> |
     | <区分2> | <数> |
 
 列は増やしてよい（| 区分 | 2017 | 2019 | のように、時点ごとの列）。値は数（％や単位は「単位」の行に書く）。
+比べられる組が無いとき（理論の導入・手順の習得・定義から応用へ、のような回）は、無理に出さずに次を書く。これも正規の結果：
+
+    ## 見つからなかった：<理由（統計の対象でない・比べられる区分が無い など）>
+    - 調べたこと：<立てた問いの候補と、検索の回数>
+
 図の案は、このデータを「目的：種類：データN」で指す（例「比べる：棒グラフ：データ2」）。カードが、その枚の書き手にデータの表を写す。
 """
 from __future__ import annotations
@@ -30,8 +36,10 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 SECTION = "## 3b. データ"
-FIELDS = ("驚き", "問いの候補", "単位", "分母", "時点", "出典", "確認")
-REQUIRED = ("驚き", "単位", "時点", "出典", "確認")
+FIELDS = ("驚き", "問いの候補", "単位", "分母", "時点", "出典", "確認", "別の読み方")
+REQUIRED = ("驚き", "単位", "時点", "出典", "確認", "別の読み方")
+NOT_FOUND = re.compile(r"^##+\s*見つからなかった\s*[：:]\s*(.*?)\s*$(.*?)(?=^##+\s|\Z)", re.M | re.S)
+NF_LINE = "- 見つからなかった："
 REF = re.compile(r"データ\s*(\d+)")
 NUM = re.compile(r"^[−\-+]?[\d,]+(\.\d+)?$|^約?[\d,.]+[〜~][\d,.]+$")
 
@@ -65,6 +73,24 @@ def problems(d: dict) -> list[str]:
     if bad:
         p.append(f"値が数でない：{'・'.join(bad[:3])}（単位は「単位」の行に。値の欄は数だけ）")
     return p
+
+
+def not_found(text: str) -> list[tuple[str, str]]:
+    """data_N.md の「## 見つからなかった：理由」：[(理由, 調べたこと)]。"""
+    out = []
+    for m in NOT_FOUND.finditer(text):
+        tried = re.search(r"^\s*-\s*調べたこと\s*[：:]\s*(.*)$", m.group(2), re.M)
+        out.append((m.group(1).strip(), tried.group(1).strip() if tried else ""))
+    return out
+
+
+def not_found_problems(reason: str, tried: str) -> list[str]:
+    return ([] if reason else ["理由が無い"]) + ([] if tried else ["「調べたこと」（問いの候補と検索の回数）が無い"])
+
+
+def memo_not_found(text: str) -> list[str]:
+    """設計メモの3b節に merge が書いた「見つからなかった」の行。"""
+    return [l[len(NF_LINE):].strip() for l in (section(text) or "").splitlines() if l.startswith(NF_LINE)]
 
 
 def files(work: Path) -> list[Path]:
@@ -107,9 +133,13 @@ def merge(work: Path) -> int:
     memo = work / "memo.md"
     if not memo.exists():
         raise SystemExit(f"✘ {memo} が無い（先に設計メモの骨を書く）")
-    sets = [d for f in files(work) for d in parse(f.read_text(encoding="utf-8"))]
+    texts = [f.read_text(encoding="utf-8") for f in files(work)]
+    sets = [d for t in texts for d in parse(t)]
+    nfs = [x for t in texts for x in not_found(t)]
     body = (SECTION + "（data.py merge が data_N.md から入れる。図の案から「データN」で指す。値・単位・注記はこのとおりに描く）\n\n"
-            + "\n\n".join(render(i, d) for i, d in enumerate(sets, 1)) + "\n\n")
+            + "\n\n".join(render(i, d) for i, d in enumerate(sets, 1))
+            + ("\n\n" if sets and nfs else "")
+            + "\n".join(f"{NF_LINE}{r}（調べたこと：{t}）" for r, t in nfs) + "\n\n")
     raw = memo.read_text(encoding="utf-8")
     old = section(raw)
     if old:
@@ -133,11 +163,17 @@ def main(argv=None):
     work = Path(argv[1])
     if argv[0] == "merge":
         n = merge(work)
-        print(f"設計メモの3b節に {n} 組を入れた（データ1〜{n}）。図の案から「目的：種類：データN」で指す" if n
-              else "data_N.md に組が無い（数字を探す担当の結果を待つ）")
+        nf = sum(len(not_found(f.read_text(encoding="utf-8"))) for f in files(work))
+        print(f"設計メモの3b節に {n} 組を入れた（データ1〜{n}）。強い組だけ、図の案から「目的：種類：データN」で指す" if n else
+              "比べられる数字の組は見つからなかった（理由を3b節に書いた）。筋の しかし は、データ無しの意外・疑い・限りで組む" if nf else
+              "data_N.md に組が無い（数字を探す担当の結果を待つ）")
         return 0
     bad = 0
     for f in files(work):
+        for r, t in not_found(f.read_text(encoding="utf-8")):
+            p = not_found_problems(r, t)
+            bad += bool(p)
+            print(("✘ " if p else "・ ") + f"{f.name}：見つからなかった（{r or '理由なし'}）" + ("：" + "・".join(p) if p else ""))
         for d in parse(f.read_text(encoding="utf-8")):
             p = problems(d)
             bad += bool(p)
