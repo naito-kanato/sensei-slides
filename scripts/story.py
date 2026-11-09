@@ -170,7 +170,7 @@ def arc_check(text: str, kind: str, body_no: list):
         plan = figplan.plan_from_text(text, kind) or {}
         at = next((n for n, v in got.items() if v[2] == "意外"), None)
         cell = plan.get(at, "") if at else ""
-        if at and kind == "memo" and not data.refs(cell):
+        if at and (kind == "memo" or data.section(text) is not None) and not data.refs(cell):
             notes.append(f"数字で崩す型の意外の拍（{at}枚目）の図の案が、3b節のデータを指していない（「比べる：棒グラフ：データN」）")
         elif at and figplan.parse_fig(cell)[0] not in ("比べる", "推移", "内訳"):
             notes.append(f"数字で崩す型の意外の拍（{at}枚目）の図が、数字の比べ（比べる・推移・内訳のグラフ）になっていない")

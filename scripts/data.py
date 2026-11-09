@@ -1,9 +1,10 @@
 """講座の「数字を探す」段のデータ：数字を探す担当が data_N.md に書いた、比べられる数字の組を扱う。
 
-    python <skill>/scripts/data.py merge <work>    # data_*.md を設計メモの「3b. データ」節に入れる（データ1・データ2…と番号を振る）
+    python <skill>/scripts/data.py merge <work>    # data_*.md を設計メモ（発表は構成案）の「3b. データ」節に入れる（データ1・データ2…と番号を振る）
     python <skill>/scripts/data.py check <work>    # data_*.md（か設計メモの3b節）の書き方を確かめる
 
 数字は「話の裏付け」ではなく、筋の「しかし」（思い込みが崩れる所）を作る材料として扱う。だから設計の前に探す。
+講座は数字を探す担当2人が Web から、発表は設計の担当が資料の表・図から（出典は「Table 2」「Fig. 3」「p.12」、確認は資料で○）。
 1組の書き方（data_N.md に、組ごとに1つ。3組まで）：
 
     ## データ：<題>
@@ -98,7 +99,7 @@ def files(work: Path) -> list[Path]:
 
 
 def section(text: str) -> str | None:
-    m = re.search(r"^" + re.escape(SECTION) + r".*?(?=^##\s+\d|\Z)", text, re.M | re.S)
+    m = re.search(r"^" + re.escape(SECTION) + r"[^\n]*\n.*?(?=^##\s|\Z)", text, re.M | re.S)   # 次の「## 」見出しまで（### データN は中身）
     return m.group(0) if m else None
 
 
@@ -130,9 +131,9 @@ def render(n: int, d: dict) -> str:
 def merge(work: Path) -> int:
     """data_*.md の組を、設計メモの3b節に番号つきで入れる（前の3b節は置き換える）。入れた組の数。"""
     work = Path(work)
-    memo = work / "memo.md"
+    memo = work / "memo.md" if (work / "memo.md").exists() or not (work / "outline.md").exists() else work / "outline.md"
     if not memo.exists():
-        raise SystemExit(f"✘ {memo} が無い（先に設計メモの骨を書く）")
+        raise SystemExit(f"✘ {memo} が無い（先に設計メモ・構成案の骨を書く）")
     texts = [f.read_text(encoding="utf-8") for f in files(work)]
     sets = [d for t in texts for d in parse(t)]
     nfs = [x for t in texts for x in not_found(t)]
@@ -145,7 +146,7 @@ def merge(work: Path) -> int:
     if old:
         raw = raw.replace(old, body)
     else:
-        m = re.search(r"^##\s*4[.．]", raw, re.M)
+        m = re.search(r"^##\s*4[.．]", raw, re.M) or re.search(r"^##\s*構成\s*$", raw, re.M)   # 設計メモは4節の前、構成案は構成の表の前
         raw = raw[:m.start()] + body + raw[m.start():] if m else raw.rstrip() + "\n\n" + body
     memo.write_text(raw, encoding="utf-8")
     return len(sets)

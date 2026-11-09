@@ -156,14 +156,16 @@ def thin_points(rows, what="設計メモ2節"):
 MEMO_REVIEW = "memo_review.md"
 
 
-def data_rows(text: str, work: Path, body_no) -> list:
-    """3b節「データ」：組の書き方、図の案が指すデータNがあるか、データを描く図があるか。"""
+def data_rows(text: str, work: Path, body_no, kind: str = "memo") -> list:
+    """3b節「データ」：組の書き方、図の案が指すデータNがあるか、データを描く図があるか。kind="outline" は発表の構成案（3b節は任意）。"""
     import data
     import figplan
     import structures
     if data.section(text) is None:
         if data.files(work):
             return [("✘", "データ", "data_N.md があるのに3b節が無い（python <skill>/scripts/data.py merge <work>）")]
+        if kind == "outline":
+            return []
         return [("・", "データ", "3b節が無い（講座は、設計の前に数字を探す担当が比べられる数字の組を探す。references/course.md 手順4⓪）")]
     ds = data.datasets(text)
     nf = data.memo_not_found(text)
@@ -171,8 +173,8 @@ def data_rows(text: str, work: Path, body_no) -> list:
     bad = [f"データ{n}：{'・'.join(p)}" for n, d in ds.items() if (p := data.problems(d))]
     if bad:
         res.append(("✘", "データ", "；".join(bad[:4])))
-    cells = dict(figplan.plan_from_text(text, "memo") or {})
-    rows = structures._plan_table(text, "memo") or []
+    cells = dict(figplan.plan_from_text(text, kind) or {})
+    rows = structures._plan_table(text, "memo") or [] if kind == "memo" else []
     i_fig = next((k for k, h in enumerate(rows[0]) if "図で見せる" in h), None) if rows else None
     for r in rows[1:] if i_fig is not None else []:
         if r and r[0].strip().isdigit() and len(r) > i_fig:

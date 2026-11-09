@@ -203,7 +203,13 @@ def flows(text: str, folder=None):
     return structures.check_plan(text, "outline", body_no, "構成案", folder) + roles + structures.check_expected_qa(text, "outline") + [(mark or "△", "流れ図の数", msg),
             ("✘" if nf else "✔", "図の無いスライド",
              f"「図で見せるもの」が「なし」・無い本文のスライド：{'・'.join(map(str, nf))}。{figplan.NO_FIGURE_HINT}" if nf
-             else "本文のスライドすべてに図で見せるものがある")]
+             else "本文のスライドすべてに図で見せるものがある")] + _data(text, folder, body_no)
+
+
+def _data(text, folder, body_no):
+    """資料の数字の組（data_N.md → 構成案の3b節）。発表では任意：無ければ何も出さない。"""
+    import check_memo
+    return check_memo.data_rows(text, Path(folder), body_no, "outline") if folder else []
 
 
 def count(text: str, body):

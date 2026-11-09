@@ -254,6 +254,30 @@ def test_data_arc_needs_a_number_figure_on_the_surprise():
     assert mark == "△" and "数字の比べ" in msg
 
 
+def test_presentation_data_from_the_source(tmp_path):
+    """発表：設計の担当が資料の表・図から書いた data_1.md を、構成案の3b節（構成の表の前）に入れる。3b節が無くても何も言わない。"""
+    import data
+    import check_memo
+    w = tmp_path / "_work" / "論文"
+    w.mkdir(parents=True)
+    links = ["—", "そして（詳しく）", "しかし（意外）", "だから（問い）", "だから（帰結）", "しかし（限り）"]
+    rows = "\n".join(f"| {n} | 見出し{n} | {l} | 青帯{n}の一文 | {'比べる：棒グラフ：データ1' if n == 4 else '—'} | 本文 |"
+                     for n, l in enumerate(links, start=2))
+    text = (_arc_outline(links, "数字で崩す").split("## 構成")[0]
+            + "## 構成\n\n| 番号 | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 役割 |\n|---|---|---|---|---|---|\n"
+            "| 1 | 表紙 | — | — | — | 表紙 |\n" + rows + "\n")
+    (w / "outline.md").write_text(text, encoding="utf-8")
+    assert check_memo.data_rows(text, w, [2, 3], "outline") == []        # 発表では任意
+    (w / "data_1.md").write_text(
+        "## データ：条件ごとの正答率\n- 驚き：手がかりを足すと下がる\n- 単位：％／分母：問題のうち／時点：論文の実験\n- 出典：Table 2\n- 確認：○\n"
+        "- 別の読み方：1つのデータセットだけ\n| 条件 | 値 |\n|---|---|\n| なし | 62 |\n| あり | 48 |\n", encoding="utf-8")
+    assert data.merge(w) == 1
+    out = (w / "outline.md").read_text(encoding="utf-8")
+    assert out.index("## 3b. データ") < out.index("## 構成") and "| なし | 62 |" in out
+    assert [m for m, _, _ in check_memo.data_rows(out, w, [2, 3], "outline")] == ["✔"]
+    assert _arc_mark(out)[0] == "✔"
+
+
 def test_answer_as_method_and_few_facts_are_flagged(tmp_path):
     """答えが見方・方法だけ、事実の行が本文より少ない、図の案が架空の名前、を △ で拾う（具体の無い講座を防ぐ）。"""
     import check_memo

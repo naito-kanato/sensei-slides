@@ -171,7 +171,7 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
             L += ["", "## 資料", "- 設計メモ 3節「事実と出典」の表から、この枚の要点に当たる行だけを使う（表に無い事実は足さない）"]
         else:
             L += ["", "## 資料", "- 構成案の要点に当たる資料の所だけを読む"]
-        if kind == "memo":
+        if kind in ("memo", "outline"):
             import data as datamod
             dsets = datamod.datasets(text)
             for dn in datamod.refs(fig_cell):
