@@ -178,6 +178,8 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
                 if dn in dsets:
                     L += [f"- 図に描くデータ（設計メモ 3b節のデータ{dn}。値・単位・分母・時点はこのとおりに描き、図の下に出典と時点の注記を入れる）：",
                           "", datamod.render(dn, dsets[dn]), ""]
+                    if dsets[dn]["fields"].get("驚き"):   # 図の下書きの「気づく」と同じ差を、本文・原稿の「図の読み方」でも言う
+                        L += [f"- この図で目立たせる差：{dsets[dn]['fields']['驚き']}（図ではその棒・点だけ強調の色。原稿の②図の読み方で、まずそこを指す）", ""]
         if kind == "memo" and facts:
             used = sorted({int(x) for x in re.findall(r"事実\s*(\d+)", col(r, "本文の要点"))})
             rowsf = [f"  - 事実{i}：" + "｜".join(facts[i - 1]) for i in used if 0 < i <= len(facts)]

@@ -473,6 +473,11 @@ def main(argv=None):
             rows = [l for l in buf.getvalue().splitlines() if l[:1] in ("✘", "△")]
             bad += code
             print(f"[{f.stem}] " + ("✔" if not rows else "\n  " + "\n  ".join(rows)))
+        import figdraft   # 図の下書き（模式図は実物・気づく・配置・ラベル、グラフは気づく）
+        fig_rows = [r for r in figdraft.check(work) if r[0] in ("✘", "△")]
+        if fig_rows:
+            print("[図]\n  " + "\n  ".join(f"{m} {msg}" for m, _, msg in fig_rows))
+        bad += any(m == "✘" for m, _, _ in fig_rows)
         print(f"\n✘ のある枚：{bad}。✘ と「1行20字」の △ を直してから渡す（字数の値は参考）")
         return 1 if bad else 0
     if "--merge" in argv:

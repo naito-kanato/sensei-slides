@@ -17,6 +17,7 @@
 | `scripts/check_outline.py`・`check_memo.py` | 構成案・講座の設計メモの確認（話の筋・前の枚から・要点の出どころ・推論距離の手当て・確認問題のひもづけまで） |
 | `scripts/scaffold.py`・`cards.py`・`excerpt.py` | 骨組みと枚ごとのカード、資料の抜き出し、書き手の parts を戻す `--merge` |
 | `scripts/figkit.py`・`figlib.py`・`figgrid.py`・`catalog.py` | 図の共通設定と小道具・よく使う図の型・図の一覧画像・これまでの図のカタログ |
+| `scripts/figdraft.py` | 自分で描く図の下書きの雛形（模式図は実物・気づく・配置・ラベル、グラフは気づく）と、`--check` で下書きの抜け・箱と矢印だけの模式図 |
 | `scripts/zemi.py` | build.py で使う `Deck`・`Slide`・`Eq`（部品の一覧はファイル冒頭） |
 | `scripts/make_deck.py` | 図→組む→描く→検査を1回で（render_check.ps1・render_check_lo.py・check_layout.py・grid.py・check_notes.py をまとめて呼ぶ） |
 | `scripts/notes_html.py`・`set_notes.py` | 原稿HTML・notes.md を発表者ノートに入れる |
