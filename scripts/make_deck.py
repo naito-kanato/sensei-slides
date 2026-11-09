@@ -188,6 +188,10 @@ def main(argv=None):
     m = re.findall(r"saved (.+?\.pptx) \((\d+) slides\)", text)
     lines = short(text)
     if code or not m:
+        if re.search(r"PermissionError.*\.pptx|Permission denied.*\.pptx", text):   # PowerPoint などで開いたまま（OneDrive の同期中のことも）
+            print("✘ pptx に書けない：PowerPoint などでこのスライドを開いたまま（か、OneDrive が同期中）。"
+                  "ユーザーにスライドを閉じてもらってから、もう一度 make_deck.py（この1回は回数に数えない）。build.py は直さない")
+            return 1
         print("✘ build.py が失敗\n  " + "\n  ".join(lines or text.strip().splitlines()[-8:]))
         return 1
     pptx = Path(m[-1][0])
