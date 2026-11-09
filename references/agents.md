@@ -12,7 +12,7 @@
 |---|---|---|---|---|---|
 | 【質問】 | 選択肢をボタンで示して、ユーザーに1回だけ聞く（**1回に3問・各3択まで**。「その他」の自由記入はどの道具でも付く） | request_user_input（Plan モードだけ。ふつうのモードは request_user_input_async：答えは次のメッセージで届く） | AskUserQuestion | ask_question（1問ずつなら、続けて聞く） | ask_user |
 | 【別のエージェント】 | 構成案・設計メモ・完成品のレビューと、スライドの制作（手順3〜6）を、別のエージェントにさせる。**空の会話から始め**、渡すのはファイルの場所と頼むことだけ | spawn_agent（**`fork_turns: "none"`**。省くと親の会話をまるごと写して始まり、その分ずっと重くなる。モデルを指定できる。終わりは wait_agent で待つ。**`timeout_ms` は長く（600000 など）し、時間切れなら待ち直す**。短い待ちを数回で切り上げて応答を終えない） | Agent ツール（新しい会話で始まる。モデルを指定。レビューはバックグラウンドで） | invoke_subagent（`Model` でモデルを指定。既定は親と同じ） | task（`mode` を background に。結果は read_agent で読む） |
-| 【続けて頼む】 | 先読みさせたレビュー担当に、続けてレビューを頼む | followup_task（起動したときの名前に送る） | SendMessage（起動したときの ID に送る） | send_message | write_agent（起動したときの ID に送る） |
+| 【続けて頼む】 | 先読みさせたレビュー担当に続けてレビューを、講座の設計の担当に続けて直しを頼む | followup_task（起動したときの名前に送る） | SendMessage（起動したときの ID に送る） | send_message | write_agent（起動したときの ID に送る） |
 | 【画像を見る】 | 描画したスライドの PNG・資料のページ画像を目で確かめる | view_image | Read | read_file（PNG も読める） | view（PNG も読める） |
 | 【ファイルを書き換える】 | 改行や `\` を含む文字列を、ファイルの中で正確に置き換える | apply_patch | Edit ツール | edit_file（新しく作るなら write_file） | apply_patch |
 | （シェル） | コマンドを実行する | exec_command | Bash / PowerShell | run_command | powershell |

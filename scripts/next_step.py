@@ -29,6 +29,17 @@ def _newer(a: Path, b: Path) -> bool:
     return a.exists() and b.exists() and a.stat().st_mtime >= b.stat().st_mtime - 1
 
 
+def fixed(work: Path) -> bool:
+    """レビューのあとの直しが済んだか：直しの担当を起動した記録があるか、もう骨組み（cards/・build.py）ができている（前の版で作った作業）。"""
+    try:
+        import budget
+        if any(r.get("role") == "直しの担当" for r in budget.load(work)):
+            return True
+    except Exception:
+        pass
+    return (work / "cards").is_dir() or (work / "build.py").exists()
+
+
 def _fails(res):
     return [f"{item}：{msg[:60]}" for mark, item, msg in res if mark == "✘"]
 
@@ -115,6 +126,9 @@ def steps_for(work: Path):
             nxt = f"手順2：check_outline の ✘ を直す（python {SKILL}/scripts/check_outline.py {plan.as_posix()}）"
         if not rv.exists() and not nxt:
             nxt = "手順2：構成案を【別のエージェント】にレビューさせ、結果を outline_review.md に残す（references/outline-review.md の B）。そのあとユーザーに構成案を見せて OK をもらう"
+        if rv.exists() and not nxt and not fixed(work):
+            add(False, "レビューのあとの直し", "まだ")
+            nxt = "手順2：直し。直しの担当を新しく起動（`brief.py 直しの担当 <work>`。outline_review.md の採否を決めて直し、scaffold.py まで）。そのあと構成案をユーザーに見せる"
     elif kind == "memo":
         import check_memo
         bad = _fails(check_memo.check(plan))
@@ -135,6 +149,9 @@ def steps_for(work: Path):
                    f"references/course.md 手順4①の終わり：python {SKILL}/scripts/facts.py split {work.as_posix()} --n 2 → 裏取りの担当を2人、同時に起動")
         if not rv.exists() and not nxt:
             nxt = "references/course.md 手順4：設計メモを【別のエージェント】にレビューさせ、結果を memo_review.md に残し、9節に手当てを書く"
+        if rv.exists() and not nxt and not fixed(work):
+            add(False, "レビューのあとの直し", "まだ")
+            nxt = "references/course.md 手順4⑤：直し。設計の担当に【続けて頼む】で `brief.py 直しの担当 <work>` の出力を送る（設計メモを覚えているので読み直しが少ない。続けて頼めない道具・担当が残っていないときは、新しく起動する）"
     else:
         add(True, "答えの下書き（answers.md）")
     # 2. 図
