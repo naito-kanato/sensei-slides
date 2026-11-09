@@ -1117,6 +1117,8 @@ def main(path, pptx_path=None, template=None):
                 msgs.append(("ERROR", f"{what}(下端 {r[3] / PT:.2f}in > {limit / PT:.2f}in): {label(s)}"))
             if (r[0] < MARGIN or r[2] > W - MARGIN) and id(s) not in edge:   # 本文の場所からはみ出す ERROR を出したものは重ねて言わない
                 msgs.append(("WARN", f"左右の余白が狭い: {label(s)}"))
+            if re.search(r"〔\s*(事実|データ)\s*\d+", s.get("text") or ""):   # 設計メモの出どころの印がスライドに漏れた
+                msgs.append(("ERROR", f"出どころの印（〔事実N〕〔データN〕）がスライドに出ている: {label(s)} → 消す（出典はスライドの注記に「（出典名 年）」の形で）"))
             if s.get("text") and s["lines"] > s["paras"]:
                 msgs.append(("WARN", f"自動で折り返している（1文字だけ次行に落ちる等を画像で確認）: {label(s)}"))
             content.append((s, r))

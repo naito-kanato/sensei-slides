@@ -231,6 +231,13 @@ def main(argv=None):
     if any((p / f).exists() for f in ("outline.md", "memo.md", "answers.md", "build.py")) or p.parent.name == "_work":
         steps, nxt = steps_for(p)
         print(f"作業フォルダ：{p.name}")
+        try:
+            import budget
+            solo = budget.solo_problem(p.resolve())
+        except Exception:
+            solo = None
+        if solo:
+            print(solo)
         for ok, step, msg in steps:
             print(f"  {'✔' if ok else '・'} {step}{'：' + msg if msg else ''}")
         u = usage_line(p.resolve())

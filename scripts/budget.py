@@ -154,6 +154,31 @@ def record(work: Path, role: str, part: str = "") -> bool:
     return True
 
 
+SOLO_SINCE = 1794150000.0   # 2026-11-08 ごろ（brief.py が担当の起動を記録し始めた版）。これより前に始めた作業フォルダは見ない
+
+
+def solo_problem(work: Path, need: str | None = None) -> str | None:
+    """担当を起動せずに（brief.py を通らずに）メインが担当の仕事をしていたら、止める理由の文。
+    見るのは、作業ディレクトリ直下の _work の中の作業フォルダで、回数の上限が効いているときだけ（見本・前の版の作業は見ない）。
+    need：この段で要る担当（仕上げ役など）。別のエージェントが無い道具では、メインが brief.py でその担当の依頼文を受け取って自分でする（記録は残る）。"""
+    work = Path(work)
+    if work.parent.name != "_work" or scale(work) is None or "examples" in work.parts:
+        return None
+    files = [f.stat().st_mtime for f in work.rglob("*") if f.is_file()]
+    if not files or min(files) < SOLO_SINCE:   # brief.py が記録を残す前（0.4.1 より前）に始めた作業は見ない
+        return None
+    if not any((work / f).exists() for f in ("memo.md", "outline.md")):
+        return None
+    roles = {r.get("role") for r in load(work) if r.get("role")}
+    if not roles:
+        return ("✘ 担当を1人も起動していない（brief.py の記録が無い）：メインが担当の仕事を自分でしている。"
+                "SKILL.md「役割を分ける」：メインは監視塔で、ファイルを書かない。ここから先は next_step.py が出す担当を【別のエージェント】で起動する"
+                "（依頼文は `brief.py <担当> <work>`）。別のエージェントが無い道具なら、メインが brief.py でその担当の依頼文を受け取ってから、その依頼文のとおりにする")
+    if need and not roles & set(need.split("|")):
+        return (f"✘ {need.replace('|', 'か')}の依頼文を受け取っていない（brief.py の記録が無い）。`brief.py {need.split('|')[0]} <work>` で担当を起動してから")
+    return None
+
+
 def check_role(work: Path, role: str, part: str = "", over: bool = False) -> str | None:
     """上限なら止める理由の文。止めないなら None（そのとき1回分を記録する）。"""
     base = ROLE_CAPS.get(role)
@@ -163,7 +188,7 @@ def check_role(work: Path, role: str, part: str = "", over: bool = False) -> str
         last = next((r for r in reversed(load(work)) if r.get("role") == role and r.get("part", "") == part), None)
         if n >= c and not same_launch(work, last):
             return (f"✘ 回数の上限：担当「{role}」の起動は、この回 {c} 回まで（もう {n} 回）。ここで止める。"
-                    "メインはユーザーに【質問】で聞く（続ける・ここで止める）。続けるなら、ユーザーの答えを添えて brief.py に --over を付ける")
+                    "メインはユーザーに【質問】で聞く（続ける・ここで止める）（依頼に「質問はせず」とあっても、上限は越えない。止まるのは正しい動き。残った所を報告して終える。越えるのは、ユーザーが上限を越えてよいと言ったときだけ）。続けるなら、ユーザーの答えを添えて brief.py に --over を付ける")
     record(work, role, part)
     return None
 
@@ -275,7 +300,7 @@ def role_over(work: Path, rows: list | None = None) -> list:
 def role_message(over: list) -> str:
     role, tier, name, conv, u, lim = over[0]
     return (f"✘ 担当ごとのトークンの上限：{role}（{name}）が約{u / 10_000:.0f}万（{tier}の段の上限 {lim / 10_000:.0f}万。キャッシュの読みは1/10）。"
-            "担当なら、ここで作業を止めて、メインに「トークンの上限で止めた」と返す。メインはユーザーに【質問】で聞く（続ける・ここで止める）。"
+            "担当なら、ここで作業を止めて、メインに「トークンの上限で止めた」と返す。メインはユーザーに【質問】で聞く（続ける・ここで止める）（依頼に「質問はせず」とあっても、上限は越えない。止まるのは正しい動き。残った所を報告して終える。越えるのは、ユーザーが上限を越えてよいと言ったときだけ）。"
             f"続けるなら `python <skill>/scripts/budget.py <work> --allow-role {conv}` で許可を記録してから再開する（その担当の上限が1回分増える）")
 
 
@@ -326,7 +351,7 @@ def check_tokens(work: Path, over: bool = False, used: dict | None = None) -> st
         lim = base * (1 + al.get(tool, 0) + al.get("all", 0))
         if u >= lim:
             return (f"✘ トークンの上限：{tool} でこの回 約{u / 10_000:.0f}万（上限 {lim / 10_000:.0f}万。キャッシュの読みは1/10で数える）。ここで止める。"
-                    f"メインはユーザーに【質問】で聞く（続ける・ここで止める）。続けるなら `python <skill>/scripts/budget.py <work> --allow-tokens` "
+                    f"メインはユーザーに【質問】で聞く（続ける・ここで止める）（依頼に「質問はせず」とあっても、上限は越えない。止まるのは正しい動き。残った所を報告して終える。越えるのは、ユーザーが上限を越えてよいと言ったときだけ）。続けるなら `python <skill>/scripts/budget.py <work> --allow-tokens` "
                     f"で許可を記録してから再開する（上限が {base / 10_000:.0f}万 増える）")
     return None
 

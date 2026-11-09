@@ -243,3 +243,21 @@ def test_role_token_caps(tmp_path, monkeypatch):
     assert budget.role_over(w, [small])[0][1] == "小"                        # 小の段（250万×8%）
     main = dict(row, kind="メイン", role=None)
     assert budget.role_over(w, [main]) == []                                 # メインは全体の上限だけで見る
+
+
+def test_solo_main_is_stopped(tmp_path):
+    """担当を起動せずに（brief.py を通らずに）メインが作っていたら止める。見本や _work の外は見ない。"""
+    import budget
+    w = tmp_path / "_work" / "試し_01"
+    w.mkdir(parents=True)
+    (w / "memo.md").write_text("## 1. ゴール\n", encoding="utf-8")
+    assert budget.solo_problem(w).startswith("✘ 担当を1人も起動していない")
+    budget.record(w, "設計の担当")
+    assert budget.solo_problem(w) is None
+    assert "仕上げ役" in budget.solo_problem(w, "仕上げ役|仕上げの直しの担当")   # 仕上げの段で、仕上げ役の依頼文を受け取っていない
+    budget.record(w, "仕上げ役")
+    assert budget.solo_problem(w, "仕上げ役|仕上げの直しの担当") is None
+    other = tmp_path / "examples" / "zemi"
+    other.mkdir(parents=True)
+    (other / "outline.md").write_text("## 構成\n", encoding="utf-8")
+    assert budget.solo_problem(other) is None                              # _work の外（見本など）は見ない

@@ -142,6 +142,14 @@ def check(pptx: Path, work: Path | None, record: bool = True):
         res.append(("✘" if missing else "✔", "作業フォルダ",
                     f"{work} に {'・'.join(missing)} が無い" if missing else str(work)))
 
+    if work:   # 担当を起動せずにメインが作った（別の目のレビューも、担当ごとの上限も働いていない）
+        try:
+            import budget
+            solo = budget.solo_problem(work)
+        except Exception:
+            solo = None
+        if solo:
+            res.append(("✘", "役割を分ける", solo.lstrip("✘ ")))
     # 1c. 構成案（発表の回だけ。講座の回は memo.md を check_memo.py が見る）
     outline = work / "outline.md" if work else None
     if outline and outline.exists() and not (work / "memo.md").exists() and not qa:

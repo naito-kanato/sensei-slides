@@ -546,7 +546,11 @@ def check(text: str, kind: str, body_no: list, where: str):
         cnt = {w: sum(x == w for _, x in seq) for w in LINKS}
         res.append(("✔", "前の枚から", "・".join(f"{w} {c}" for w, c in cnt.items()) + f"（しかし：{buts}）"))
     res += arc_check(text, kind, body_no)
-    if aim_of(text)[0] is None and len(body_no) > 5:
+    aim, want = aim_of(text)
+    if aim is not None and want is None:
+        res.append(("△", "ねらい", f"「{aim}」はねらいの一覧に無い。一覧（python <skill>/scripts/story.py --aims）の言葉から選び、"
+                    "`python <skill>/scripts/story.py --aim <work> <ねらい>` で書き直す（地図とメモの両方に入る）"))
+    elif aim is None and len(body_no) > 5:
         res.append(("△", "ねらい", "ねらいが無い。言えるようになることに合うものを一覧（python <skill>/scripts/story.py --aims）から選び、"
                     "`python <skill>/scripts/story.py --aim <work> <ねらい>` で書く（講座は設計メモと地図のこの回の行、発表は outline.md のオプション。"
                     "地図にねらいの列が無ければ足してよい）。話の型はその既定の型"))

@@ -171,10 +171,18 @@ def main(argv=None):
               "残った ERROR・WARN・✘ を返答に書いて終える（完成後のレビューが、直すかを決める）。"
               + ("完成後のレビューのあとの直しには、これとは別に回数がある（許可は要らない）。" if stage == "仕上げ" else "")
               + "上限のあとに直した所があるなら、確かめるだけの1回（--final）は許可なしで回せる。"
-              + "続けるのは、ユーザーが許したときだけ（--over を付ける）")
+              + "続けるのは、ユーザーが許したときだけ（--over を付ける）" + "（依頼に「質問はせず」とあっても、上限は越えない。止まるのは正しい動き。残った所を報告して終える。越えるのは、ユーザーが上限を越えてよいと言ったときだけ）")
         return 1
     if not (work / "build.py").exists():
         print(f"✘ {work / 'build.py'} が無い（手順4で build.py を書く）")
+        return 1
+    try:   # 担当を起動せずにメインが組んでいたら止める（仕上げは仕上げ役、レビューのあとは仕上げの直しの担当が走らせる）
+        import budget
+        solo = budget.solo_problem(work, "仕上げ役|仕上げの直しの担当")
+    except Exception:
+        solo = None
+    if solo and "--over" not in argv:
+        print(solo)
         return 1
     # 1. 図
     if figs_stale(work):

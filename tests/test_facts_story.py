@@ -415,3 +415,12 @@ def test_set_aim_adds_the_map_column(tmp_path):
     (z / "outline.md").write_text("## オプション\n\n| オプション | 今の値 |\n|---|---|\n| 答えの位置 | 先 |\n\n## 構成\n", encoding="utf-8")
     story.set_aim(z, "教科書の節を読む")
     assert story.aim_of((z / "outline.md").read_text(encoding="utf-8"))[1] == "輪読（節の筋）"
+
+
+def test_aim_not_in_list_and_citation_leak():
+    import check_layout
+    text = _arc_outline(["—"] + ["そして（詳しく）", "しかし（意外）"] * 3, "素朴な見方を崩す").replace(
+        "| 答えの位置 | 後 |", "| 答えの位置 | 後 |\n| ねらい | 制度の設計意図を読み直す |")
+    res = story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")
+    assert any(i == "ねらい" and m == "△" and "一覧に無い" in x for m, i, x in res)
+    assert check_layout.re.search(r"〔\s*(事実|データ)\s*\d+", "S・A・B・Cは中項目ごと〔事実14〕")
