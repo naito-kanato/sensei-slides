@@ -365,6 +365,10 @@ def _demo(outdir):
 
 if __name__ == "__main__":
     import sys
+    if hasattr(sys.stdout, "reconfigure"):   # パイプで走らせると日本語の Windows では cp932 になり、✔ や珍しい字で落ちる
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    import sys
     if len(sys.argv) >= 3 and sys.argv[1] == "--demo":
         _demo(sys.argv[2])
     else:

@@ -39,9 +39,19 @@ sys.path.insert(0, str(HERE))
 KEEP = re.compile(r"WARN|ERROR|Error|Traceback|失敗|見つから|無い|✘|△")
 
 
+def decode(b: bytes) -> str:
+    """子のプロセスの出力。UTF-8 で読めなければ OS の既定の文字コードで読む（日本語の Windows の PowerShell は cp932 で書くので、
+    「アクセスが拒否されました」などのエラーが UTF-8 では化けて、理由を見分けられなかった）。"""
+    try:
+        return b.decode("utf-8")
+    except UnicodeDecodeError:
+        import locale
+        return b.decode(locale.getpreferredencoding(False) or "cp932", errors="replace")
+
+
 def run(cmd, cwd):
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    return r.returncode, (r.stdout or "") + (r.stderr or "")
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True)
+    return r.returncode, decode(r.stdout or b"") + decode(r.stderr or b"")
 
 
 def short(text, limit=12):
@@ -88,7 +98,7 @@ def render(pptx: Path, out: Path, allow_lo: bool = False):
         bad = short(text, 4)
     else:
         bad = []
-    code, text = run([sys.executable, str(HERE / "render_check_lo.py"), "-Pptx", str(pptx), "-OutDir", str(out)], pptx.parent)
+    code, text = run([sys.executable, "-X", "utf8", str(HERE / "render_check_lo.py"), "-Pptx", str(pptx), "-OutDir", str(out)], pptx.parent)
     if code == 0 and (out / "shapes.json").exists():
         return True, "LibreOffice", []
     return False, "", bad + short(text, 4)

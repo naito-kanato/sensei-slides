@@ -60,7 +60,9 @@ TEXT_MAX_LINES = 12      # 本文の行数の上限
 LINE_MAX_BESIDE_FIG = 22  # 図・表の横にある本文の1行の長さ（全角。目安は18〜20字、これを超えたら WARN）
 LINE_MAX = 25            # 図がないときの1行の長さ
 FIG_GAP_MIN = 0.4 * PT   # 本文の右端と図の左端の間隔の下限
-FIG_GAP_MIN_LO = 0.5 * PT  # LibreOffice で描いたとき（文字の範囲が 0.05〜0.2 in 狭く測れるので、きびしめに）
+FIG_GAP_MIN_LO = 0.25 * PT  # LibreOffice で描いたとき。文字の範囲を PowerPoint より広く測る（同じ2つのデッキを両方で描いて、
+                             # 文字の幅は中央値で +8〜17pt、最大 +65pt。以前は「狭く測る」として 0.5 in にしていて、PowerPoint で通るデッキに ERROR が出ていた）
+LO_BOTTOM_TOL = 6.0       # LibreOffice は文字の高さを PowerPoint より約6pt 高く測る（同じ実測。中央値 +6pt）。下端の判定に足す分（pt）
 FIG_GAP_BELOW_MIN = 0.3 * PT  # 本文の下端と、その下に置いた図・表の上端の間隔の下限
 PIC_SCALE_MIN = 0.95     # 置いた幅／描いた幅 がこれ未満なら「縮小して置いている」
 EMPTY_BOTTOM = 4.5 * PT  # 本文の最下端がここより上で図も表もなければ「下が空いている」
@@ -942,7 +944,7 @@ def main(path, pptx_path=None, template=None):
     lo = data.get("engine") == "libreoffice"
     gap_min = FIG_GAP_MIN_LO if lo else FIG_GAP_MIN
     if lo:
-        print("（LibreOffice で描いた結果。文字の範囲を PowerPoint より少し狭く測るので、本文と図の間隔は 0.5 in で見る。"
+        print("（LibreOffice で描いた結果。文字の範囲を PowerPoint より広く・高く測るので、本文と図の間隔は 0.25 in、下端は 6pt ゆるめて見る。"
               "折り返しの WARN は PowerPoint では出ないこともあるので画像で確かめる）")
     n_err = n_warn = 0
     n_err += bool(stale)
@@ -1031,6 +1033,8 @@ def main(path, pptx_path=None, template=None):
         for t in bodies:
             for f in figs:
                 g = below_gap(t, f)
+                if g is not None and lo:
+                    g += LO_GAP_SHIFT   # LibreOffice は文字を高く測るので、縦の間隔を狭く測る
                 if g is not None and g < FIG_GAP_BELOW_MIN:
                     msgs.append(("WARN", f"本文の直下の図・表との縦の間隔が狭い({g / PT:.2f}in < {FIG_GAP_BELOW_MIN / PT:.2f}in): {label(t)} ↓ {label(f)}"
                                          " → 表・図を右に移して本文を横に置くか、本文を削って間隔を空ける"))
@@ -1107,9 +1111,10 @@ def main(path, pptx_path=None, template=None):
                 continue
             if r[0] < -1 or r[1] < -1 or r[2] > W + 1 or r[3] > H + 1:
                 msgs.append(("ERROR", f"スライド外にはみ出し: {label(s)} rect={[round(v) for v in r]}"))
-            if r[3] > band_top - 2 and r[1] < H:
+            limit = band_top - 2 + (LO_BOTTOM_TOL if lo else 0)   # 描画の誤差 2pt（LibreOffice はさらに高く測る分）
+            if r[3] > limit and r[1] < H:
                 what = "青帯にかかっている" if band_top == BAND_TOP else "下の余白が狭い（ページ番号にかかる）"
-                msgs.append(("ERROR", f"{what}(下端 {r[3] / PT:.2f}in > {band_top / PT:.2f}in): {label(s)}"))
+                msgs.append(("ERROR", f"{what}(下端 {r[3] / PT:.2f}in > {limit / PT:.2f}in): {label(s)}"))
             if (r[0] < MARGIN or r[2] > W - MARGIN) and id(s) not in edge:   # 本文の場所からはみ出す ERROR を出したものは重ねて言わない
                 msgs.append(("WARN", f"左右の余白が狭い: {label(s)}"))
             if s.get("text") and s["lines"] > s["paras"]:

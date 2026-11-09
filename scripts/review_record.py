@@ -64,7 +64,8 @@ def _ts(s) -> float | None:
     if not isinstance(s, str):
         return None
     try:
-        return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(timezone.utc).timestamp()
+        s = re.sub(r"(\.\d+)", lambda m: (m.group(1) + "000000")[:7], s.replace("Z", "+00:00"), count=1)   # 小数は6桁に（3.10 は3桁か6桁しか読めない）
+        return datetime.fromisoformat(s).astimezone(timezone.utc).timestamp()
     except ValueError:
         return None
 

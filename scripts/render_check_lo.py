@@ -37,7 +37,6 @@ import uuid
 from pathlib import Path
 
 
-from pptx import Presentation
 
 EMU_PT = 12700.0
 
@@ -73,7 +72,7 @@ def to_pdf(pptx_copy, outdir, timeout=300):
     profile = Path(tempfile.gettempdir()) / "lo_profile_render_check"
     cmd = [soffice, f"-env:UserInstallation={profile.resolve().as_uri()}", "--headless", "--norestore",
            "--convert-to", "pdf", "--outdir", str(outdir), str(pptx_copy)]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    r = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout)
     pdf = Path(outdir) / (Path(pptx_copy).stem + ".pdf")
     if not pdf.exists():
         sys.exit(f"PDF ができなかった: {r.stdout} {r.stderr}")
@@ -246,6 +245,7 @@ def merge_visual_lines(boxes):
 
 
 def main():
+    from pptx import Presentation   # soffice を探すだけのとき（check_env）は要らないので、ここで読む
     ap = argparse.ArgumentParser()
     ap.add_argument("-Pptx", "--pptx", required=True)
     ap.add_argument("-OutDir", "--outdir", required=True)
@@ -318,4 +318,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):   # パイプで走らせると日本語の Windows では cp932 になり、✔ や珍しい字で落ちる
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     main()

@@ -92,6 +92,10 @@ def crop(src, dst, box, frac=False, clean=True, do_trim=True):
 
 
 if __name__ == "__main__":
+    import sys
+    if hasattr(sys.stdout, "reconfigure"):   # パイプで走らせると日本語の Windows では cp932 になり、✔ や珍しい字で落ちる
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     e = sub.add_parser("extract"); e.add_argument("pdf"); e.add_argument("outdir"); e.add_argument("--dpi", type=int, default=200)

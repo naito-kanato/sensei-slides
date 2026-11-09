@@ -560,7 +560,7 @@ def export_temp_pdf(pptx, tmpdir):
     if platform.system() == "Windows" and shutil.which("powershell"):
         ps1 = Path(__file__).resolve().parent / "export_pdf.ps1"
         r = subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", str(ps1), "-Pptx", str(pptx.resolve()),
-                            "-Pdf", str(pdf)], capture_output=True, text=True)
+                            "-Pdf", str(pdf)], capture_output=True, text=True, errors="replace")
         if pdf.exists():
             return pdf
         msg = f"PowerPoint で PDF に書き出せない:\n{r.stdout}\n{r.stderr}\n"
@@ -603,4 +603,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):   # パイプで走らせると日本語の Windows では cp932 になり、✔ や珍しい字で落ちる
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     main()

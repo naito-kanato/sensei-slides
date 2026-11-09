@@ -60,7 +60,7 @@ def has_powerpoint():
     try:
         r = subprocess.run(["powershell", "-NoProfile", "-Command",
                             "if ([type]::GetTypeFromProgID('PowerPoint.Application')) { 'yes' } else { 'no' }"],
-                           capture_output=True, text=True, timeout=30)
+                           capture_output=True, text=True, errors="replace", timeout=30)
         return "yes" in r.stdout
     except Exception:
         return False
@@ -104,8 +104,10 @@ def main():
         rows.append(("✘", "描画の検査・原稿のページ", "どちらも無いので作れない（スライドの .pptx までは作れる）"))
         todo.append("LibreOffice（無料）を入れる：" + INSTALL_LO.get(OS, INSTALL_LO["Linux"]))
     font = ja_font()
-    rows.append(("✔" if font else "△", "図の日本語フォント", font or "見つからない（図の日本語が□になる）"))
-    if not font:
+    no_mpl = "matplotlib" in miss
+    rows.append(("✔" if font else "－" if no_mpl else "△", "図の日本語フォント",
+                 font or ("調べられない（matplotlib が無い。部品を入れてからもう一度）" if no_mpl else "見つからない（図の日本語が□になる）")))
+    if not font and not no_mpl:
         todo.append("日本語フォントを入れる：" + INSTALL_FONT.get(OS, INSTALL_FONT["Linux"]))
 
     for mark, item, msg in rows:

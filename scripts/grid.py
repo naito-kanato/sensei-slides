@@ -36,5 +36,8 @@ def main(src, prefix, cols=2, per=6, tw=800):
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):   # パイプで走らせると日本語の Windows では cp932 になり、✔ や珍しい字で落ちる
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     a = sys.argv
     main(a[1], a[2], *(int(v) for v in a[3:6]))
