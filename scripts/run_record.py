@@ -301,7 +301,9 @@ def antigravity_rows(work: Path, since: float, root_dir: Path | None = None):
             con.close()
         except Exception:
             continue
-        r = _row("Antigravity", "会話", f.stem, f)
+        roles = set(ROLE_HEAD.findall(f.read_bytes().decode("utf-8", "replace")))
+        solo = len(roles) == 1 or roles == {"レビュー担当の先読み", "レビュー担当"}   # 先読みのあと続けてレビューを頼まれた担当
+        r = _row("Antigravity", "担当" if solo else "会話", f.stem, f)
         for g in gens:
             u = (_pb_get(g, [1, 4]) or [None])[0]
             if u is None:
