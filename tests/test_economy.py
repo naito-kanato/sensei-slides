@@ -233,14 +233,14 @@ def test_role_token_caps(tmp_path, monkeypatch):
     conv.write_text('{"x": "あなたは sensei-slides スキルの「仕上げ役」です（講座）"}\n', encoding="utf-8")
     assert run_record.role_of(conv) == "仕上げ役"
     row = {"tool": "Codex", "kind": "担当", "name": "/root/finish", "file": str(conv), "role": "仕上げ役",
-           "input": 100_000, "cache_read": 5_000_000, "cache_write": 0, "output": 50_000}   # 約65万 ＞ 250万×25%
+           "input": 100_000, "cache_read": 6_000_000, "cache_write": 0, "output": 50_000}   # 約75万 ≧ 250万×30%
     over = budget.role_over(w, [row])
-    assert over and over[0][0] == "仕上げ役" and round(over[0][5]) == 625_000
+    assert over and over[0][0] == "仕上げ役" and round(over[0][5]) == 750_000
     assert "--allow-role agent-abc" in budget.role_message(over)
     budget.allow_role_tokens(w, "agent-abc")
     assert budget.role_over(w, [row]) == []                                  # 許可で上限が1回分増える
-    small = dict(row, role="数字を探す担当", file=str(tmp_path / "other.jsonl"))
-    assert budget.role_over(w, [small])[0][1] == "小"                        # 小の段（250万×8%）
+    small = dict(row, role="地図の担当", file=str(tmp_path / "other.jsonl"))
+    assert budget.role_over(w, [small])[0][1] == "小"                        # 小の段（250万×10%）
     main = dict(row, kind="メイン", role=None)
     assert budget.role_over(w, [main]) == []                                 # メインは全体の上限だけで見る
 

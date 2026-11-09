@@ -248,7 +248,9 @@ def main(argv=None):
             print("・ " + budget.summary(p.resolve()))
             t = budget.token_line(p.resolve())
             if t:
-                print(t + ("。上限を超えた：続ける前にユーザーに【質問】で聞く。続けるなら budget.py <work> --allow-tokens" if t.startswith("△") else ""))
+                hint = ("budget.py <work> --allow-role <会話のID>（止めた文に出ている ID。全員なら --allow-role all）" if "担当ごとの上限を超えた" in t
+                        else "budget.py <work> --allow-tokens")
+                print(t + (f"。上限を超えた：続ける前にユーザーに【質問】で聞く。続けるなら {hint}" if t.startswith("△") else ""))
         except Exception:
             pass
         print(f"\n次：{nxt}")
