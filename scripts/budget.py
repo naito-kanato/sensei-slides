@@ -196,16 +196,96 @@ def token_caps(work: Path) -> dict:
     return out
 
 
-def token_usage(work: Path) -> dict:
-    """{道具: この作業フォルダを扱った会話のトークン（重み付き）}。"""
+def window_rows(work: Path) -> list:
+    """この作業フォルダを扱った会話（run_record の行）のうち、作業フォルダに書いていた間と重なるもの。"""
     import run_record
     lo_t, hi_t = active_window(work)
+    return [r for r in run_record.collect(Path(work))
+            if not (r.get("start") is not None and (r["start"] > hi_t or (r.get("end") or r["start"]) < lo_t))]
+    # 重ならない会話（あとで別の回が読んだだけ、など）は数えない
+
+
+def token_usage(work: Path, rows: list | None = None) -> dict:
+    """{道具: この作業フォルダを扱った会話のトークン（重み付き）}。"""
     used = {}
-    for r in run_record.collect(Path(work)):
-        if r.get("start") is not None and (r["start"] > hi_t or (r.get("end") or r["start"]) < lo_t):
-            continue   # 作業フォルダに書いていた間と重ならない会話（あとで別の回が読んだだけ、など）は数えない
+    for r in window_rows(work) if rows is None else rows:
         used[r["tool"]] = used.get(r["tool"], 0) + weighted(r)
     return used
+
+
+# 役ごとの上限：道具ごとの全体の上限（TOKEN_CAPS）に対する割合。3段（大・中・小）。担当1人（会話1本）ごとに見る。
+# ソネット・Codex の回の記録から：ふつうの回はどの役も届かず、暴走した担当（Codex の仕上げ役が make_deck を21回）だけが届く大きさ
+ROLE_TIERS = {"大": ("仕上げ役", "制作役"),
+              "中": ("設計の担当", "裏取りの担当", "レビュー担当", "直しの担当", "仕上げの直しの担当", "完成後のレビュー担当"),
+              "小": ("数字を探す担当", "レビュー担当の先読み", "地図の担当")}
+ROLE_SHARES = {"大": 0.25, "中": 0.18, "小": 0.08}
+
+
+def role_shares(work: Path) -> dict | None:
+    """オプション「担当ごとのトークンの上限」：「大25%・中18%・小8%」の形。「なし」は見ない。"""
+    import re
+    try:
+        import slide_profile
+        v = slide_profile.option(slide_profile.load_profile(work), "担当ごとのトークンの上限", "") or ""
+    except Exception:
+        v = ""
+    if v.strip() == "なし":
+        return None
+    out = dict(ROLE_SHARES)
+    for k in out:
+        m = re.search(k + r"\s*(\d+(?:\.\d+)?)\s*[%％]", v)
+        if m:
+            out[k] = float(m.group(1)) / 100
+    return out
+
+
+def tier_of(role: str | None) -> str | None:
+    return next((t for t, roles in ROLE_TIERS.items() if role in roles), None)
+
+
+def role_allowances(work: Path) -> dict:
+    """{会話のファイル名（拡張子なし）か "all": ユーザーが「続けてよい」と言った回数}。"""
+    n = {}
+    for r in load(work):
+        if r.get("type") == "allow_role_tokens":
+            n[r.get("conv", "all")] = n.get(r.get("conv", "all"), 0) + 1
+    return n
+
+
+def role_over(work: Path, rows: list | None = None) -> list:
+    """上限を超えた担当 [(役, 段, 会話の名前, 会話のID, 使った量, 上限)]。"""
+    shares = role_shares(work)
+    if shares is None:
+        return []
+    caps, al = token_caps(work), role_allowances(work)
+    out = []
+    for r in window_rows(work) if rows is None else rows:
+        tier = tier_of(r.get("role")) if r.get("kind") == "担当" else None
+        base = caps.get(r["tool"])
+        if not tier or base is None:
+            continue
+        conv = Path(r["file"]).stem
+        lim = base * shares[tier] * (1 + al.get(conv, 0) + al.get("all", 0))
+        u = weighted(r)
+        if u >= lim:
+            out.append((r["role"], tier, r.get("name") or conv, conv, u, lim))
+    return out
+
+
+def role_message(over: list) -> str:
+    role, tier, name, conv, u, lim = over[0]
+    return (f"✘ 担当ごとのトークンの上限：{role}（{name}）が約{u / 10_000:.0f}万（{tier}の段の上限 {lim / 10_000:.0f}万。キャッシュの読みは1/10）。"
+            "担当なら、ここで作業を止めて、メインに「トークンの上限で止めた」と返す。メインはユーザーに【質問】で聞く（続ける・ここで止める）。"
+            f"続けるなら `python <skill>/scripts/budget.py <work> --allow-role {conv}` で許可を記録してから再開する（その担当の上限が1回分増える）")
+
+
+def role_guard(work: Path) -> str | None:
+    """担当が走らせるスクリプト（make_deck・scaffold --try all・data.py check）から呼ぶ。超えた担当があれば止める文。"""
+    try:
+        over = role_over(work)
+    except Exception:
+        return None
+    return role_message(over) if over else None
 
 
 def active_window(work: Path):
@@ -230,9 +310,14 @@ def check_tokens(work: Path, over: bool = False, used: dict | None = None) -> st
         return None
     caps = token_caps(work)
     try:
-        used = token_usage(work) if used is None else used
+        rows = window_rows(work) if used is None else None
+        used = token_usage(work, rows) if used is None else used
     except Exception:
         return None
+    if rows is not None:
+        over = role_over(work, rows)
+        if over:
+            return role_message(over)
     al = allowances(work)
     for tool, u in used.items():
         base = caps.get(tool)
@@ -246,6 +331,12 @@ def check_tokens(work: Path, over: bool = False, used: dict | None = None) -> st
     return None
 
 
+def allow_role_tokens(work: Path, conv: str = "all"):
+    with (Path(work) / LOG).open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "ts": time.time(), "type": "allow_role_tokens", "conv": conv},
+                           ensure_ascii=False) + "\n")
+
+
 def allow_tokens(work: Path, tool: str = "all"):
     with (Path(work) / LOG).open("a", encoding="utf-8") as f:
         f.write(json.dumps({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "ts": time.time(), "type": "allow_tokens", "tool": tool},
@@ -254,7 +345,9 @@ def allow_tokens(work: Path, tool: str = "all"):
 
 def token_line(work: Path) -> str | None:
     try:
-        used = token_usage(work)
+        rows = window_rows(work)
+        used = token_usage(work, rows)
+        over_roles = role_over(work, rows)
     except Exception:
         return None
     if not used:
@@ -266,7 +359,10 @@ def token_line(work: Path) -> str | None:
         lim = None if base is None else base * (1 + al.get(tool, 0) + al.get("all", 0))
         over = over or (lim is not None and u >= lim)
         parts.append(f"{tool} 約{u / 10_000:.0f}万" + (f"／上限 {lim / 10_000:.0f}万" if lim else ""))
-    return f"{'△' if over else '・'} トークン（キャッシュの読みは1/10）：" + "・".join(parts)
+    line = f"{'△' if over or over_roles else '・'} トークン（キャッシュの読みは1/10）：" + "・".join(parts)
+    if over_roles:
+        line += "。担当ごとの上限を超えた担当：" + "・".join(f"{r}（約{u / 10_000:.0f}万／{lim / 10_000:.0f}万）" for r, _, _, _, u, lim in over_roles)
+    return line
 
 
 def summary(work: Path) -> str:
@@ -297,6 +393,11 @@ def main(argv=None):
         print(__doc__)
         return 1
     work = Path(argv[0]).resolve()
+    if "--allow-role" in argv:
+        k = argv.index("--allow-role")
+        conv = argv[k + 1] if len(argv) > k + 1 and not argv[k + 1].startswith("-") else "all"
+        allow_role_tokens(work, conv)
+        print("担当ごとのトークンの上限を、ユーザーの許可で1回分足した" + ("（どの担当にも）" if conv == "all" else f"（{conv}）"))
     if "--allow-tokens" in argv:
         k = argv.index("--allow-tokens")
         tool = argv[k + 1] if len(argv) > k + 1 and not argv[k + 1].startswith("-") else "all"

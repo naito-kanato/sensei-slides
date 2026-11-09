@@ -221,3 +221,25 @@ def test_final_check_run_is_free_once(tmp_path, capsys):
     (tmp_path / "build_log.jsonl").write_text("\n".join(json.dumps(r) for r in recs), encoding="utf-8")
     assert make_deck.run_budget(tmp_path)[1] == 4 and make_deck.final_used(tmp_path, "仕上げ")
     assert make_deck.main([str(tmp_path), "--final"]) == 1 and "1回だけ" in capsys.readouterr().out
+
+
+def test_role_token_caps(tmp_path, monkeypatch):
+    """担当ごとのトークンの上限：役を依頼文の頭で見分け、段（大・中・小）の割合で止める。許可で1回分増える。"""
+    import budget
+    import run_record
+    w = tmp_path / "_work" / "試し_01"
+    w.mkdir(parents=True)
+    conv = tmp_path / "agent-abc.jsonl"
+    conv.write_text('{"x": "あなたは sensei-slides スキルの「仕上げ役」です（講座）"}\n', encoding="utf-8")
+    assert run_record.role_of(conv) == "仕上げ役"
+    row = {"tool": "Codex", "kind": "担当", "name": "/root/finish", "file": str(conv), "role": "仕上げ役",
+           "input": 100_000, "cache_read": 5_000_000, "cache_write": 0, "output": 50_000}   # 約65万 ＞ 250万×25%
+    over = budget.role_over(w, [row])
+    assert over and over[0][0] == "仕上げ役" and round(over[0][5]) == 625_000
+    assert "--allow-role agent-abc" in budget.role_message(over)
+    budget.allow_role_tokens(w, "agent-abc")
+    assert budget.role_over(w, [row]) == []                                  # 許可で上限が1回分増える
+    small = dict(row, role="数字を探す担当", file=str(tmp_path / "other.jsonl"))
+    assert budget.role_over(w, [small])[0][1] == "小"                        # 小の段（250万×8%）
+    main = dict(row, kind="メイン", role=None)
+    assert budget.role_over(w, [main]) == []                                 # メインは全体の上限だけで見る

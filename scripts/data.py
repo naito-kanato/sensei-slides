@@ -170,6 +170,11 @@ def main(argv=None):
               "比べられる数字の組は見つからなかった（理由を3b節に書いた）。筋の しかし は、データ無しの意外・疑い・限りで組む" if nf else
               "data_N.md に組が無い（数字を探す担当の結果を待つ）")
         return 0
+    import budget   # 担当ごとのトークンの上限（数字を探す担当が最後に走らせる所で見る）
+    g = budget.role_guard(work)
+    if g:
+        print(g)
+        return 1
     bad = 0
     for f in files(work):
         for r, t in not_found(f.read_text(encoding="utf-8")):

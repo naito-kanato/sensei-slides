@@ -20,6 +20,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -61,8 +62,23 @@ def _since(work: Path) -> float:
     return (min(ts) if ts else time.time()) - LOOKBACK_DAYS * 86400
 
 
+ROLE_HEAD = re.compile(r"スキルの「([^」{}]+)」です")
+
+
+def role_of(path) -> str | None:
+    """担当の会話の役：依頼文の頭「あなたは sensei-slides スキルの「〇〇」です」の、最後に出てきたもの
+    （Codex は担当の会話に親の会話が写るので最後。先読みのあと続けてレビューを頼まれた担当は「レビュー担当」）。"""
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    found = ROLE_HEAD.findall(text)
+    return found[-1] if found else None
+
+
 def _row(tool, kind, name, path):
-    return {"tool": tool, "kind": kind, "name": name, "file": str(path), "models": [], "effort": [],
+    return {"tool": tool, "kind": kind, "name": name, "file": str(path), "role": role_of(path) if kind == "担当" else None,
+            "models": [], "effort": [],
             "input": 0, "cache_read": 0, "cache_write": 0, "output": 0, "reasoning": 0, "thinking_blocks": 0,
             "calls": 0, "start": None, "end": None, "limit_start": None, "limit_end": None, "limits": []}
 

@@ -473,6 +473,11 @@ def main(argv=None):
             rows = [l for l in buf.getvalue().splitlines() if l[:1] in ("✘", "△")]
             bad += code
             print(f"[{f.stem}] " + ("✔" if not rows else "\n  " + "\n  ".join(rows)))
+        import budget   # 担当ごとのトークンの上限（制作役が最後に走らせる所で見る）
+        g = budget.role_guard(work)
+        if g:
+            print(g)
+            return 1
         import figdraft   # 図の下書き（模式図は実物・気づく・配置・ラベル、グラフは気づく）
         fig_rows = [r for r in figdraft.check(work) if r[0] in ("✘", "△")]
         if fig_rows:
