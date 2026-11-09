@@ -147,7 +147,7 @@ def steps_for(work: Path):
         who = (f"カードが {nc} 枚なので制作役を2人、同時に起動（`brief.py 制作役 <work> --part 1/2` は図と前半、`--part 2/2` は後半。"
                "merge は仕上げ役が最初にする）" if nc >= brief.SPLIT_AT else
                "制作役1人（`brief.py 制作役 <work>`）が figs.py で図、カードを1枚ずつ読んで parts/NN.py・parts/NN.md、scaffold.py <work> --merge で戻す")
-        nxt = ("手順3〜5（SKILL.md「役割を分ける」）：" + ("" if nc else "python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、") + who +
+        nxt = ("手順3〜5（SKILL.md「手順と担当」）：" + ("" if nc else "python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、") + who +
                "。そのあと仕上げ役1人が python <skill>/scripts/make_deck.py <work> で組んで検査して直し、原稿HTMLまで")
     # 3. ビルド
     build = work / "build.py"

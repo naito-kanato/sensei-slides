@@ -1,4 +1,4 @@
-"""担当への依頼文を、雛形（assets/briefs/<担当>.md）から作る（SKILL.md「役割を分ける」）。
+"""担当への依頼文を、雛形（assets/briefs/<担当>.md）から作る（SKILL.md「手順と担当」）。
 
 メインは依頼文を自分で書かない。担当を起動するときの依頼は次の1行だけにする：
     「`python <skill>/scripts/brief.py <担当> <work>` を走らせ、出た依頼のとおりに進める」

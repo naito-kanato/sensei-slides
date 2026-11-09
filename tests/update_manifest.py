@@ -2,7 +2,7 @@
 
     python tests/update_manifest.py
 
-エージェントはこれを走らせない（部品を書き換えたのを隠すことになる。SKILL.md「スキルの部品は書き換えない」）。
+エージェントはこれを走らせない（部品を書き換えたのを隠すことになる。SKILL.md「必ず守る」）。
 """
 import sys
 from pathlib import Path

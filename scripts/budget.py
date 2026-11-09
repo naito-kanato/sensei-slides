@@ -172,7 +172,7 @@ def solo_problem(work: Path, need: str | None = None) -> str | None:
     roles = {r.get("role") for r in load(work) if r.get("role")}
     if not roles:
         return ("✘ 担当を1人も起動していない（brief.py の記録が無い）：メインが担当の仕事を自分でしている。"
-                "SKILL.md「役割を分ける」：メインは監視塔で、ファイルを書かない。ここから先は next_step.py が出す担当を【別のエージェント】で起動する"
+                "SKILL.md「手順と担当」：メインは監視塔で、ファイルを書かない。ここから先は next_step.py が出す担当を【別のエージェント】で起動する"
                 "（依頼文は `brief.py <担当> <work>`）。別のエージェントが無い道具なら、メインが brief.py でその担当の依頼文を受け取ってから、その依頼文のとおりにする")
     if need and not roles & set(need.split("|")):
         return (f"✘ {need.replace('|', 'か')}の依頼文を受け取っていない（brief.py の記録が無い）。`brief.py {need.split('|')[0]} <work>` で担当を起動してから")

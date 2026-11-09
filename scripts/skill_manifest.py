@@ -2,7 +2,7 @@
 
     python <skill>/scripts/skill_manifest.py            # 照合だけ（check_done.py も同じことをする）
 
-エージェントは部品を書き換えない（SKILL.md「スキルの部品は書き換えない」）。部品を直すのはスキルの作者で、
+エージェントは部品を書き換えない（SKILL.md「必ず守る」）。部品を直すのはスキルの作者で、
 直したら tests/update_manifest.py で MANIFEST.txt を作り直す（テストが、作り直し忘れを見つける）。
 テキストは改行コードの違い（Windows の CRLF）を同じとみなす。
 """

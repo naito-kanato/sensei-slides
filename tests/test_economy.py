@@ -20,7 +20,7 @@ def test_guide_prints_only_the_section(capsys):
 
 def test_guide_lists_headings(capsys):
     assert guide.main(["skill"]) == 0
-    assert "使用量を抑える進め方" in capsys.readouterr().out
+    assert "必ず守る" in capsys.readouterr().out
 
 
 def test_make_deck_builds_and_reports_briefly(built):

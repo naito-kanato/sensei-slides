@@ -252,6 +252,12 @@ def main(argv=None):
     runs = build_log.append(work, pptx, n_err, n_warn, n_x, final=final)
     recs = build_log.load(work)
     same = bool(recs) and build_log.same_as_before(recs, len(recs) - 1)
+    if len(recs) >= 2 and not same and recs[-1].get("sig") and recs[-2].get("sig"):
+        a, b = recs[-2]["sig"], recs[-1]["sig"]
+        changed = [k + 1 for k in range(max(len(a), len(b))) if k >= len(a) or k >= len(b) or a[k] != b[k]]
+        if changed:   # 画像はこの枚だけを見る（一覧の grid を毎回開くと、開いた画像が会話に残って読み直される）
+            print("前の回から変わった枚：" + "・".join(map(str, changed))
+                  + "（見るのは " + "・".join(f"render/slide-{n:02d}.png" for n in changed[:6]) + ("…" if len(changed) > 6 else "") + " だけ）")
     if same:
         print("（前の回とスライドの中身がまったく同じ：何も直していない。回数には数えないが、直してから回す）")
         used -= 1   # 下の「n 回目」の表示も数えない
