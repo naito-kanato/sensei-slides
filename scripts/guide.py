@@ -21,6 +21,8 @@ HEAD = re.compile(r"^(#{2,4})\s+(.+?)\s*$")
 
 
 def path_of(name: str) -> Path:
+    if name.endswith(".md") and Path(name).exists():   # 作業フォルダの設計メモ・構成案なども節だけ読める（guide.py _work/X_01/memo.md 1 2）
+        return Path(name)
     if name.lower() in ("skill", "skill.md"):
         return SKILL / "SKILL.md"
     p = SKILL / "references" / (name if name.endswith(".md") else name + ".md")

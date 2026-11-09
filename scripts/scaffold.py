@@ -374,7 +374,7 @@ def try_part(work: Path, n: int) -> int:
     if r.returncode or not out.exists():
         err = [l for l in (r.stderr or r.stdout).strip().splitlines() if l.strip()][-4:]
         if re.search(r"(FileNotFoundError|No such file|見つから).*figs|figs.*(FileNotFoundError|No such file|見つから)", " ".join(err)):
-            print(f"△ parts/{part.name}：図の画像がまだ無い（制作役が2人なら1人目が描く）。この枚は確かめずに次の枚へ")
+            print(f"△ parts/{part.name}：図の画像がまだ無い（図の担当が描いている）。この枚は確かめずに次の枚へ")
             return 0
         print(f"✘ parts/{part.name} が組めない：\n  " + "\n  ".join(err))
         return 1
@@ -510,7 +510,7 @@ def main(argv=None):
         for n, text in cards(work, kind, rows, care, minutes, src).items():
             (cd / (f"{n:02d}.md" if isinstance(n, int) else n)).write_text(text, encoding="utf-8")
         (work / "parts").mkdir(exist_ok=True)
-        made.append(f"cards/（本文 {len(list(cd.glob('[0-9]*.md')))}枚" + (f"、{src.name} の抜き出しつき）" if src else "。資料の抜き出しなし：--source で渡せる）"))
+        made.append(f"cards/（本文 {len(list(cd.glob('[0-9][0-9].md')))}枚" + (f"、{src.name} の抜き出しつき）" if src else "。資料の抜き出しなし：--source で渡せる）"))
     for name, text in (("build.py", build_py(work, "outline" if kind == "answers" else kind, title, rows) if kind != "answers"
                          else build_py(work, kind, title, rows)), ("notes.md", notes_md(kind, rows, care, minutes))):
         p = work / name

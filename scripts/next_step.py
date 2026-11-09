@@ -144,8 +144,8 @@ def steps_for(work: Path):
     if add(bool(fig_ok), "図（figs.py → figs/）", "" if fig_ok else ("figs.py が無い" if not figs.exists() else "figs.py を直したあと描き直していない")) is False and not nxt:
         import brief
         nc = len(brief.card_numbers(work))
-        who = (f"カードが {nc} 枚なので制作役を2人、同時に起動（`brief.py 制作役 <work> --part 1/2` は図と前半、`--part 2/2` は後半。"
-               "merge は仕上げ役が最初にする）" if nc >= brief.SPLIT_AT else
+        who = (f"カードが {nc} 枚なので、制作役2人と図の担当1人の3人を同時に起動（`brief.py 制作役 <work> --part 1/2` は前半、`--part 2/2` は後半、"
+               "`brief.py 図の担当 <work>` は図。merge は仕上げ役が最初にする）" if nc >= brief.SPLIT_AT else
                "制作役1人（`brief.py 制作役 <work>`）が figs.py で図、カードを1枚ずつ読んで parts/NN.py・parts/NN.md、scaffold.py <work> --merge で戻す")
         nxt = ("手順3〜5（SKILL.md「手順と担当」）：" + ("" if nc else "python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、") + who +
                "。そのあと仕上げ役1人が python <skill>/scripts/make_deck.py <work> で組んで検査して直し、原稿HTMLまで")
@@ -228,8 +228,21 @@ def main(argv=None):
         print("\n".join(lines))
         print(f"\n次：{nxt}")
         return 0
+    short = "--short" in argv
     if any((p / f).exists() for f in ("outline.md", "memo.md", "answers.md", "build.py")) or p.parent.name == "_work":
         steps, nxt = steps_for(p)
+        if short:   # メイン用：止める理由と次の1手だけ（メインは担当が戻るたびに走らせるので、会話を太らせない）
+            try:
+                import budget
+                solo = budget.solo_problem(p.resolve())
+                t = budget.token_line(p.resolve())
+            except Exception:
+                solo, t = None, None
+            for line in [solo, (t if t and t.startswith("△") else None)]:
+                if line:
+                    print(line)
+            print(f"次：{nxt}")
+            return 0
         print(f"作業フォルダ：{p.name}")
         try:
             import budget

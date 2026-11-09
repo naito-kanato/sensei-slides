@@ -8,7 +8,7 @@
     python <skill>/scripts/brief.py 仕上げ役 _work/病院機能評価講座_01
     python <skill>/scripts/brief.py 裏取りの担当 _work/X講座_01 --n 2
     python <skill>/scripts/brief.py 地図の担当 X講座 --note "学習者：…／回数：3"
-    python <skill>/scripts/brief.py 制作役 _work/X講座_01 --part 1/2   # 本文が8枚以上なら2人（next_step が言う）。1人目が図と前半
+    python <skill>/scripts/brief.py 制作役 _work/X講座_01 --part 1/2   # 本文が8枚以上なら2人（next_step が言う）と、図の担当（brief.py 図の担当 <work>）
     python <skill>/scripts/brief.py 仕上げ役 _work/X講座_01 --over      # 回数の上限を超えて起動する（ユーザーが許したときだけ）
 
 依頼文を出すたびに、その担当の起動を1回と数える（budget.py。上限なら依頼文を出さずに ✘ で止まる）。
@@ -48,6 +48,8 @@ HEAD = """あなたは sensei-slides スキルの「{role}」です（{kind}）�
 作業ディレクトリ：{cwd}（コマンドはここから `python {skill}/scripts/<名前>.py ...`。作業ディレクトリに .venv があれば、その python で）
 作業フォルダ：{work}（作業ディレクトリ直下の `_work/` の中。講座フォルダ・発表フォルダの中に作らない）
 SKILL.md と references/*.md は丸ごと読まない（この依頼と、指定された `guide.py` の節で足りる。足りないときだけ `guide.py <名前>` で見出しを見て、その節だけ）。scripts の中身（.py）は読まない。使い方は guide.py と各スクリプト・検査の出力にある。日本語を含む使い捨てのスクリプトは、作業フォルダの外の一時フォルダに書く。
+呼び出しの回数が使用量を決める（呼ぶたびに、それまでの会話をまるごと読み直すため）。前の結果を見なくても決められることは、1回の呼び出しにまとめる（例：作業の始めに要るファイルは、まとめて開く）。結果を見てから決めることだけを、次の呼び出しに回す。
+ただし、書いたあとの検査は、書いた次の呼び出しで行う（同じ呼び出しに入れない）。make_deck は、ほかのコマンドとつなげずに単独で。書いたものを目で読み直すのは要らない（確かめるのは検査のスクリプトで）。
 """
 TAIL = "\n終えたら、「返すもの」だけを10行までで返す。"
 
@@ -104,7 +106,7 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
         if line.startswith(other):
             continue
         if line.startswith("[図]"):
-            if k_part != 1:
+            if n_part > 1:   # 制作役が2人のときは、図は図の担当が描く
                 continue
             line = line[3:]
         if line.startswith("[戻す]"):
@@ -120,7 +122,7 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
         if mine_n:
             cards = "・".join(f"{x:02d}.md" for x in mine_n)
         if n_part > 1:
-            part_note = (f"制作役は {n_part} 人で、あなたは {k_part} 人目（{'図と前半' if k_part == 1 else '後半'}の枚）。"
+            part_note = (f"制作役は {n_part} 人で、あなたは {k_part} 人目（{'前半' if k_part == 1 else '後半'}の枚。図は図の担当が同時に描いている）。"
                          "ほかの人の枚・parts は読まない・書かない。merge は仕上げ役が最初にする")
     vals = {"skill": rel(SKILL), "work": Path(work).as_posix(), "course": course, "plan_name": plan_name,
             "review_name": review_name, "n": n, "role": role, "kind": k, "cwd": Path.cwd().as_posix(),

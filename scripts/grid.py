@@ -10,7 +10,7 @@ import sys
 from PIL import Image, ImageDraw
 
 
-def main(src, prefix, cols=2, per=6, tw=800):
+def main(src, prefix, cols=2, per=6, tw=640):   # 一覧は 1280 px 幅（画像の読み込みの量を抑える。本文の文字は読める大きさ）
     files = sorted(glob.glob(os.path.join(src, "slide-*.png")))
     # 前回の一覧（同じ接頭辞の <prefix>-N.jpg）を消す。枚数が減ったとき古いシートが残らないように
     pat = re.compile(re.escape(os.path.basename(prefix)) + r"-\d+\.jpg$")

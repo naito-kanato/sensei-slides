@@ -61,6 +61,23 @@ def api_lines(forms: str, figure: bool, table: bool, extra=()):
     return out
 
 
+COMMON_HOW = ("このカードと、下の「資料」の所だけを見て、この1枚を書く。ほかの枚・SKILL.md 全体・scripts の中身（zemi.py・検査のスクリプトなど）は読まない。部品の書き方は下の「使う部品の書き方」にある。書いたこの1枚が構成案どおりか（本文の形・図・結論・字数）を確かめたいときは、`python <skill>/scripts/scaffold.py <work> --try NN` だけを使う（自分で組んだり、検査の中身を調べたりしない。仕上げ役が全体を組む）。")
+
+
+def targets(kind, per) -> list:
+    """本文と原稿の目安（カードの共通の紙か、質問回答のカードに入れる）。"""
+    return [("- 本文：80〜100字（質問の行が上にあるので、ふつうの枚より短く）・体言止め。赤字は答えの要の語・数値に1〜2か所（短い一文なら全角20字まで・1か所）" if kind == "answers"
+             else "- 本文：100〜150字（表は数えない）・体言止め。赤字は根拠の要の語・数値に1〜2か所（決め手の短い一文なら全角20字まで・1か所。場合分け・2つ並べた・展開（前 → 後）の枚は、塊ごとに1文で2か所まで）。青字は図の色との対応と対になる側だけ"),
+            "- **1行は20字まで**：長い項目は、文字列の中に \\n を入れて意味の切れ目で折る（例：\"片方の時刻を 10 ms より\\n大きくずらした組合せ\"）。"
+            "1項目は2行まで。それより長いなら原稿へ回す。図の横の本文は特に短く",
+            "- 本文に入れるもの：要点ごとに、数値か具体例を1つ（〔…〕の所から引く）。言い換えや中身の無い行で字数を埋めない",
+            f"- 原稿：{per}前後。話し言葉（です・ます）。次の順で書く：①導入（前の枚からの語で1〜2文）②図の読み方（どこを見て、何が読めるか）"
+            "③根拠（要点の数値・例を〔…〕の所から）④例か、間違いやすい所 "
+            + ("⑤元の枚に戻ってどう読めばよいか（1文）" if kind == "answers" else "⑤次の枚へのつなぎ（1文）")
+            + "。資料に無いことは「※（資料外の補足）」",
+            "- **構成案の数値・不等号（以上・未満・≳・約）・固有名詞は変えない**。資料と違って見えたら、そこは書かずに理由を1行で返す"]
+
+
 def writer(work: Path, kind, rows, care, minutes=None, source=None):
     """{番号: カードの文}（本文の枚だけ）。source（資料の PDF・テキスト）があれば、範囲の所を抜き出して入れる。"""
     import excerpt
@@ -91,6 +108,17 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         from check_memo import table_rows
         ft = table_rows(text, "事実と出典") or []
         facts = [[c for c in r[:3]] for r in ft[1:] if r and any(c.strip() for c in r)]
+    lean = kind in ("memo", "outline")   # 講座・発表：どのカードにも同じ決まりは cards/00_共通.md に1回だけ（書き手が9枚読むと9回読み込み、毎回読み直していた）
+    q0, a0 = st.get("問い", ("", None)), st.get("答え", ("", None))
+    if lean:
+        C = [f"# カードの共通の決まり（{work.name}）", "", "最初に1回だけ読む（カードごとに読み直さない）。", "",
+             "- " + COMMON_HOW, "- 青帯（結論）と●見出しは変えない。変えたくなったら書かずに、理由を1行で返す", ""]
+        if st:
+            C += ["## 話の筋", f"- 筋の問い（{q0[1] or '?'}枚目）：{q0[0]}", f"- 筋の答え（{a0[1] or '?'}枚目）：{a0[0]}", ""]
+        if terms:
+            C += ["## 用語・記号の決め事（設計メモ 4節）", terms, ""]
+        C += ["## 目安"] + targets(kind, per) + [""]
+        out["00_共通.md"] = "\n".join(C)
     for k, r in enumerate(body):
         n = r["#"]
         prev, nxt = (body[k - 1] if k else None), (body[k + 1] if k + 1 < len(body) else None)
@@ -100,15 +128,14 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         q_, a_ = st.get("問い", ("", None)), st.get("答え", ("", None))
         fig_cell = col(r, "図で見せるもの", "図") or "なし"
         not_image = fig_cell in EMPTY or figplan.pptx_part(fig_cell) is not None
-        L = [f"# {n}枚目のカード（{work.name}）",
-             "",
-             "このカードと、下の「資料」の所だけを見て、この1枚を書く。ほかの枚・SKILL.md 全体・scripts の中身（zemi.py・検査のスクリプトなど）は読まない。部品の書き方は下の「使う部品の書き方」にある。書いたこの1枚が構成案どおりか（本文の形・図・結論・字数）を確かめたいときは、`python <skill>/scripts/scaffold.py <work> --try NN` だけを使う（自分で組んだり、検査の中身を調べたりしない。仕上げ役が全体を組む）。",
-             f"書くもの：`parts/{n:02d}.py`（下の骨組みの TODO を埋めた、この枚のコード）と `parts/{n:02d}.md`（この枚の原稿。「## {n}」の見出しは書かない）。",
-             "青帯（結論）と●見出しは変えない。変えたくなったら書かずに、理由を1行で返す。",
-             "",
-             "## 話の中の位置"]
-        if st:
+        L = [f"# {n}枚目のカード（{work.name}）", ""]
+        L += (["共通の決まり（書き方・筋の問いと答え・用語・目安）は `cards/00_共通.md`（最初に1回だけ読む）。"] if lean else
+              [COMMON_HOW, "青帯（結論）と●見出しは変えない。変えたくなったら書かずに、理由を1行で返す。"])
+        L += [f"書くもの：`parts/{n:02d}.py`（下の骨組みの TODO を埋めた、この枚のコード）と `parts/{n:02d}.md`（この枚の原稿。「## {n}」の見出しは書かない）。",
+              "", "## 話の中の位置"]
+        if st and not lean:
             L += [f"- 筋の問い（{q_[1] or '?'}枚目）：{q_[0]}", f"- 筋の答え（{a_[1] or '?'}枚目）：{a_[0]}"]
+        if st:
             pos = story.answer_position(text, kind)
             beat = beats.get(n)
             if beat:
@@ -188,25 +215,16 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
             rowsf = [f"  - 事実{i}：" + "｜".join(facts[i - 1]) for i in used if 0 < i <= len(facts)]
             if rowsf:
                 L += ["- この枚の要点が使う事実（設計メモ 3節の表の行）："] + rowsf
-        if terms:
+        if terms and not lean:
             L += ["- 用語・記号の決め事（設計メモ 4節）：", terms]
         used = re.findall(r"\bs\.([a-z_]+)\b", skel[a:b])
         api = api_lines(col(r, "本文の形"), not not_image, bool(re.match(r"\s*表", fig_cell)),
                         [u for u in used if u not in ("heading", "at")])
         if api:
             L += ["", "## 使う部品の書き方（これ以上の説明は要るときだけ `guide.py structures`）"] + api
-        L += ["", "## 目安",
-              ("- 本文：80〜100字（質問の行が上にあるので、ふつうの枚より短く）・体言止め。赤字は答えの要の語・数値に1〜2か所（短い一文なら全角20字まで・1か所）" if kind == "answers"
-               else "- 本文：100〜150字（表は数えない）・体言止め。赤字は根拠の要の語・数値に1〜2か所（決め手の短い一文なら全角20字まで・1か所。場合分け・2つ並べた・展開（前 → 後）の枚は、塊ごとに1文で2か所まで）。青字は図の色との対応と対になる側だけ"),
-              "- **1行は20字まで**：長い項目は、文字列の中に \\n を入れて意味の切れ目で折る（例：\"片方の時刻を 10 ms より\\n大きくずらした組合せ\"）。"
-              "1項目は2行まで。それより長いなら原稿へ回す。図の横の本文は特に短く",
-              "- 本文に入れるもの：要点ごとに、数値か具体例を1つ（〔…〕の所から引く）。言い換えや中身の無い行で字数を埋めない",
-              f"- 原稿：{per}前後。話し言葉（です・ます）。次の順で書く：①導入（前の枚からの語で1〜2文）②図の読み方（どこを見て、何が読めるか）"
-              "③根拠（要点の数値・例を〔…〕の所から）④例か、間違いやすい所 "
-              + ("⑤元の枚に戻ってどう読めばよいか（1文）" if kind == "answers" else "⑤次の枚へのつなぎ（1文）")
-              + "。資料に無いことは「※（資料外の補足）」",
-              "- **構成案の数値・不等号（以上・未満・≳・約）・固有名詞は変えない**。資料と違って見えたら、そこは書かずに理由を1行で返す",
-              "", f"## 骨組み（parts/{n:02d}.py の出発点。TODO を書き換える）", "```python", skel[a:b].rstrip(), "```", ""]
+        if not lean:
+            L += ["", "## 目安"] + targets(kind, per)
+        L += ["", f"## 骨組み（parts/{n:02d}.py の出発点。TODO を書き換える）", "```python", skel[a:b].rstrip(), "```", ""]
         out[n] = "\n".join(L)
     if kind == "memo":
         out.update(quiz_cards(work, rows, text, blocks(skel), skel))

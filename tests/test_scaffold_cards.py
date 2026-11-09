@@ -15,13 +15,14 @@ def work(root, tmp_path):
 
 
 def test_cards_for_body_slides(work):
-    names = sorted(p.name for p in (work / "cards").glob("*.md"))
+    names = sorted(p.name for p in (work / "cards").glob("[0-9][0-9].md"))
     assert names[0] == "02.md" and "04.md" not in names and "01.md" not in names   # 表紙・論文の表紙はカードなし
     c = (work / "cards" / "06.md").read_text(encoding="utf-8")
     assert "この枚の青帯：差は陽子より小さく" in c
     assert "前の枚（5）の青帯" in c and "次の枚（7）の青帯" in c                     # 前後のつながり
     assert "しかし（壁）" in c and "ここに壁があります" in c                          # 前の枚からの書き方
-    assert "筋の問い（3枚目）" in c
+    common = (work / "cards" / "00_共通.md").read_text(encoding="utf-8")
+    assert "筋の問い（3枚目）" in common and "筋の問い（" not in c and "00_共通.md" in c   # どのカードにも同じ決まりは共通の紙に1回だけ
     assert "figs/s06.png" in c and 'summary="差は陽子より小さく' in c                 # 図の名前と骨組み
 
 
@@ -57,7 +58,7 @@ def test_underline_marker_becomes_markup():
 def test_table_slide_gets_no_figure_file(work):
     c = (work / "cards" / "14.md").read_text(encoding="utf-8")
     assert "s14.png" not in c and "s.table" in c
-    assert "1行は20字まで" in c
+    assert "1行は20字まで" in (work / "cards" / "00_共通.md").read_text(encoding="utf-8")
 
 
 def test_points_go_to_the_slots_of_each_form(work):
@@ -85,8 +86,9 @@ def test_cards_share_excerpt_files(root, tmp_path):
 
 def test_card_has_notes_frame_and_keep_numbers_rule(work):
     c = (work / "cards" / "08.md").read_text(encoding="utf-8")
-    assert "①導入" in c and "②図の読み方" in c and "⑤次の枚へのつなぎ" in c
-    assert "不等号" in c and "変えない" in c
+    common = (work / "cards" / "00_共通.md").read_text(encoding="utf-8")   # 原稿の型と数値の決まりは共通の紙に
+    assert "①導入" in common and "②図の読み方" in common and "⑤次の枚へのつなぎ" in common
+    assert "不等号" in common and "変えない" in common
     assert "〔要旨〕" in c                                   # 要点の出どころはカードに見せる
     assert "〔" not in (work / "build.py").read_text(encoding="utf-8")   # 骨組み（スライド）には出さない
 
@@ -125,7 +127,7 @@ def test_card_lists_every_part_in_skeleton(work):
 
 
 def test_producer_split_at_eight_cards(work):
-    """カードが8枚以上なら制作役を2人に：1人目は図と前半、2人目は後半。merge は仕上げ役が最初にする。"""
+    """カードが8枚以上なら制作役を2人（前半・後半）と図の担当に。merge は仕上げ役が最初にする。"""
     import brief
     w = work.parent / "_work" / "zemi"
     shutil.copytree(work, w)
@@ -137,6 +139,9 @@ def test_producer_split_at_eight_cards(work):
     one = brief.build("制作役", str(work))
     h1, h2 = brief.halves(nums)
     assert f"{h1[0]:02d}.md" in a and f"{h2[0]:02d}.md" not in a.split("②", 1)[1].split("\n", 1)[0]
-    assert "figs.py" in a and "figs.py" not in b and f"{h2[-1]:02d}.md" in b
+    assert "figs.py" not in a and "figs.py" not in b and f"{h2[-1]:02d}.md" in b   # 2人のときは、図は図の担当
+    fig = brief.build("図の担当", str(work))
+    assert "figdraft.py" in fig and "figs.py" in fig and "parts" in fig
+    assert "figs.py" in one                                                     # 1人のときは制作役が図も描く
     assert "--merge" not in a and "--merge" not in b and "--merge" in one
     assert "--merge" in brief.build("仕上げ役", str(work))
