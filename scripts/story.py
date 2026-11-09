@@ -17,6 +17,7 @@ check_outline.py・check_memo.py から呼ばれる。面白いかどうかは�
 """
 import re
 import sys
+from pathlib import Path
 
 STORY_KEYS = ("状況", "複雑化", "問い", "答え")
 LINKS = ("そして", "しかし", "だから")
@@ -122,6 +123,93 @@ def aim_of(text: str):
     return (hit[0], hit[1]) if hit else (val or None, None)
 
 
+def _rw(path: Path):
+    raw = path.read_bytes().decode("utf-8")
+    return raw.replace("\r\n", "\n"), ("\r\n" if "\r\n" in raw else "\n")
+
+
+def _cells(line: str) -> list:
+    return [c.strip() for c in line.strip().strip("|").split("|")]
+
+
+def _row(cells: list) -> str:
+    return "| " + " | ".join(cells) + " |"
+
+
+def set_map_aim(readme: Path, lesson: int, aim: str) -> bool:
+    """講座の地図（README の「全体の地図」の表）のこの回の行に、ねらいを書く。列が無ければ「題」の右に足す（ほかの回は空のまま。その回を設計するときに埋める）。"""
+    text, nl = _rw(readme)
+    m = re.search(r"^##\s*全体の地図.*?(?=^##\s|\Z)", text, re.M | re.S)
+    if not m:
+        return False
+    sec = m.group(0).split("\n")
+    idx = [i for i, l in enumerate(sec) if l.strip().startswith("|")]
+    if len(idx) < 2:
+        return False
+    head = _cells(sec[idx[0]])
+    if "ねらい" not in head:
+        at = head.index("題") + 1 if "題" in head else min(2, len(head))
+        for i in idx:
+            c = _cells(sec[i])
+            c.insert(at, "---" if set("".join(c)) <= set("-: ") else ("ねらい" if i == idx[0] else ""))
+            sec[i] = _row(c)
+        head = _cells(sec[idx[0]])
+    col = head.index("ねらい")
+    hit = False
+    for i in idx[2:]:
+        c = _cells(sec[i])
+        if c and re.sub(r"\D", "", c[0]) == str(lesson):
+            while len(c) <= col:
+                c.append("")
+            c[col] = aim
+            sec[i] = _row(c)
+            hit = True
+    if hit:
+        text = text[:m.start()] + "\n".join(sec) + text[m.end():]
+        readme.write_bytes(text.replace("\n", nl).encode("utf-8"))
+    return hit
+
+
+def set_aim(work: Path, aim: str) -> list:
+    """ねらいを書く。講座：設計メモ1節の「- ねらい：」と、講座の地図のこの回の行（列が無ければ足す）。発表：outline.md のオプションの表の「ねらい」の行。
+    書いた所の一覧を返す。地図にねらいの列が無い講座でも、設計の担当がこれで選んで書いてよい。"""
+    aim = aim.strip()
+    if aim not in [a[0] for a in AIMS]:
+        raise SystemExit(f"✘ 「{aim}」はねらいの一覧に無い（python <skill>/scripts/story.py --aims）")
+    work = Path(work)
+    done = []
+    lesson = re.search(r"_(\d{2})$", work.name)
+    memo, outline = work / "memo.md", work / "outline.md"
+    if lesson:   # 講座の回
+        if memo.exists():
+            text, nl = _rw(memo)
+            if re.search(r"^-\s*ねらい\s*[：:].*$", text, re.M):
+                text = re.sub(r"^-\s*ねらい\s*[：:].*$", f"- ねらい：{aim}", text, count=1, flags=re.M)
+            else:
+                h = re.search(r"^##\s*1[.．][^\n]*\n", text, re.M)
+                text = text[:h.end()] + f"\n- ねらい：{aim}\n" + text[h.end():] if h else f"- ねらい：{aim}\n\n" + text
+            memo.write_bytes(text.replace("\n", nl).encode("utf-8"))
+            done.append(str(memo))
+        course = work.name[:lesson.start()]
+        root = work.parent.parent if work.parent.name == "_work" else work.parent
+        readme = root / course / "00_README.md"
+        if readme.exists() and set_map_aim(readme, int(lesson.group(1)), aim):
+            done.append(str(readme))
+    elif outline.exists():
+        text, nl = _rw(outline)
+        if re.search(r"^\|\s*ねらい\s*\|", text, re.M):
+            text = re.sub(r"^\|\s*ねらい\s*\|[^\n]*", f"| ねらい | {aim} |", text, count=1, flags=re.M)
+        else:
+            m = re.search(r"^##\s*オプション\s*$(.*?)(?=^##\s|\Z)", text, re.M | re.S)
+            if m:
+                rows = [mm for mm in re.finditer(r"^\|[^\n]*$", text[m.start():m.end()], re.M)]
+                at = m.start() + rows[-1].end() if rows else m.end()
+                text = text[:at] + f"\n| ねらい | {aim} |" + text[at:]
+        outline.write_bytes(text.replace("\n", nl).encode("utf-8"))
+        done.append(str(outline))
+    return done
+
+
 def aims_table() -> str:
     return "\n".join(["| ねらい | 既定の話の型 | どんな回か |", "|---|---|---|"] + [f"| {a} | {t} | {d} |" for a, t, d in AIMS])
 ANSWER_BEAT = ("だから", "帰結", "答えと柱の一覧")
@@ -210,7 +298,8 @@ def arc_check(text: str, kind: str, body_no: list):
         return [("△", "話の型", "話の型が無い。筋の表の下に「話の型：<名前>」を1行（" + "・".join(ARC_NAMES)
                  + "。references/story.md 2節）。拍1つに1枚の青帯を先に書き、あとで そして の枚を足す")]
     if arc is None:
-        return [("△", "話の型", f"「{name}」は話の型に無い（" + "・".join(ARC_NAMES) + "）")]
+        return [("△", "話の型", f"「{name}」は話の型に無い（" + "・".join(ARC_NAMES) + "）"
+                 + (f"。ねらい「{aim}」の既定の型は「{want}」" if want else ""))]
     notes = []
     if want and arc[0] != want:   # ねらいと型が合わない（強い数字・目立つ話に引っぱられた など）
         notes.append(f"ねらい「{aim}」の既定の型は「{want}」なのに「{arc[0]}」を選んでいる（データの驚きは、既定の型の しかし の拍に入れる）")
@@ -457,6 +546,10 @@ def check(text: str, kind: str, body_no: list, where: str):
         cnt = {w: sum(x == w for _, x in seq) for w in LINKS}
         res.append(("✔", "前の枚から", "・".join(f"{w} {c}" for w, c in cnt.items()) + f"（しかし：{buts}）"))
     res += arc_check(text, kind, body_no)
+    if aim_of(text)[0] is None and len(body_no) > 5:
+        res.append(("△", "ねらい", "ねらいが無い。言えるようになることに合うものを一覧（python <skill>/scripts/story.py --aims）から選び、"
+                    "`python <skill>/scripts/story.py --aim <work> <ねらい>` で書く（講座は設計メモと地図のこの回の行、発表は outline.md のオプション。"
+                    "地図にねらいの列が無ければ足してよい）。話の型はその既定の型"))
     return res
 
 
@@ -465,5 +558,12 @@ if __name__ == "__main__":   # python story.py --aims：ねらいと既定の型
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if "--aims" in sys.argv:
         print(aims_table())
+    elif "--aim" in sys.argv and len(sys.argv) > sys.argv.index("--aim") + 2:
+        k = sys.argv.index("--aim")
+        w, a = Path(sys.argv[k + 1]), sys.argv[k + 2]
+        done = set_aim(w, a)
+        want = dict((x[0], x[1]) for x in AIMS)[a.strip()]
+        print((f"ねらい「{a}」を書いた：" + "・".join(done) if done else "✘ 書く所が無い（memo.md・outline.md・講座の地図）") + f"。既定の話の型は「{want}」")
     else:
-        print("python story.py --aims   # 回のねらいと、既定の話の型の一覧")
+        print("python story.py --aims                  # 回のねらいと、既定の話の型の一覧\n"
+              "python story.py --aim <work> <ねらい>   # ねらいを書く（講座は設計メモと地図のこの回の行。地図に列が無ければ足す。発表は outline.md のオプション）")

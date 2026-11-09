@@ -392,3 +392,26 @@ def test_cover_name_defaults(tmp_path):
     z.mkdir()
     (z / "outline.md").write_text("## オプション\n\n| オプション | 今の値 |\n|---|---|\n| 答えの位置 | 先 |\n", encoding="utf-8")
     assert sp.author(sp.load_profile(z)) == ""
+
+
+def test_set_aim_adds_the_map_column(tmp_path):
+    """ねらいの列が無い地図：設計の担当が story.py --aim で、設計メモと地図のこの回の行に書く（列は足す）。発表はオプションの表に。"""
+    c = tmp_path / "病院講座"
+    c.mkdir()
+    (c / "00_README.md").write_text("# 病院講座\n\n## 全体の地図\n\n| 回 | 題 | 言えるようになること |\n|---|---|---|\n"
+                                     "| 1 | 設計意図 | なぜこの形か言える |\n| 2 | 審査 | 審査ができる |\n\n## 決め事\n", encoding="utf-8")
+    w = tmp_path / "_work" / "病院講座_01"
+    w.mkdir(parents=True)
+    (w / "memo.md").write_text("## 1. この回のゴールと前提\n\n- 言えるようになること：x\n", encoding="utf-8")
+    assert len(story.set_aim(w, "なぜこの形か")) == 2
+    readme = (c / "00_README.md").read_text(encoding="utf-8")
+    assert "| 回 | 題 | ねらい | 言えるようになること |" in readme and "| 1 | 設計意図 | なぜこの形か |" in readme and "| 2 | 審査 |  |" in readme
+    assert story.aim_of((w / "memo.md").read_text(encoding="utf-8"))[1] == "今の形から由来へ"
+    story.set_aim(w, "使えるようになる")                                    # 選び直し：同じ所を書き換える
+    assert (w / "memo.md").read_text(encoding="utf-8").count("- ねらい：") == 1
+    assert "| 1 | 設計意図 | 使えるようになる |" in (c / "00_README.md").read_text(encoding="utf-8")
+    z = tmp_path / "_work" / "ゼミ"
+    z.mkdir()
+    (z / "outline.md").write_text("## オプション\n\n| オプション | 今の値 |\n|---|---|\n| 答えの位置 | 先 |\n\n## 構成\n", encoding="utf-8")
+    story.set_aim(z, "教科書の節を読む")
+    assert story.aim_of((z / "outline.md").read_text(encoding="utf-8"))[1] == "輪読（節の筋）"
