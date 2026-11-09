@@ -10,7 +10,7 @@
 
 | 中立の言葉 | 何をするか | Codex | Claude Code | Antigravity | GitHub Copilot（CLI） |
 |---|---|---|---|---|---|
-| 【質問】 | 選択肢を示して、ユーザーに1回だけ聞く | request_user_input | AskUserQuestion | ask_question | ask_user |
+| 【質問】 | 選択肢をボタンで示して、ユーザーに1回だけ聞く（**1回に3問・各3択まで**。「その他」の自由記入はどの道具でも付く） | request_user_input（Plan モードだけ。ふつうのモードは request_user_input_async：答えは次のメッセージで届く） | AskUserQuestion | ask_question（1問ずつなら、続けて聞く） | ask_user |
 | 【別のエージェント】 | 構成案・設計メモ・完成品のレビューと、スライドの制作（手順3〜6）を、別のエージェントにさせる。**空の会話から始め**、渡すのはファイルの場所と頼むことだけ | spawn_agent（**`fork_turns: "none"`**。省くと親の会話をまるごと写して始まり、その分ずっと重くなる。モデルを指定できる。終わりは wait_agent で待つ。**`timeout_ms` は長く（600000 など）し、時間切れなら待ち直す**。短い待ちを数回で切り上げて応答を終えない） | Agent ツール（新しい会話で始まる。モデルを指定。レビューはバックグラウンドで） | invoke_subagent（`Model` でモデルを指定。既定は親と同じ） | task（`mode` を background に。結果は read_agent で読む） |
 | 【続けて頼む】 | 先読みさせたレビュー担当に、続けてレビューを頼む | followup_task（起動したときの名前に送る） | SendMessage（起動したときの ID に送る） | send_message | write_agent（起動したときの ID に送る） |
 | 【画像を見る】 | 描画したスライドの PNG・資料のページ画像を目で確かめる | view_image | Read | read_file（PNG も読める） | view（PNG も読める） |
@@ -23,7 +23,7 @@
 **PowerPoint を使うスクリプト（`render_check.ps1`・`export_pdf.ps1`・`notes_html.py`・`make_deck.py`）は、サンドボックスの中では止められることがある**（PowerPoint が無い PC では、代わりに LibreOffice 版の `render_check_lo.py` を使う。references/tools.md「PowerPoint の決まり」）（Codex では「Retrieving the COM class factory … 80070005 Access is denied」）。Codex なら exec_command に `sandbox_permissions: "require_escalated"` を付けて、ユーザーの許可を得てサンドボックスの外で動かす（試験ではこれで通った）。毎回の許可を省くには、同梱の `assets/codex/sensei-slides.rules` を、スライドを作るフォルダの `.codex/rules/` に置いてもらう（Codex がそのフォルダを信頼しているときに読む。この3つのスクリプトだけを、確認なしでサンドボックスの外で動かす決まり）。止められても、自作の HTML や別の描き方で代えない（SKILL.md）。また、画面操作の機能（Codex の Computer Use など）で PowerPoint を開かない。サンドボックスの外での実行は、画面は変わらず、コマンドの許可を求める確認が出るだけ。
 
 **表にないツール（VS Code の Copilot など）**では、同じ働きの道具を探して使う。無いときは次のようにする。
-- 【質問】：チャットに選択肢を番号つきで並べて聞き、答えを待つ
+- 【質問】：チャットに問いと選択肢を番号つきで並べて（「1-a, 2-c のように答えてください」）、答えを待つ
 - 【別のエージェント】：下の「別のエージェントが無いとき」
 - 【続けて頼む】：レビューのたびに資料と観点を渡し直す（先読みは省く）
 - 【画像を見る】：画像を読めないなら、ユーザーに `render/` の画像を見てもらい、気になる所を言ってもらう
