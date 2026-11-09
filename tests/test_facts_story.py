@@ -240,6 +240,23 @@ def test_story_arc_both_positions():
     assert _arc_mark(_arc_outline(late, "ない型", "後"))[0] == "△"
 
 
+def test_story_arc_rounds():
+    """「話の型：<名前>×N」：くり返す所が N 周、順に出ているか。カードには周の番号つきの拍。"""
+    one = ["だから（手段）", "そして（詳しく）", "しかし（限り）", "だから（帰結）"]
+    text = _arc_outline(["—"] + one * 2, "輪読（節の筋）×2")
+    assert _arc_mark(text)[0] == "✔" and "2周" in _arc_mark(text)[1]
+    got = story.beat_map(text, "outline")
+    assert got[7] == (5, "だから", "手段", "定義・式", 2)                  # 2周目の最初の拍
+    short = _arc_outline(["—"] + one + one[:2] + one[3:], "輪読（節の筋）×2")   # 2つ目の小節で「成り立たない場合」を飛ばした
+    mark, msg = _arc_mark(short)
+    assert mark == "△" and "2周目" in msg
+    paper = ["—", "しかし（壁）", "だから（手段）"] + ["そして（次へ）", "しかし（疑い）", "だから（帰結）"] * 2 + ["しかし（限り）"]
+    assert _arc_mark(_arc_outline(paper, "論文紹介（問題から）×2"))[0] == "✔"   # 実験2つ：結果 → 疑い → 確かめた結果 を2周
+    assert _arc_mark(_arc_outline(paper, "論文紹介（問題から）"))[0] == "✔"      # 周の数を書かなければ1周分だけ見る
+    beats = story.arc_beats(story.arc_of("話の型：論文紹介（問題から）")[1], "先", 2)
+    assert sum(b[2] == "答えと柱の一覧" for b in beats) == 1                # 答えの拍は1回だけ
+
+
 def test_data_arc_needs_a_number_figure_on_the_surprise():
     """話の型「数字で崩す」：意外の拍の枚の図は、数字の比べ（比べる・推移・内訳のグラフ）。"""
     links = ["—", "そして（詳しく）", "しかし（意外）", "だから（問い）", "だから（帰結）", "しかし（限り）"]

@@ -93,18 +93,45 @@ ARCS = [
 ]
 ARC_NAMES = [a[0] for a in ARCS]
 ANSWER_BEAT = ("だから", "帰結", "答えと柱の一覧")
+# 「話の型：<名前>×N」で何周かするときに、くり返す拍（ARCS の拍の番号で [始め, 終わり)）。書いていない型は全部をくり返す。
+# 例：輪読は小節ごとに全部、論文紹介は実験・結果ごとに「結果 → 疑い → 確かめた結果」
+REPEAT = {
+    "論文紹介（問題から）": (2, 5), "論文紹介（方法から）": (2, 5), "研究発表": (2, 4), "提案": (3, 5),
+    "素朴な見方を崩す": (1, 3), "今の形から由来へ": (3, 4), "手順を身につける": (1, 4), "比べて選ぶ": (1, 2),
+    "数字で崩す": (1, 4), "原因を探る": (1, 3),
+}
 
 
-def arc_beats(arc, pos: str):
-    """型の拍を、答えの位置に合わせて返す。「先」：最初の しかし の拍のすぐ後（しかし が無ければ先頭）に、答えと柱の一覧の拍を入れる。
+def repeat_part(arc):
+    """型のくり返す拍 [(語, 種類, やること)]。"""
+    s, e = REPEAT.get(arc[0], (0, len(arc[4])))
+    return arc[4][s:e]
+
+
+def arc_beats(arc, pos: str, rounds: int = 1):
+    """型の拍 [(語, 種類, やること, 周)] を、答えの位置と周の数に合わせて返す。周は、くり返す拍なら 1〜N、それ以外は 0。
+    「先」：最初の しかし の拍のすぐ後（しかし が無ければ先頭）に、答えと柱の一覧の拍を1回だけ入れる。
     「後」：答えと柱の一覧の拍を外す（提案のように、もともと先の型を後で使うとき）。"""
     own = next((x for x in arc[4] if x[2].endswith("柱の一覧")), None)   # 提案のように、型に答えの拍があればその言い方で
-    beats = [x for x in arc[4] if x is not own]
+    s, e = REPEAT.get(arc[0], (0, len(arc[4])))
+    pre = [x + (0,) for x in arc[4][:s] if x is not own]
+    core = [x for x in arc[4][s:e] if x is not own]
+    post = [x + (0,) for x in arc[4][e:] if x is not own]
+    n = max(1, rounds)
+    beats = pre + [x + ((r if n > 1 else 0),) for r in range(1, n + 1) for x in core] + post
     if pos == "先":
         i = next((k + 1 for k, x in enumerate(beats) if x[0] == "しかし"), 0)
-        beats = beats[:i] + [own or ANSWER_BEAT] + beats[i:]
+        beats = beats[:i] + [(own or ANSWER_BEAT) + (0,)] + beats[i:]
     return beats
 ARC_LINE = re.compile(r"話の型\s*[：:]\s*([^\n|]+)")
+ROUNDS = re.compile(r"\s*[×xX＊*]\s*([0-9０-９]+)\s*(?:周)?\s*$")
+
+
+def arc_rounds(text: str) -> int:
+    """「話の型：<名前>×N」の N（書いていなければ 1）。"""
+    m = ARC_LINE.search(text)
+    r = ROUNDS.search(m.group(1).strip()) if m else None
+    return int(r.group(1).translate(str.maketrans("０１２３４５６７８９", "0123456789"))) if r else 1
 
 
 def arc_of(text: str):
@@ -112,7 +139,7 @@ def arc_of(text: str):
     m = ARC_LINE.search(text)
     if not m:
         return None, None
-    name = re.sub(r"\s+$", "", m.group(1)).strip("　 ")
+    name = ROUNDS.sub("", re.sub(r"\s+$", "", m.group(1)).strip("　 ")).strip("　 ")
     hit = next((a for a in ARCS if a[0] == name), None) or next((a for a in ARCS if a[0].split("（")[0] == name), None)
     return name, hit
 
@@ -127,7 +154,7 @@ def beat_map(text: str, kind: str):
         return {}
     body = body_numbers(text, kind)
     out, k = {}, 0
-    beats = arc_beats(arc, answer_position(text, kind))
+    beats = arc_beats(arc, answer_position(text, kind), arc_rounds(text))
     for n in body[1:]:
         if k >= len(beats):
             break
@@ -151,12 +178,14 @@ def arc_check(text: str, kind: str, body_no: list):
         return [("△", "話の型", f"「{name}」は話の型に無い（" + "・".join(ARC_NAMES) + "）")]
     notes = []
     pos = answer_position(text, kind)
-    beats = arc_beats(arc, pos)
+    rounds = arc_rounds(text)
+    beats = arc_beats(arc, pos, rounds)
     got = beat_map(text, kind)
     done = len(got)
     if done < len(beats):
         rest = beats[done:]
-        notes.append(f"型の拍が {done}/{len(beats)} しか順に出ていない（答えの位置「{pos}」）。次に要る拍：" + " → ".join(f"{w}（{kd}：{role}）" for w, kd, role in rest)
+        notes.append(f"型の拍が {done}/{len(beats)} しか順に出ていない（答えの位置「{pos}」" + (f"・{rounds}周" if rounds > 1 else "") + "）。次に要る拍："
+                     + " → ".join(f"{w}（{kd}：{role}" + (f"・{r}周目" if r else "") + "）" for w, kd, role, r in rest)
                      + "（「前の枚から」をこの順に。間に そして の枚を挟んでよい）")
     if pos == "先" and got:
         st = story_table(text) or {}
@@ -178,7 +207,8 @@ def arc_check(text: str, kind: str, body_no: list):
         return [("✔", "話の型", f"「{arc[0]}」から外している（型を外す理由あり）")]
     if notes:
         return [("△", "話の型", "。".join(notes) + "。合わないなら別の型を選ぶか、「型を外す理由：…」を書く")]
-    return [("✔", "話の型", f"「{arc[0]}」（答えの位置「{pos}」）の拍 {len(beats)} つが順に出ている：" + "・".join(f"[{n}]{w}（{kd}）" for n, (_, w, kd, _) in got.items()))]
+    return [("✔", "話の型", f"「{arc[0]}」（答えの位置「{pos}」" + (f"・{rounds}周" if rounds > 1 else "") + f"）の拍 {len(beats)} つが順に出ている："
+             + "・".join(f"[{n}]{w}（{kd}）" for n, (_, w, kd, *_x) in got.items()))]
 
 
 def answer_position(text: str, kind: str) -> str:

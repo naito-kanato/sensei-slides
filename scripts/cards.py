@@ -112,7 +112,8 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
             pos = story.answer_position(text, kind)
             beat = beats.get(n)
             if beat:
-                L.append(f"- この枚は話の型「{arc_name}」の拍 {beat[0]}：{beat[1]}（{beat[2]}）＝{beat[3]}。青帯と原稿の1文目で、この役を果たす")
+                rnd = f"（{beat[4]}周目）" if len(beat) > 4 and beat[4] else ""
+                L.append(f"- この枚は話の型「{arc_name}」の拍 {beat[0]}{rnd}：{beat[1]}（{beat[2]}）＝{beat[3]}。青帯と原稿の1文目で、この役を果たす")
             if n == q_[1]:
                 L.append("- **この枚が問いの枚**：筋の問いを、スライドにも短い一文で載せ（赤字でよい）、原稿でもそのまま聞き手に投げかける（あとの枚の「最初の問い」はここを指す）")
             if n == a_[1] and pos == "先":
