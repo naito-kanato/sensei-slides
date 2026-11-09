@@ -47,6 +47,11 @@ def signatures(pptx) -> list[str]:
             for s in prs.slides]
 
 
+def same_as_before(recs: list, i: int) -> bool:
+    """i 番目の記録が、1つ前の記録とスライドの中身（枚ごとの指紋）がまったく同じか（何も直さずにもう一度回した）。"""
+    return i > 0 and bool(recs[i].get("sig")) and recs[i].get("sig") == recs[i - 1].get("sig")
+
+
 def append(work: Path, pptx: Path, err=None, warn=None, x=None, final: bool = False) -> int:
     """1回分を足し、何回目かを返す。記録できなくても組みは止めない（0 を返す）。final＝上限のあとの最後の確かめ（回数に数えない）。"""
     try:

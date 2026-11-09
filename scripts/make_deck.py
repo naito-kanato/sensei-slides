@@ -142,9 +142,11 @@ def run_budget(work: Path):
         launched = [r.get("ts") for r in budget.load(work) if r.get("role") == "完成後のレビュー担当" and r.get("ts")]
         born = launched[0] if launched else getattr(st, "st_birthtime", st.st_ctime if platform.system() == "Windows" else st.st_mtime)
         t0 = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(born))
-        stage, used = "完成後のレビューのあとの直し", sum(1 for r in recs if r.get("t", "") >= t0 and not r.get("final"))
+        stage, used = "完成後のレビューのあとの直し", sum(1 for i, r in enumerate(recs)
+                                                    if r.get("t", "") >= t0 and not r.get("final") and not build_log.same_as_before(recs, i))
     else:
-        stage, used = "仕上げ", sum(1 for r in recs if not r.get("final"))
+        stage, used = "仕上げ", sum(1 for i, r in enumerate(recs) if not r.get("final") and not build_log.same_as_before(recs, i))
+    # 中身が前の回とまったく同じ回（何も直さずにもう一度回した）は数えない。Codex の試しで、仕上げの4回のうち2回がこれだった
     c = budget.cap(work, budget.MAKE_DECK_CAPS[stage])   # オプション「回数の上限」（標準・多め・なし）
     return stage, used, (10 ** 6 if c is None else c)
 
@@ -248,6 +250,11 @@ def main(argv=None):
     notes += plan_rows
     n_x = sum(mk == "✘" for mk, _, _ in notes)
     runs = build_log.append(work, pptx, n_err, n_warn, n_x, final=final)
+    recs = build_log.load(work)
+    same = bool(recs) and build_log.same_as_before(recs, len(recs) - 1)
+    if same:
+        print("（前の回とスライドの中身がまったく同じ：何も直していない。回数には数えないが、直してから回す）")
+        used -= 1   # 下の「n 回目」の表示も数えない
     if final:
         print("（最後の確かめ：回数に数えない。ここで直したら、もう確かめられない。残った所は返答に書く）")
     if runs > 6 and (n_err or n_warn or n_x):

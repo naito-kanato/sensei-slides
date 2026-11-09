@@ -261,3 +261,10 @@ def test_solo_main_is_stopped(tmp_path):
     other.mkdir(parents=True)
     (other / "outline.md").write_text("## 構成\n", encoding="utf-8")
     assert budget.solo_problem(other) is None                              # _work の外（見本など）は見ない
+
+
+def test_same_deck_twice_is_not_counted():
+    """何も直さずにもう一度 make_deck を回した回（枚ごとの指紋が前と同じ）は、回数に数えない。"""
+    import build_log
+    recs = [{"sig": ["a", "b"]}, {"sig": ["a", "b"]}, {"sig": ["a", "c"]}, {"sig": ["a", "c"]}]
+    assert [build_log.same_as_before(recs, i) for i in range(4)] == [False, True, False, True]
