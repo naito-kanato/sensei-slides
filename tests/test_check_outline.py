@@ -98,6 +98,29 @@ def test_need_tiers():
     assert co.need_care(hs, 2) == [3, 4]
 
 
+def test_need_multi_labels_and_unsure():
+    """要否は当たるもの全部（要1・要4 など）。要4（動作の語の像のずれ）は丁寧さによらず手当て。要と深の両方の行は迷いで、数えない。"""
+    t = ("[3] 「A ⇒ B」｜論拠｜要1・要4｜補う前提：なぜ｜使う所：3｜架け方：x\n"
+         "[4] 「C ⇒ D」｜用語｜要2・深｜補う前提：意味｜使う所：4｜架け方：x\n"
+         "[5] 「E ⇒ F」｜出どころ｜要4｜補う前提：像：切る → 実際は入るだけ｜使う所：5｜架け方：x\n"
+         "[6] 「G ⇒ H」｜論拠｜要3・深｜補う前提：前提｜使う所：8｜架け方：x\n"
+         "[8] 「I ⇒ J」｜論拠｜要1・要3｜補う前提：前提｜使う所：8｜架け方：x\n")
+    hs = co.holes(t)
+    assert len(hs) == 5 and hs[3][0][2] == "要1・要4"
+    assert co.labels("要1・要4") == {"要1", "要4"} and co.unsure("要3・深") and not co.unsure("要1・要3")
+    assert co.need_care(hs, 0) == [3, 5, 8]
+    assert co.need_care(hs, 2) == [3, 5, 8]
+
+
+def test_unsure_rows_are_listed(reviewed):
+    rv = reviewed.with_name("outline_review.md")
+    rv.write_text(rv.read_text(encoding="utf-8") + "\n[15] 「X ⇒ Y」｜論拠｜要3・深｜補う前提：前提｜使う所：15｜架け方：x\n", encoding="utf-8")
+    res = co.reasoning(reviewed, reviewed.read_text(encoding="utf-8"))
+    m = {item: mark for mark, item, _ in res}
+    assert m["推論距離の手当て"] == "✔" and m["推論距離の迷い"] == "・"
+    assert "[15]" in next(d for _, item, d in res if item == "推論距離の迷い")
+
+
 def test_missing_prior_knowledge_blocks(reviewed):
     s = reviewed.read_text(encoding="utf-8")
     s = re.sub(r"\|\s*聞き手の前提知識\s*\|[^\n]*\n", "", s)

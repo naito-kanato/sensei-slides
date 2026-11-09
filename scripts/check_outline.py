@@ -14,8 +14,8 @@
     書いてある。無ければ ✘（小さな依頼でも。聞いて書くまで先へ進まない）。丁寧さは、書いていなければ詳しさから（0・1・2）
     （構成案のレビューの推論距離の監査が、これを前提にする。references/outline-review.md）
   推論距離の手当て：構成案のレビューの結果（outline.md と同じフォルダの outline_review.md）の
-    穴の行（「[番号] 「A ⇒ B」｜種類｜要1・要2・要3・深｜…」、穴1つに1行）で、要1か要2があるスライドと、要3が丁寧さより多いスライドが、
-    outline.md の「## 引っかかりへの手当て」に [番号] で全部載っている（採らなかったものも理由つきで載せる）。「深」は数えない。
+    穴の行（「[番号] 「A ⇒ B」｜種類｜要否｜…」、穴1つに1行。要否は 要1〜要4・深 のうち当たるもの全部）で、要1・要2・要4があるスライドと、要3が丁寧さより多いスライドが、
+    outline.md の「## 引っかかりへの手当て」に [番号] で全部載っている（採らなかったものも理由つきで載せる）。「深」と、要と深の両方の行（迷い）は数えない（迷いは一覧に出す）。
     載っていなければ ✘。レビューの前（outline_review.md が無い）なら数えない
   照合できるのは、数えた結果と手当てが食い違っていないかまで。穴の数そのものはレビュー担当の判断。
   話の筋・前の枚から：筋の表（状況・複雑化・問い・答え）と、構成の表の「前の枚から」（そして・しかし・だから）。story.py
@@ -70,8 +70,8 @@ def body_rows(text: str):
 
 REVIEW = "outline_review.md"
 KINDS = ("用語", "出どころ", "論拠", "比較", "範囲", "根拠")
-HOLE = re.compile(r"^\s*[-*]?\s*\[\s*(\d+)\s*\]\s*「(.+?)」\s*｜\s*(" + "|".join(KINDS) + r")\s*｜\s*(要[123]?|深)\s*｜", re.M)
-HOLE_FORM = "「[番号] 「A ⇒ B」｜種類｜要1・要2・要3・深｜補う前提：…｜使う所：…｜架け方：…」"
+HOLE = re.compile(r"^\s*[-*]?\s*\[\s*(\d+)\s*\]\s*「(.+?)」\s*｜\s*(" + "|".join(KINDS) + r")\s*｜\s*((?:要[1-4]?|深)(?:\s*[・／/、,]\s*(?:要[1-4]?|深))*)\s*｜", re.M)
+HOLE_FORM = "「[番号] 「A ⇒ B」｜種類｜要否（要1・要2・要3・要4・深 のうち当たるもの全部。例：要1・要4）｜補う前提：…｜使う所：…｜架け方：…」"
 
 
 def knowledge(text: str) -> bool:
@@ -114,13 +114,25 @@ def cared(text: str):
     return {int(x) for x in re.findall(r"\[\s*(\d+)\s*\]", m.group(1))} if m else set()
 
 
+def labels(need: str) -> set:
+    """要否の欄（「要1・要4」「要3・深」など、当たるもの全部）を {"要1", "要4"} のような集合に。"""
+    return set(re.findall(r"要[1-4]?|深", need))
+
+
+def unsure(need: str) -> bool:
+    """迷い：要と深の両方が付いた行。手当ての検査には数えず、一覧に出してメイン側が決める。"""
+    ls = labels(need)
+    return "深" in ls and any(x.startswith("要") for x in ls)
+
+
 def need_care(hs: dict, care_level: int):
-    """手当てが要るスライド：要1（この枚の結論のなぜ）か要2（名前の付いた知らない語）がある枚（丁寧さによらず）と、
-    要3（あとで使う前提）が1枚に丁寧さより多い枚。「深」は数えない。番号の無い「要」は要1と同じに扱う（厳しいほうに倒す）。"""
+    """手当てが要るスライド：要1（この枚の結論のなぜ）・要2（名前の付いた知らない語）・要4（動作の語の像のずれ）がある枚（丁寧さによらず）と、
+    要3（あとで使う前提）が1枚に丁寧さより多い枚。「深」と迷い（要と深の両方）は数えない。番号の無い「要」は要1と同じに扱う（厳しいほうに倒す）。"""
     out = []
     for i, hl in hs.items():
-        strict = any(need in ("要", "要1", "要2") or (need.startswith("要") and kind == "用語") for _, kind, need in hl)
-        later = sum(need == "要3" and kind != "用語" for _, kind, need in hl)
+        rows = [(kind, labels(need)) for _, kind, need in hl if not unsure(need)]
+        strict = any(ls & {"要", "要1", "要2", "要4"} or (kind == "用語" and any(x.startswith("要") for x in ls)) for kind, ls in rows)
+        later = sum("要3" in ls and kind != "用語" for kind, ls in rows)
         if strict or later > care_level:
             out.append(i)
     return sorted(out)
@@ -156,9 +168,13 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
     missing = [i for i in need if i not in cared(text)]
     if missing:
         res.append(("✘", "推論距離の手当て", "「## 引っかかりへの手当て」に載っていないスライド：" + "・".join(f"[{i}]" for i in missing)
-                    + f"（要1か要2がある、または要3が丁寧さ {lv} より多い。採るなら架け方を、採らないなら理由を書く。「深」は書かなくてよい）"))
+                    + f"（要1・要2・要4がある、または要3が丁寧さ {lv} より多い。採るなら架け方を、採らないなら理由を書く。「深」は書かなくてよい）"))
     else:
         res.append(("✔", "推論距離の手当て", f"手当ての要る {len(need)} 枚（{'・'.join(f'[{i}]' for i in need) or 'なし'}）が全部載っている"))
+    doubt = sorted({i for i, hl in hs.items() if any(unsure(need) for _, _, need in hl)} - set(need) - cared(text))
+    if doubt:
+        res.append(("・", "推論距離の迷い", "要と深の両方が付いた穴のある枚：" + "・".join(f"[{i}]" for i in doubt)
+                    + "（数えていない。その枚の結論に要るなら手当てに載せ、要らなければ原稿の ※ の候補）"))
     return res
 
 
