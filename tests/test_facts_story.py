@@ -424,3 +424,14 @@ def test_aim_not_in_list_and_citation_leak():
     res = story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")
     assert any(i == "ねらい" and m == "△" and "一覧に無い" in x for m, i, x in res)
     assert check_layout.re.search(r"〔\s*(事実|データ)\s*\d+", "S・A・B・Cは中項目ごと〔事実14〕")
+
+
+def test_search_rule_for_fact_rows(tmp_path):
+    """裏取りの検索：1行につき、2回目からは理由を書いてから、5回まで。facts_N.md に欄があり、merge が守っていない行を出す。"""
+    w = _work(tmp_path)
+    out = facts.split(w, 2)
+    t = out[0].read_text(encoding="utf-8")
+    assert "検索（回数：2回目からの理由）" in t and "5回まで" in t
+    assert facts.search_problem("1") is None and facts.search_problem("3：2 一次資料が無い／3 最新版") is None
+    assert "理由が 1 個" in facts.search_problem("3：2 一次資料が無い")
+    assert "超えた" in facts.search_problem("6：2 a／3 b／4 c／5 d／6 e")

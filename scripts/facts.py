@@ -22,7 +22,8 @@ if hasattr(sys.stdout, "reconfigure"):
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 SECTION = re.compile(r"(^##\s*3\.\s*事実と出典[^\n]*\n)(.*?)(?=^##\s|\Z)", re.S | re.M)
-HEAD = ["番号", "主張", "値・式", "出典（書名・URL）", "確認", "使う枚", "要点と合うか"]
+HEAD = ["番号", "主張", "値・式", "出典（書名・URL）", "確認", "使う枚", "要点と合うか", "検索（回数：2回目からの理由）"]
+SEARCH_MAX = 5   # 1行の検索の上限。ソネットの試しで、1人の裏取りの担当が1行を何度も調べ直し、呼び出し62回・キャッシュの読み680万になった
 
 HOWTO = """# 裏取り（{name}・{k}/{n}）
 
@@ -38,6 +39,9 @@ HOWTO = """# 裏取り（{name}・{k}/{n}）
   違うときは、表の値は確かめた値に直す（直しの担当が、その行を使う枚の青帯と筋を直す）
 - 行に無いが、使う枚の話に要る新しい事実（新しい版がある、など）を見つけたら、番号を「+」にして表の最後に足す
 - PDF は要る頁だけ読む。検索の結果を全部覚えておかない（表に要る所だけ拾う）
+- **検索は1行につき、1回目は自由、2回目からは、検索する前に「検索」の欄に理由を書く**（何が足りなかったか：一次資料が無い・版が古い・値が出典どうしで違う など）。
+  欄の書き方は「3：2 一次資料が無い／3 最新版が要る」（回数：何回目と理由を ／ で）。1回だけなら「1」
+- **5回まで**。5回で確かめられなければ、6回目はせずに、確認を「×（5回で確かめられず）」にして次の行へ進む（その行のために長く調べ続けない）
 
 終えたら「○ n・△ n・× n、違う n 行」と、違う行の番号と一言だけを、10行までで返す。
 
@@ -126,7 +130,7 @@ def split(work: Path, n: int):
         lines = [HOWTO.format(name=work.name, k=k + 1, n=n), "| " + " | ".join(HEAD) + " |", "|" + "---|" * len(HEAD)]
         for no, r in part:
             r = (r + [""] * 4)[:4]
-            lines.append("| " + " | ".join([str(no), *r, "・".join(map(str, use.get(no, []))) or "—", ""]) + " |")
+            lines.append("| " + " | ".join([str(no), *r, "・".join(map(str, use.get(no, []))) or "—", "", ""]) + " |")
         used = sorted({s for no, _ in part for s in use.get(no, [])})
         if used:
             heads = headlines(memo)
@@ -140,6 +144,21 @@ def split(work: Path, n: int):
     return out
 
 
+def search_problem(cell: str) -> str | None:
+    """「検索」の欄（「3：2 一次資料が無い／3 最新版」）：回数が上限を超えた・2回目からの理由が足りない、なら説明の文。空・1回は None。"""
+    cell = (cell or "").strip()
+    m = re.match(r"(\d+)", cell)
+    if not m:
+        return None
+    n = int(m.group(1))
+    if n > SEARCH_MAX:
+        return f"{n}回（{SEARCH_MAX}回を超えた）"
+    reasons = [x for x in re.split(r"[／/]", cell[m.end():].lstrip("：: ")) if x.strip()]
+    if n >= 2 and len(reasons) < n - 1:
+        return f"{n}回なのに、2回目からの理由が {len(reasons)} 個"
+    return None
+
+
 def merge(work: Path):
     memo_p = work / "memo.md"
     memo = memo_p.read_text(encoding="utf-8")
@@ -149,12 +168,12 @@ def merge(work: Path):
         raise SystemExit("facts_*.md が無い（先に facts.py split）")
     width = len(head)
     rows = [(r + [""] * width)[:width] for r in rows]
-    diffs, added, replaced = [], 0, 0
+    diffs, added, replaced, search_bad = [], 0, 0, []
     for f in files:
         h, rs = rows_of(f.read_text(encoding="utf-8"))
         if h is None:
             continue
-        col = {name: next((k for k, x in enumerate(h) if x.startswith(name)), None) for name in ("番号", "主張", "値", "出典", "確認", "使う枚", "要点")}
+        col = {name: next((k for k, x in enumerate(h) if x.startswith(name)), None) for name in ("番号", "主張", "値", "出典", "確認", "使う枚", "要点", "検索")}
         for r in rs:
             get = (lambda key: r[col[key]].strip() if col[key] is not None and col[key] < len(r) else "")
             new = [get("主張"), get("値"), get("出典"), get("確認")] + [""] * max(0, width - 4)
@@ -167,6 +186,9 @@ def merge(work: Path):
                 rows.append(new[:width])
                 added += 1
                 label = str(len(rows))
+            sp = search_problem(get("検索"))
+            if sp:
+                search_bad.append(f"事実{get('番号') or '?'}：{sp}")
             fit = get("要点")
             if fit.startswith("違") or (no and not no.isdigit()):
                 diffs.append(f"- 事実{label}（使う枚：{get('使う枚') or '—'}）：{get('主張')}｜{get('値')}｜{fit or '新しく足した行'}")
@@ -192,6 +214,10 @@ def merge(work: Path):
     print(f"memo.md の3節に戻した：置き換え {replaced} 行・足した {added} 行（○ {cnt['○']}・△ {cnt['△']}・× {cnt['×']}"
           + (f"・まだ {rest}" if rest else "") + "）")
     print(f"違った行・足した行：{len(diffs)} 件" + ("（facts_diff.md。直しの担当に渡す）" if diffs else ""))
+    if search_bad:   # 検索の決まり（2回目からは理由、5回まで）を守っていない行
+        over = [x for x in search_bad if "回を超えた" in x]
+        print(("✘ " if over else "△ ") + "検索の決まりを守っていない行：" + "；".join(search_bad[:6])
+              + "（1行の検索は、2回目からは理由を書いてから、5回まで。超えた行は確かめ方を見直す）")
     return diffs
 
 
