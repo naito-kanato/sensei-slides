@@ -175,7 +175,7 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         if kind in ("memo", "outline"):
             import data as datamod
             dsets = datamod.datasets(text)
-            for dn in datamod.refs(fig_cell):
+            for dn in dict.fromkeys(datamod.refs(" ".join(figplan.fig_cells(text, kind).get(n, [fig_cell])))):   # 図の案の表に書いた指し先も
                 if dn in dsets:
                     L += [f"- 図に描くデータ（設計メモ 3b節のデータ{dn}。値・単位・分母・時点はこのとおりに描き、図の下に出典と時点の注記を入れる）：",
                           "", datamod.render(dn, dsets[dn]), ""]

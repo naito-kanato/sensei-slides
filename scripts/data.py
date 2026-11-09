@@ -160,7 +160,7 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if len(argv) < 2 or argv[0] not in ("merge", "check"):
         print(__doc__)
-        return 2
+        return 0
     work = Path(argv[1])
     if argv[0] == "merge":
         n = merge(work)

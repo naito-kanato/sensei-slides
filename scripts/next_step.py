@@ -97,13 +97,17 @@ def steps_for(work: Path):
         add(bool(found), "数字を探す（data_N.md）", "・".join(f.name for f in found) if found else "まだ")
         add(False, "設計メモ（memo.md）", "まだ")
         return out, ("references/course.md 手順4⓪：数字を探す担当を2人、同時に起動（`brief.py 数字を探す担当 <work> --n 1` と `--n 2`）" if not found else
-                     "references/course.md 手順4①：設計の担当（`brief.py 設計の担当 <work>`）。data_N.md を見てから筋を決め、data.py merge で3b節に入れる")
+                     "references/course.md 手順4①：設計の担当（`brief.py 設計の担当 <work>`）。data_N.md を見てから筋を決め、data.py merge で3b節に入れる"
+                     + ("（数字を探す担当を2人起動したなら、もう1人が返してから）" if len(found) == 1 else ""))
     if not plan.exists():
         add(False, "構成案", "outline.md が無い")
         return out, ("手順2：構成案（outline.md）を作る。`guide.py steps 2`。講座なら references/course.md の手順4（設計メモ memo.md）")
     if kind == "outline":
         import check_outline
-        bad = _fails(check_outline.check(plan))
+        res_ = check_outline.check(plan)
+        if (work / "build.py").exists():   # 組み始めたあとは、数字の組の抜けで構成案に戻さない（前の版で作り始めた構成案にも無い）
+            res_ = [r for r in res_ if not (r[1] == "データ" and r[2].startswith("data_1.md が無い"))]
+        bad = _fails(res_)
         rv = work / "outline_review.md"
         add(not bad, "構成案の確認（check_outline）", "；".join(bad[:3]))
         add(rv.exists(), "構成案のレビュー（outline_review.md）")

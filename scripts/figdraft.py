@@ -24,7 +24,7 @@ from pathlib import Path
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-SEP = ""   # 構成の表の「図で見せる」と、図の案の表の「何をどう描く」の区切り
+SEP = "\x1f"   # 構成の表の「図で見せる」と、図の案の表の「何をどう描く」の区切り
 GRAPH_KINDS = ("棒グラフ", "折れ線", "概略グラフ", "帯グラフ", "年表")
 SCHEMATIC_KEYS = ("実物", "気づく", "配置", "ラベル")
 GRAPH_KEYS = ("気づく",)
@@ -88,25 +88,54 @@ def template(n: int, kind: str, cell: str, text: str) -> str:
     return "\n".join(lines)
 
 
-def functions(figs: Path) -> dict:
-    """figs.py の {スライド番号: [(関数名, docstring, 呼んだ名前の集合)]}。番号は関数の中の「sNN」の文字列で決める。"""
-    out: dict[int, list] = {}
-    if not figs.exists():
+def _text_of(node) -> str:
+    """文字列と f 文字列（f"s{7:02d}.png" など、中身が定数のもの）を文字にする。変数の所は {}。"""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr):
+        out = ""
+        for v in node.values:
+            if isinstance(v, ast.Constant):
+                out += str(v.value)
+            elif isinstance(v, ast.FormattedValue) and isinstance(v.value, ast.Constant):
+                spec = "".join(x.value for x in getattr(v.format_spec, "values", []) if isinstance(x, ast.Constant))
+                try:
+                    out += format(v.value.value, spec)
+                except (ValueError, TypeError):
+                    out += "{}"
+            else:
+                out += "{}"
         return out
+    return ""
+
+
+def all_functions(figs: Path) -> list:
+    """figs.py の図の関数 [(関数名, docstring, 呼んだ名前の集合, 枚の番号の集合)]。番号は関数の中の「sNN」の文字列（と関数名）から。"""
+    if not figs.exists():
+        return []
     try:
         tree = ast.parse(figs.read_text(encoding="utf-8"))
     except SyntaxError:
-        return out
+        return []
+    out = []
     for fn in [x for x in tree.body if isinstance(x, ast.FunctionDef) and x.name.startswith("f_")]:
-        strs = " ".join(c.value for c in ast.walk(fn) if isinstance(c, ast.Constant) and isinstance(c.value, str))
-        nums = {int(m) for m in re.findall(r"(?<![A-Za-z0-9])s(\d{2})(?:_[a-z])?(?:\.png)?\b", strs + " " + fn.name)}
+        strs = " ".join(_text_of(c) for c in ast.walk(fn) if isinstance(c, (ast.Constant, ast.JoinedStr)))
+        nums = {int(m) for m in re.findall(r"(?<![A-Za-z0-9])s(\d{2})(?:_[a-z])?(?:\.png)?", strs + " " + fn.name)}
         calls = set()
         for c in ast.walk(fn):
             if isinstance(c, ast.Call):
                 f = c.func
                 calls.add(f.attr if isinstance(f, ast.Attribute) else f.id if isinstance(f, ast.Name) else "")
+        out.append((fn.name, ast.get_docstring(fn) or "", calls - {""}, nums))
+    return out
+
+
+def functions(figs: Path) -> dict:
+    """figs.py の {スライド番号: [(関数名, docstring, 呼んだ名前の集合)]}。"""
+    out: dict[int, list] = {}
+    for name, doc, calls, nums in all_functions(figs):
         for n in nums:
-            out.setdefault(n, []).append((fn.name, ast.get_docstring(fn) or "", calls - {""}))
+            out.setdefault(n, []).append((name, doc, calls))
     return out
 
 
@@ -120,13 +149,19 @@ def check(work: Path) -> list:
     want = drawn(cells)
     if not want:
         return [("・", "図の下書き", "自分で描く模式図・グラフの枚が図の案に無い")]
+    every = all_functions(work / "figs.py")
+    if not every:
+        return [("・", "図の下書き", "figs.py に図の関数（def f_…）がまだ無い（描いたら確かめる）")]
     fns = functions(work / "figs.py")
-    if not fns:
-        return [("・", "図の下書き", "figs.py に figs/sNN.png を書く図の関数がまだ無い（描いたら確かめる）")]
     res, ok = [], []
+    # 番号の読めない関数（ファイル名を変数で組んでいる など）も、少なくとも「気づく」の行は見る
+    for name, doc, _, nums in every:
+        if not nums and not has_key(doc, "気づく"):
+            res.append(("✘", "図の下書き", f"{name}：説明に「気づく」の行が無い（`python <skill>/scripts/figdraft.py <work>` の雛形を埋める。"
+                        "保存の名前は OUT / \"sNN.png\" と番号を書くと、どの枚の図か確かめられる）"))
     for n, (kind, _) in want.items():
         if n not in fns:
-            res.append(("△", "図の下書き", f"{n}枚目（{kind}）：figs/s{n:02d}.png を書く図の関数が figs.py に無い"))
+            res.append(("△", "図の下書き", f"{n}枚目（{kind}）：figs/s{n:02d}.png を書く図の関数が figs.py に見つからない（保存の名前に s{n:02d} を書く）"))
             continue
         name, doc, calls = fns[n][0]
         keys = SCHEMATIC_KEYS if kind == "模式図" else GRAPH_KEYS
@@ -150,7 +185,7 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv[0].startswith("-"):
         print(__doc__)
-        return 2
+        return 0
     work = Path(argv[0])
     if "--check" in argv:
         import report

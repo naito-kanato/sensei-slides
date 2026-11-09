@@ -148,6 +148,8 @@ def check(pptx: Path, work: Path | None, record: bool = True):
         import check_outline  # 関数の中で読む（check_outline → check_memo → check_done の循環を避ける）
         for mark, item, msg in check_outline.check(outline, require_review=True):
             if mark != "・":
+                if item == "データ" and msg.startswith("data_1.md が無い"):
+                    mark = "△"   # 渡す前に筋を組み直させない（数字の組を探すのは構成案の段。前の版の構成案にも無い）
                 res.append((mark, f"構成案：{item}", msg))
     memo = work / "memo.md" if work else None
     if memo and memo.exists() and not qa:

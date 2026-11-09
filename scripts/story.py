@@ -196,12 +196,12 @@ def arc_check(text: str, kind: str, body_no: list):
     if arc[0] == "数字で崩す":   # 意外の拍の枚は、数字の比べをグラフで見せる（講座はデータNを指す）
         import figplan
         import data
-        plan = figplan.plan_from_text(text, kind) or {}
+        cells = figplan.fig_cells(text, kind)
         at = next((n for n, v in got.items() if v[2] == "意外"), None)
-        cell = plan.get(at, "") if at else ""
+        cell = " ".join(cells.get(at, [])) if at else ""
         if at and (kind == "memo" or data.section(text) is not None) and not data.refs(cell):
             notes.append(f"数字で崩す型の意外の拍（{at}枚目）の図の案が、3b節のデータを指していない（「比べる：棒グラフ：データN」）")
-        elif at and figplan.parse_fig(cell)[0] not in ("比べる", "推移", "内訳"):
+        elif at and not any(figplan.parse_fig(c)[0] in ("比べる", "推移", "内訳") for c in cells.get(at, [])):
             notes.append(f"数字で崩す型の意外の拍（{at}枚目）の図が、数字の比べ（比べる・推移・内訳のグラフ）になっていない")
     if notes and re.search(r"型を外す理由[：:]\s*\S", text):
         return [("✔", "話の型", f"「{arc[0]}」から外している（型を外す理由あり）")]

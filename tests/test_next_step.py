@@ -52,3 +52,20 @@ def test_course_lesson_starts_with_finding_numbers(tmp_path):
     c.mkdir(parents=True)
     (c / "00_README.md").write_text("# 焼き肉講座\n\n## 全体の地図\n", encoding="utf-8")
     assert "数字を探す担当" in next_step.course_next(c)[1]
+
+
+def test_presentation_without_data_goes_back_only_before_build(tmp_path, root):
+    """発表：data_1.md が無ければ構成案の段では ✘ で手順2へ。組み始めたあと（build.py がある）は戻さない。"""
+    import re
+    import shutil
+    w = tmp_path / "_work" / "ゼミ"
+    w.mkdir(parents=True)
+    for f in ("outline.md", "outline_review.md"):
+        shutil.copy(root / "examples" / "zemi" / f, w / f)
+    p = w / "outline.md"
+    p.write_text(re.sub(r"## 3b\. データ.*?(?=^## )", "", p.read_text(encoding="utf-8"), flags=re.S | re.M), encoding="utf-8")
+    _, nxt = next_step.steps_for(w)
+    assert nxt.startswith("手順2") and "check_outline" in nxt
+    (w / "build.py").write_text("", encoding="utf-8")
+    _, nxt = next_step.steps_for(w)
+    assert not nxt.startswith("手順2")

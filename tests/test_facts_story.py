@@ -358,3 +358,18 @@ def test_data_without_other_reading_is_flagged():
     import data
     d = data.parse("## データ：x\n- 驚き：a\n- 単位：件\n- 時点：2020\n- 出典：b\n- 確認：○\n| 区分 | 値 |\n|---|---|\n| a | 1 |\n| b | 2 |\n")[0]
     assert data.problems(d) == ["「別の読み方」が無い"]
+
+
+def test_data_left_unmerged_under_the_template_heading(tmp_path):
+    """雛形の3b節の見出しだけ残して merge を忘れると ✘（data_N.md と3b節のずれ）。"""
+    import data
+    import check_memo
+    w = _work(tmp_path)
+    m = (w / "memo.md").read_text(encoding="utf-8").replace("## 4.", "## 3b. データ（data.py merge が入れる）\n\n（雛形）\n\n## 4.", 1)
+    (w / "memo.md").write_text(m, encoding="utf-8")
+    (w / "data_1.md").write_text("## 見つからなかった：統計が無い\n- 調べたこと：検索4回\n", encoding="utf-8")
+    rows = check_memo.data_rows(m, w, [2, 3])
+    assert any(r[0] == "✘" and "ずれ" in r[2] for r in rows)
+    data.merge(w)
+    rows = check_memo.data_rows((w / "memo.md").read_text(encoding="utf-8"), w, [2, 3])
+    assert [r[0] for r in rows] == ["・"]

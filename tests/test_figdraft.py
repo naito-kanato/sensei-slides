@@ -63,3 +63,19 @@ def test_check_drafts_and_box_only_schematics(tmp_path, root):
     assert "2枚目" in msgs["✔"][0] and "3枚目" in msgs["✔"][0]            # トークンの箱は箱そのものが実物
     (w / "figs.py").write_text(FIGS.replace("実物：トークンの箱の列", "実物：原子の並び"), encoding="utf-8")
     assert any("3枚目" in x and "箱と矢印" in x for _, _, x in figdraft.check(w))
+
+
+def test_check_reads_f_string_names_and_unnumbered_functions(tmp_path, root):
+    w = _work(tmp_path, root)
+    (w / "figs.py").write_text('def f_a():\n    """気づく：差"""\n    save(f, OUT / f"s{2:02d}.png")\n\n'
+                               'def f_b():\n    """温度"""\n    for n in (6, 7):\n        save(f, OUT / f"s{n:02d}.png")\n', encoding="utf-8")
+    res = figdraft.check(w)
+    assert any(m == "✔" and "2枚目" in x for m, _, x in res)               # f"s{2:02d}.png" も 2枚目と読む
+    assert any(m == "✘" and "f_b" in x for m, _, x in res)                  # 番号の読めない関数も「気づく」は見る
+
+
+def test_fig_cells_reads_both_tables(root):
+    import figplan
+    text = (root / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
+    text = text.replace("実在しない文献の割合の棒（2本）", "実在しない文献の割合の棒（2本、データ1）")
+    assert any("データ1" in c for c in figplan.fig_cells(text, "memo")[7])   # 図の案の表に書いた指し先も拾う

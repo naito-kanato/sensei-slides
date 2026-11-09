@@ -177,6 +177,22 @@ def generic_names(plan: dict) -> list[int]:
     return sorted(n for n, cell in (plan or {}).items() if cell and GENERIC.search(body(cell)))
 
 
+def fig_cells(text: str, kind: str) -> dict:
+    """{スライド番号: [図の案の一文, ...]}：構成の表の「図で見せるもの」と、講座の設計メモの「図の案」の表（何をどう描く）の両方。
+    データN の指し先や図の目的は、どちらに書いてあってもよい。"""
+    import structures
+    out: dict[int, list] = {}
+    rows = structures._plan_table(text, kind) or []
+    i_fig = next((k for k, h in enumerate(rows[0]) if "図で見せる" in h), None) if rows else None
+    for r in rows[1:] if i_fig is not None else []:
+        if r and r[0].strip().isdigit() and len(r) > i_fig and r[i_fig].strip() not in ("", "—", "-"):
+            out.setdefault(int(r[0]), []).append(r[i_fig].strip())
+    for n, c in (plan_from_text(text, kind) or {}).items() if kind == "memo" else []:
+        if c.strip() and c.strip() not in out.get(n, []):
+            out.setdefault(n, []).append(c.strip())
+    return out
+
+
 def plan_from_text(text: str, kind: str):
     """{スライド番号: 図の案の一文}。kind="memo"（講座の設計メモ）か "outline"（発表の構成案）。表が無ければ None。"""
     from check_memo import table_rows

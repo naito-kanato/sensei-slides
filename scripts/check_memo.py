@@ -171,15 +171,15 @@ def data_rows(text: str, work: Path, body_no, kind: str = "memo") -> list:
     ds = data.datasets(text)
     nf = data.memo_not_found(text)
     res = []
+    texts = [f.read_text(encoding="utf-8") for f in data.files(work)]
+    n_sets, n_nf = sum(len(data.parse(t)) for t in texts), sum(len(data.not_found(t)) for t in texts)
+    if texts and (n_sets, n_nf) != (len(ds), len(nf)):   # 雛形の3b節の見出しだけ残っている・data_N.md を書き足した あとに merge していない
+        res.append(("✘", "データ", f"data_N.md（組 {n_sets}・見つからなかった {n_nf}）と3b節（組 {len(ds)}・見つからなかった {len(nf)}）がずれている。"
+                    "python <skill>/scripts/data.py merge <work> で入れ直す"))
     bad = [f"データ{n}：{'・'.join(p)}" for n, d in ds.items() if (p := data.problems(d))]
     if bad:
         res.append(("✘", "データ", "；".join(bad[:4])))
-    cells = dict(figplan.plan_from_text(text, kind) or {})
-    rows = structures._plan_table(text, "memo") or [] if kind == "memo" else []
-    i_fig = next((k for k, h in enumerate(rows[0]) if "図で見せる" in h), None) if rows else None
-    for r in rows[1:] if i_fig is not None else []:
-        if r and r[0].strip().isdigit() and len(r) > i_fig:
-            cells[int(r[0])] = (cells.get(int(r[0]), "") + " " + r[i_fig]).strip()
+    cells = {n: " ".join(v) for n, v in figplan.fig_cells(text, kind).items()}   # 構成の表と図の案の表の両方
     used = {n for c in cells.values() for n in data.refs(c)}
     missing = sorted(used - set(ds))
     if missing:
