@@ -119,7 +119,7 @@ def hole_form(review_text: str):
     bad = [(int(n), kind) for n, _, kind, need, _ in rows if re.sub(r"[（(][^）)]*[）)]$", "", kind).strip() not in KINDS or not labels(need)]
     if bad:
         res.append(("✘", "推論距離の行の形", f"種類か要否が決まりの形でない行が {len(bad)} 行（" + "・".join(f"[{n}] {k}" for n, k in bad[:6])
-                    + ("…" if len(bad) > 6 else "") + "）。この行は数えていない。種類は " + "・".join(KINDS) + " から1つ、要否は 要1〜要4・深 のうち当たるもの全部で書き直す"))
+                    + ("…" if len(bad) > 6 else "") + "）。この行は数えていない。レビュー担当に推論距離の節だけやり直させる（`brief.py レビュー担当 <work>` に「推論距離の節だけ」と添える。種類は " + "・".join(KINDS) + " から1つ、要否は 要1〜要4・深 のうち当たるもの全部）。メインが書き直さない"))
     y4 = [int(n) for n, _, kind, need, rest in rows if "要4" in labels(need) and not re.search(r"補う前提\s*[：:]\s*像", rest)]
     if y4:
         res.append(("△", "推論距離の要4", "要4 なのに補う前提が「像：〇〇と思い浮かべる → 実際は△△」の形でない行：" + "・".join(f"[{n}]" for n in y4)
