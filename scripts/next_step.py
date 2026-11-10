@@ -273,9 +273,10 @@ def main(argv=None):
                 import budget
                 solo = budget.solo_problem(p.resolve())
                 t = budget.token_line(p.resolve())
+                web = budget.main_web_problem(p.resolve())
             except Exception:
-                solo, t = None, None
-            for line in [solo, (t if t and t.startswith("△") else None)]:
+                solo, t, web = None, None, None
+            for line in [solo, web, (t if t and t.startswith("△") else None)]:
                 if line:
                     print(line)
             print(f"次：{nxt}")
@@ -284,10 +285,12 @@ def main(argv=None):
         try:
             import budget
             solo = budget.solo_problem(p.resolve())
+            web = budget.main_web_problem(p.resolve())
         except Exception:
-            solo = None
-        if solo:
-            print(solo)
+            solo, web = None, None
+        for line in (solo, web):
+            if line:
+                print(line)
         for ok, step, msg in steps:
             print(f"  {'✔' if ok else '・'} {step}{'：' + msg if msg else ''}")
         u = usage_line(p.resolve())

@@ -180,6 +180,23 @@ def solo_problem(work: Path, need: str | None = None) -> str | None:
     return None
 
 
+MAIN_WEB_MAX = 3   # メインの Web・ブラウザの呼び出しがこれ以上なら △（見張り役が自分で調べている）
+
+
+def main_web_problem(work: Path, rows: list | None = None) -> str | None:
+    """メインが自分で Web・ブラウザを使っていたら △ の文（記録が読める道具：Claude Code・Codex）。
+    試しの回で、メインが担当を待つあいだに報告書の PDF を Web とブラウザで探し、メインの会話がいちばん重くなった。"""
+    try:
+        rows = window_rows(work) if rows is None else rows
+    except Exception:
+        return None
+    n = sum(r.get("web", 0) for r in rows if r.get("kind") == "メイン")
+    if n < MAIN_WEB_MAX:
+        return None
+    return (f"△ メインが自分で Web・ブラウザを {n} 回使った（メインの会話は呼び出しのたびに全部を読み直すので、いちばん重くなる）。"
+            "ここから先は調べない：事実が気になったら裏取りの担当に回し、担当を待つあいだは長めの wait を1回（SKILL.md「必ず守る」2）")
+
+
 def check_role(work: Path, role: str, part: str = "", over: bool = False) -> str | None:
     """上限なら止める理由の文。止めないなら None（そのとき1回分を記録する）。"""
     base = ROLE_CAPS.get(role)

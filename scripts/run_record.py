@@ -82,7 +82,11 @@ def _row(tool, kind, name, path):
     return {"tool": tool, "kind": kind, "name": name, "file": str(path), "role": role_of(path) if kind == "担当" else None,
             "models": [], "effort": [],
             "input": 0, "cache_read": 0, "cache_write": 0, "output": 0, "reasoning": 0, "thinking_blocks": 0,
-            "calls": 0, "start": None, "end": None, "limit_start": None, "limit_end": None, "limits": []}
+            "calls": 0, "web": 0, "start": None, "end": None, "limit_start": None, "limit_end": None, "limits": []}
+
+
+# Web・ブラウザを使った呼び出し（メインが自分で調べていないかを見る。Codex は道具を1つのコードの中で呼ぶので、名前と中身の両方で見る）
+WEB = re.compile(r"web__run|web_search|createBrowserTab|WebSearch|WebFetch|Claude_Browser|claude-in-chrome", re.I)
 
 
 def _span(r, t):
@@ -140,6 +144,8 @@ def claude_rows(work: Path, since: float, root_dir: Path | None = None):
                         r["thinking_blocks"] += 1
                     if isinstance(c, dict) and c.get("type") == "tool_use":
                         texts.append(rr._norm(json.dumps(c.get("input"), ensure_ascii=False)))
+                        if WEB.search(str(c.get("name") or "")):
+                            r["web"] += 1
                 if isinstance(m.get("usage"), dict):
                     usage[m.get("id") or e.get("uuid")] = m["usage"]   # 1つの応答が何行にも分かれて記録される
             needles = rr._needles(work, cwd)
@@ -215,7 +221,12 @@ def codex_rows(work: Path, since: float, root_dir: Path | None = None):
                     r["limit_end"] = prim["used_percent"]
             elif typ == "response_item" and p.get("type") in ("custom_tool_call", "function_call", "local_shell_call"):
                 v = p.get("input") or p.get("arguments") or json.dumps(p.get("action"), ensure_ascii=False)
-                texts.append(rr._norm(v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)))
+                v = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+                texts.append(rr._norm(v))
+                if WEB.search(str(p.get("name") or "")) or WEB.search(v):
+                    r["web"] += 1
+            elif typ == "response_item" and p.get("type") == "web_search_call":
+                r["web"] += 1
         if not any(any(n in s for n in needles) for s in texts):   # 同じ一式のほかの回の会話は数えない
             continue
         if total:

@@ -26,3 +26,15 @@ def test_fullwidth_alnum():
     mark, item, msg = cm.fullwidth_alnum(rows)
     assert mark == "△" and item == "全角の英数字" and "[2]" in msg and "[3]" not in msg
     assert cm.fullwidth_alnum([rows[0], rows[2]]) is None
+
+
+def test_main_web_problem():
+    """メインが自分で Web・ブラウザを使った回数が3回以上なら △。担当の Web は数えない。"""
+    import run_record
+    rows = [{"kind": "メイン", "web": 2}, {"kind": "担当", "web": 30}]
+    assert budget.main_web_problem(None, rows) is None
+    rows[0]["web"] = 3
+    msg = budget.main_web_problem(None, rows)
+    assert msg.startswith("△") and "3 回" in msg
+    assert run_record.WEB.search('await tools.web__run({search_query:[]})') and run_record.WEB.search("WebSearch")
+    assert not run_record.WEB.search("python next_step.py _work/x --short")
