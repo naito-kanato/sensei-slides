@@ -6,7 +6,7 @@
 
 ![講座と発表の見本のスライド（自動で切り替わる）](docs/demo.gif)
 
-版 0.4.1（2026-11-10）。**[最新版をダウンロード](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)**（スキル入りの作業フォルダ一式の zip）。変更の記録は [CHANGELOG.md](CHANGELOG.md)。
+版 0.5.0（2026-11-10）。**[最新版をダウンロード](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)**（スキル入りの作業フォルダ一式の zip）。変更の記録は [CHANGELOG.md](CHANGELOG.md)。
 
 Codex や Claude Code などの AI エージェントで使うスキルです（Antigravity・GitHub Copilot でも読めます）。頼むだけで、**PowerPoint のスライド（.pptx）・読み上げ原稿・原稿を読むための HTML** ができます。
 使い方は2つあります。

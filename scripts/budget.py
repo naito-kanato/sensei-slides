@@ -165,7 +165,7 @@ def solo_problem(work: Path, need: str | None = None) -> str | None:
     if work.parent.name != "_work" or scale(work) is None or "examples" in work.parts:
         return None
     files = [f.stat().st_mtime for f in work.rglob("*") if f.is_file()]
-    if not files or min(files) < SOLO_SINCE:   # brief.py が記録を残す前（0.4.1 より前）に始めた作業は見ない
+    if not files or min(files) < SOLO_SINCE:   # brief.py が記録を残す前（0.5.0 より前）に始めた作業は見ない
         return None
     if not any((work / f).exists() for f in ("memo.md", "outline.md")):
         return None
