@@ -112,6 +112,20 @@ def test_need_multi_labels_and_unsure():
     assert co.need_care(hs, 2) == [3, 5, 8]
 
 
+def test_hole_form_checks():
+    """種類が6つでない・要否が読めない行は ✘（数えていない）。要4 の補う前提が「像：」でなければ △。全部の枚が1穴ずつなら △。"""
+    t = "".join(f"[{n}] 「A ⇒ B」｜{k}｜{need}｜補う前提：{pre}｜使う所：{n}｜架け方：x\n"
+                for n, k, need, pre in [(2, "理由", "要1", "なぜ"), (3, "飛躍", "要4", "跳ぶ"), (4, "用語", "要4", "像：切る → 実際は入るだけ"),
+                                        (5, "論拠", "要4", "結論のなぜ"), (6, "用語（呼び名の揺れ）", "要3", "同じもの"), (7, "論拠", "要1", "なぜ")])
+    m = {item: (mark, d) for mark, item, d in co.hole_form(t)}
+    assert m["推論距離の行の形"][0] == "✘" and "[2] 理由" in m["推論距離の行の形"][1] and "[6]" not in m["推論距離の行の形"][1]
+    assert m["推論距離の要4"][0] == "△" and "[3]" in m["推論距離の要4"][1] and "[5]" in m["推論距離の要4"][1] and "[4]" not in m["推論距離の要4"][1]
+    assert m["推論距離の数"][0] == "△"                                              # 6枚が全部1穴
+    assert 6 in co.holes(t)                                                         # 「用語（呼び名の揺れ）」も用語として数える
+    t2 = t + "[7] 「C ⇒ D」｜比較｜要3｜補う前提：基準｜使う所：9｜架け方：x\n"
+    assert "推論距離の数" not in {item for _, item, _ in co.hole_form(t2)}           # 2穴の枚があれば、そろっていない
+
+
 def test_unsure_rows_are_listed(reviewed):
     rv = reviewed.with_name("outline_review.md")
     rv.write_text(rv.read_text(encoding="utf-8") + "\n[15] 「X ⇒ Y」｜論拠｜要3・深｜補う前提：前提｜使う所：15｜架け方：x\n", encoding="utf-8")

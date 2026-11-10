@@ -70,7 +70,7 @@ def body_rows(text: str):
 
 REVIEW = "outline_review.md"
 KINDS = ("用語", "出どころ", "論拠", "比較", "範囲", "根拠")
-HOLE = re.compile(r"^\s*[-*]?\s*\[\s*(\d+)\s*\]\s*「(.+?)」\s*｜\s*(" + "|".join(KINDS) + r")\s*｜\s*((?:要[1-4]?|深)(?:\s*[・／/、,]\s*(?:要[1-4]?|深))*)\s*｜", re.M)
+HOLE = re.compile(r"^\s*[-*]?\s*\[\s*(\d+)\s*\]\s*「(.+?)」\s*｜\s*(" + "|".join(KINDS) + r")\s*(?:[（(][^）)]*[）)])?\s*｜\s*((?:要[1-4]?|深)(?:\s*[・／/、,]\s*(?:要[1-4]?|深))*)\s*｜", re.M)
 HOLE_FORM = "「[番号] 「A ⇒ B」｜種類｜要否（要1・要2・要3・要4・深 のうち当たるもの全部。例：要1・要4）｜補う前提：…｜使う所：…｜架け方：…」"
 
 
@@ -106,6 +106,30 @@ def holes(review_text: str):
     for n, joint, kind, need in HOLE.findall(review_text):
         out.setdefault(int(n), []).append((joint.strip(), kind, need))
     return out
+
+
+HOLE_ANY = re.compile(r"^\s*[-*]?\s*\[\s*(\d+)\s*\]\s*「(.+?)」\s*｜\s*([^｜\r\n]+?)\s*｜\s*([^｜\r\n]+?)\s*｜([^\r\n]*)$", re.M)
+
+
+def hole_form(review_text: str):
+    """推論距離の行の形の [(印, 項目, 説明)]：種類が6つでない・要否が読めない行（数えていない）は ✘、
+    要4 の補う前提が「像：」で始まらない行と、全部の枚がちょうど1穴にそろった形は △。"""
+    rows = HOLE_ANY.findall(review_text)
+    res = []
+    bad = [(int(n), kind) for n, _, kind, need, _ in rows if re.sub(r"[（(][^）)]*[）)]$", "", kind).strip() not in KINDS or not labels(need)]
+    if bad:
+        res.append(("✘", "推論距離の行の形", f"種類か要否が決まりの形でない行が {len(bad)} 行（" + "・".join(f"[{n}] {k}" for n, k in bad[:6])
+                    + ("…" if len(bad) > 6 else "") + "）。この行は数えていない。種類は " + "・".join(KINDS) + " から1つ、要否は 要1〜要4・深 のうち当たるもの全部で書き直す"))
+    y4 = [int(n) for n, _, kind, need, rest in rows if "要4" in labels(need) and not re.search(r"補う前提\s*[：:]\s*像", rest)]
+    if y4:
+        res.append(("△", "推論距離の要4", "要4 なのに補う前提が「像：〇〇と思い浮かべる → 実際は△△」の形でない行：" + "・".join(f"[{n}]" for n in y4)
+                    + "（要4 は動作の語の像のずれだけ。当たらないなら 要1〜要3 に付け直す）"))
+    per = {}
+    for n, *_ in rows:
+        per[int(n)] = per.get(int(n), 0) + 1
+    if len(per) >= 6 and set(per.values()) == {1}:
+        res.append(("△", "推論距離の数", f"{len(per)} 枚が全部ちょうど1穴にそろっている。枚ごとの数はそろえない（穴の無い枚は書かず、つなぎ目ごとに穴があれば何行でも）。つなぎ目を試し直す"))
+    return res
 
 
 def cared(text: str):
@@ -160,7 +184,9 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
                     f"{REVIEW} が無い（{what}のレビューの結果をそのまま残す）" if require_review else
                     f"まだレビュー前（レビューのあと、結果を {REVIEW} に残してもう一度走らせる）"))
         return res
-    hs = holes(rv.read_text(encoding="utf-8"))
+    rv_text = rv.read_text(encoding="utf-8")
+    hs = holes(rv_text)
+    res += hole_form(rv_text)
     if not hs:
         res.append(("✘", "推論距離の手当て", f"{REVIEW} に推論距離の行が無い（穴1つを1行で、{HOLE_FORM} の形。references/outline-review.md の8）"))
         return res

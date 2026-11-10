@@ -63,6 +63,8 @@ def _since(work: Path) -> float:
 
 
 ROLE_HEAD = re.compile(r"スキルの「([^」{}]+)」です")
+# 1つの会話に【続けて頼む】で2つの役の依頼文が入る組（Antigravity は会話ごとに役を見分けるので、この組は担当として数える。役は後のほう）
+CONTINUED = ({"レビュー担当の先読み", "レビュー担当"}, {"設計の担当", "直しの担当"})
 
 
 def role_of(path) -> str | None:
@@ -302,7 +304,7 @@ def antigravity_rows(work: Path, since: float, root_dir: Path | None = None):
         except Exception:
             continue
         roles = set(ROLE_HEAD.findall(f.read_bytes().decode("utf-8", "replace")))
-        solo = len(roles) == 1 or roles == {"レビュー担当の先読み", "レビュー担当"}   # 先読みのあと続けてレビューを頼まれた担当
+        solo = len(roles) == 1 or roles in CONTINUED   # 続けて頼まれた担当（先読み→レビュー、講座の設計→直し）
         r = _row("Antigravity", "担当" if solo else "会話", f.stem, f)
         for g in gens:
             u = (_pb_get(g, [1, 4]) or [None])[0]
