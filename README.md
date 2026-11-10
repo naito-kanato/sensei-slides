@@ -6,7 +6,7 @@
 
 ![Sample slides from the course and the talk examples (animated)](docs/demo.gif)
 
-Version 0.4.1 (2026-11-08). **[Download the latest release](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)** (a ready-to-use work folder with the skill inside). Changes: [CHANGELOG.md](CHANGELOG.md) (in Japanese).
+Version 0.4.1 (2026-11-10). **[Download the latest release](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)** (a ready-to-use work folder with the skill inside). Changes: [CHANGELOG.md](CHANGELOG.md) (in Japanese).
 
 > **The slides, speaker notes, instructions and check messages are in Japanese.** This skill is built for Japanese-language decks. English output is not supported yet.
 
