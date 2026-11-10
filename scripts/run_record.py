@@ -62,7 +62,7 @@ def _since(work: Path) -> float:
     return (min(ts) if ts else time.time()) - LOOKBACK_DAYS * 86400
 
 
-ROLE_HEAD = re.compile(r"スキルの「([^」{}]+)」です")
+ROLE_HEAD = re.compile(r"スキルの「(?!〇〇)([^」{}]+)」です")   # 「〇〇」は説明の文の例（担当が run_record.py を読むと会話に入る）
 # 1つの会話に【続けて頼む】で2つの役の依頼文が入る組（Antigravity は会話ごとに役を見分けるので、この組は担当として数える。役は後のほう）
 CONTINUED = ({"レビュー担当の先読み", "レビュー担当"}, {"設計の担当", "直しの担当"})
 

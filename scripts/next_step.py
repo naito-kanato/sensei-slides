@@ -141,7 +141,10 @@ def steps_for(work: Path):
         split = [f for f in work.glob("facts_*.md") if f.name != "facts_diff.md"]
         add(not todo, "事実の裏取り（3節の確認）", f"まだ {len(todo)} 行" if todo else "")
         add(rv.exists(), "設計メモのレビュー（memo_review.md）")
-        if bad and not nxt:
+        if bad and not nxt and all(b.startswith("推論距離の行の形") for b in bad):
+            nxt = (f"references/course.md 手順4：レビュー担当をもう1回起動し、推論距離の節だけやり直させる（`brief.py レビュー担当 {work.as_posix()}` に"
+                   "「memo_review.md の推論距離の節だけを、決まりの形で書き直す」と添える）。直しの担当やメインは書き直さない")
+        elif bad and not nxt:
             nxt = f"references/course.md 手順4：check_memo の ✘ を直す（python {SKILL}/scripts/check_memo.py {plan.as_posix()}）"
         if todo and not nxt and not (work / "build.py").exists():   # 制作に進んだあとは、裏取りに戻さない（直しの担当が足した行など）
             nxt = (f"references/course.md 手順4②：裏取りの担当（facts_N.md ごとに1人、同時に）の結果を待ち、python {SKILL}/scripts/facts.py merge {work.as_posix()}"
