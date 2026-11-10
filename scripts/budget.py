@@ -2,6 +2,7 @@
 
     python <skill>/scripts/budget.py <work>                   # 今の回数・トークンと上限の一覧
     python <skill>/scripts/budget.py <work> --allow-tokens    # ユーザーが「続けてよい」と言ったとき：トークンの上限を1回分足す
+    python <skill>/scripts/budget.py <work> --set-tokens "Codex 600万"   # ユーザーが上限を言ったとき：すぐ記録する（設計メモの前でも残る）
 
 数え方
   - 担当の起動：brief.py が依頼文を出すたびに <work>/budget_log.jsonl に1行（同じ担当・同じ分担が15分以内にもう一度なら数えない）
@@ -203,14 +204,23 @@ def weighted(r: dict) -> float:
     return r.get("input", 0) + r.get("cache_write", 0) + 0.1 * r.get("cache_read", 0) + r.get("output", 0)
 
 
+def set_tokens_value(work: Path) -> str | None:
+    """`--set-tokens` で記録した、ユーザーが言った上限（いちばん新しいもの）。設計メモ・構成案ができる前でも残る。"""
+    rows = [r for r in load(work) if r.get("type") == "set_tokens"]
+    return rows[-1].get("value") if rows else None
+
+
 def token_caps(work: Path) -> dict:
-    """オプション「トークンの上限」：「Codex 250万・Antigravity 200万・Claude Code 700万」の形。書いていない道具は既定。「なし」は見ない。"""
+    """オプション「トークンの上限」：「Codex 250万・Antigravity 200万・Claude Code 700万」の形。書いていない道具は既定。「なし」は見ない。
+    `--set-tokens` で記録した値があれば、そちらを先に使う（ユーザーがあとから言った上限）。"""
     import re
-    try:
-        import slide_profile
-        v = slide_profile.option(slide_profile.load_profile(work), "トークンの上限", "") or ""
-    except Exception:
-        v = ""
+    v = set_tokens_value(work)
+    if v is None:
+        try:
+            import slide_profile
+            v = slide_profile.option(slide_profile.load_profile(work), "トークンの上限", "") or ""
+        except Exception:
+            v = ""
     out = dict(TOKEN_CAPS)
     if v.strip() == "なし":
         return {k: None for k in out}
@@ -219,6 +229,13 @@ def token_caps(work: Path) -> dict:
         if m:
             out[name] = None if m.group(3) else float(m.group(1)) * (10_000 if m.group(2) else 1)
     return out
+
+
+def set_tokens(work: Path, value: str):
+    Path(work).mkdir(parents=True, exist_ok=True)
+    with (Path(work) / LOG).open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "ts": time.time(), "type": "set_tokens", "value": value},
+                           ensure_ascii=False) + "\n")
 
 
 def window_rows(work: Path) -> list:
@@ -420,6 +437,13 @@ def main(argv=None):
         print(__doc__)
         return 1
     work = Path(argv[0]).resolve()
+    if "--set-tokens" in argv:
+        k = argv.index("--set-tokens")
+        if len(argv) <= k + 1 or argv[k + 1].startswith("-"):
+            print("--set-tokens のあとに上限を書く（例：\"Codex 600万\"、\"Antigravity 800万・Codex 400万\"、\"なし\"）")
+            return 1
+        set_tokens(work, argv[k + 1])
+        print(f"トークンの上限を、ユーザーの言った「{argv[k + 1]}」で記録した（設計メモ・構成案のオプションより先に使う）")
     if "--allow-role" in argv:
         k = argv.index("--allow-role")
         conv = argv[k + 1] if len(argv) > k + 1 and not argv[k + 1].startswith("-") else "all"

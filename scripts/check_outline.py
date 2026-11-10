@@ -215,12 +215,13 @@ def check(outline: Path, require_review: bool = False):
         return [("✘", "本文の枚数", "「## 構成」の表が無い（examples/zemi/outline.md の形で書く）")]
     # 小さな依頼（本文5枚以下）は構成案のレビューを省いてよい（SKILL.md）ので、レビュー結果を求めない
     small = len(body) <= 5
-    from check_memo import table_rows, thin_points, untagged_numbers
+    from check_memo import fullwidth_alnum, table_rows, thin_points, untagged_numbers
     rows = table_rows(text, "構成")
     tp = thin_points(rows, "構成案「## 構成」") if rows else None
     ut = untagged_numbers(rows, "構成案「## 構成」") if rows else None
+    fw = fullwidth_alnum(rows, "構成案「## 構成」") if rows else None
     import story
-    return (count(text, body) + ([tp] if tp else []) + ([ut] if ut else []) + story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")
+    return (count(text, body) + ([tp] if tp else []) + ([ut] if ut else []) + ([fw] if fw else []) + story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")
             + flows(text, outline.parent) + reasoning(outline, text, require_review and not small, small))
 
 
