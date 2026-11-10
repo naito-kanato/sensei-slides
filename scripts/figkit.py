@@ -187,9 +187,15 @@ def arrow(ax, p0, p1, color=COL.ink, lw=LW.arrow, ms=18, style="-|>", ls="-"):
     ax.add_patch(FancyArrowPatch(p0, p1, arrowstyle=style, mutation_scale=ms, color=color, lw=lw, linestyle=ls))
 
 
-def box(ax, x, y, w, h, text=None, fc=COL.pale, ec=COL.ink, fs=14, color=COL.ink, lw=LW.shape, r=0.1):
-    """角丸の箱（熱浴・装置・工程のブロック）。(x, y) は左下。"""
+def box(ax, x, y, w, h, text=None, fc=COL.pale, ec=COL.ink, fs=14, color=COL.ink, lw=LW.shape, r=0.1, head=None):
+    """角丸の箱（熱浴・装置・工程のブロック）。(x, y) は左下。
+    head を渡すと、見出し（太字）＋説明の箱：左上から見出し、その下に説明を全角1字下げて左揃え（階層の差が見える）。"""
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle=f"round,pad=0.02,rounding_size={r}", fc=fc, ec=ec, lw=lw))
+    if head:
+        body = "\n".join("　" + line for line in str(text or "").split("\n")) if text else ""
+        ax.text(x + 0.12, y + h - 0.1, head + ("\n" + body if body else ""), ha="left", va="top", fontsize=fs, color=color,
+                linespacing=1.3)
+        return
     if text:
         ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=fs, color=color)
 

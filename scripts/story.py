@@ -545,6 +545,7 @@ def check(text: str, kind: str, body_no: list, where: str):
         cnt = {w: sum(x == w for _, x in seq) for w in LINKS}
         res.append(("✔", "前の枚から", "・".join(f"{w} {c}" for w, c in cnt.items()) + f"（しかし：{buts}）"))
     res += arc_check(text, kind, body_no)
+    res += fig_check(text, kind, body_no)
     aim, want = aim_of(text)
     if aim is not None and want is None:
         res.append(("△", "ねらい", f"「{aim}」はねらいの一覧に無い。一覧（python <skill>/scripts/story.py --aims）の言葉から選び、"
@@ -556,11 +557,96 @@ def check(text: str, kind: str, body_no: list, where: str):
     return res
 
 
+# 型の拍ごとのおすすめの図の目的（先頭がいちばん。目的ごとのおすすめの種類は figplan.FIG_PURPOSES）。型の拍（ARCS）と同じ順。
+# 試しの回で、図がほとんど表と棒グラフになり、仕組みの拍にも模式図が無かった（モデルは書きやすい表に寄る）。
+BEAT_FIGS = {
+    "論文紹介（問題から）": [("仕組み", "比べる", "違い"), ("仕組み", "流れ", "実物"), ("比べる", "推移", "実物"),
+                        ("違い", "比べる", "仕組み"), ("比べる", "推移", "実物"), ("観点", "違い")],
+    "論文紹介（方法から）": [("仕組み", "流れ", "実物"), ("比べる", "仕組み", "印象"), ("比べる", "推移", "実物"),
+                        ("違い", "比べる", "仕組み"), ("比べる", "推移", "実物")],
+    "研究発表": [("仕組み", "比べる"), ("仕組み", "流れ", "実物"), ("比べる", "推移", "違い"), (), ("観点", "並び")],
+    "提案": [("比べる", "推移", "内訳"), ("柱",), ("流れ", "時期"), ("違い", "観点", "比べる"), ("比べる", "違い"), ("観点", "内訳")],
+    "事例・問題解決": [("推移", "比べる", "仕組み"), ("流れ", "違い"), ("比べる", "推移"), ("違い", "比べる")],
+    "輪読（節の筋）": [("仕組み", "傾向"), ("仕組み", "推移", "実物"), ("違い", "傾向"), ("階層", "観点", "柱")],
+    "素朴な見方を崩す": [("仕組み", "流れ"), ("違い", "比べる", "推移"), (), ("流れ", "観点")],
+    "今の形から由来へ": [("仕組み", "流れ", "観点", "比べる"), ("比べる", "違い"), (), ("時期", "違い", "仕組み"), ("階層", "観点", "違い", "並び")],
+    "手順を身につける": [("流れ", "仕組み"), ("流れ", "仕組み"), ("違い", "実物"), ("違い", "流れ")],
+    "誤解を正す": [("違い", "印象", "比べる"), ("比べる", "推移", "違い"), ("観点", "傾向")],
+    "比べて選ぶ": [("観点", "並び"), ("観点", "比べる"), ("流れ", "階層")],
+    "定義から応用へ": [("仕組み", "傾向"), ("仕組み", "実物", "推移"), ("仕組み", "流れ"), ("違い", "傾向")],
+    "原因を探る": [("推移", "比べる", "実物"), ("違い", "比べる", "仕組み"), ("比べる", "推移"), ("仕組み", "流れ")],
+}
+# () は問いの枚：問いを1文で見せるので、図はどの目的でもよい（検査しない）
+# 仕組みの拍がある型：デッキに模式図（か資料の図・写真）が1枚も無ければ △
+SCHEMA_KINDS = ("模式図", "資料の図", "写真")
+TABLE_KINDS = ("表", "カード")
+
+
+def beat_figs(arc_name: str, role: str):
+    """型の拍（やること）→ おすすめの図の目的。答えと柱の一覧の拍は「柱」。"""
+    arc = next((a for a in ARCS if a[0] == arc_name), None)
+    if arc is None:
+        return None
+    for (w, kd, r), figs in zip(arc[4], BEAT_FIGS.get(arc_name, [])):
+        if r == role:
+            return figs
+    return ("柱",) if role.endswith("柱の一覧") else None
+
+
+def figs_table(arc_name: str) -> str:
+    """story.py --figs <型>：型の拍ごとのおすすめの図（目的：種類）。"""
+    import figplan
+    arc = next((a for a in ARCS if a[0] == arc_name or a[0].split("（")[0] == arc_name), None)
+    if arc is None:
+        return f"✘ 「{arc_name}」は話の型に無い（" + "・".join(ARC_NAMES) + "）"
+    rec = {p: kinds for p, _, kinds in figplan.FIG_PURPOSES}
+    lines = [f"「{arc[0]}」の拍ごとのおすすめの図（図の案は「目的：種類：中身」。先頭がいちばんのおすすめ）", ""]
+    for (w, kd, role), figs in zip(arc[4], BEAT_FIGS.get(arc[0], [])):
+        lines.append(f"- {w}（{kd}：{role}）→ " + ("どの図でもよい（問いを1文で見せる）" if not figs else "／".join(f"{p}：{'・'.join(rec[p][:2])}" for p in figs)))
+    lines.append("- 答えと柱の一覧（答えの位置「先」）→ 柱：カード・ツリー")
+    if any("仕組み" in f for f in BEAT_FIGS.get(arc[0], [])):
+        lines.append("この型には仕組みの拍がある：模式図（か資料の図・写真）を少なくとも1枚。表とカードは本文の枚の半分まで")
+    return "\n".join(lines)
+
+
+def fig_check(text: str, kind: str, body_no: list):
+    """[(印, 項目, 説明)]：型の拍の枚の図が、その拍のおすすめの目的か。仕組みの拍がある型に模式図が1枚も無い・表とカードが半分を超える、も △。"""
+    import figplan
+    import structures
+    name, arc = arc_of(text)
+    rows = structures._plan_table(text, kind)
+    if not arc or not rows or len(body_no) <= 5:
+        return []
+    i = next((k for k, h in enumerate(rows[0]) if "図で見せる" in h), None)
+    if i is None:
+        return []
+    cells = {int(r[0]): r[i] for r in rows[1:] if r and r[0].strip().isdigit() and len(r) > i}
+    notes, off = [], []
+    for n, (_, w, kd, role, *_r) in sorted(beat_map(text, kind).items()):
+        rec = beat_figs(arc[0], role)
+        purpose, _k = figplan.parse_fig(cells.get(n, ""))
+        if rec and purpose and purpose not in rec and not figplan.REASON_WORDS.search(cells.get(n, "")):
+            off.append(f"[{n}] {kd}（{role}）に{purpose}（おすすめ：{'・'.join(rec)}）")
+    if off:
+        notes.append("型の拍に合わない図：" + "；".join(off[:6]))
+    kinds = [figplan.parse_fig(cells.get(n, ""))[1] for n in body_no if n in cells]
+    if any("仕組み" in f for f in BEAT_FIGS.get(arc[0], [])) and kinds and not any(k in SCHEMA_KINDS for k in kinds):
+        notes.append("模式図が1枚も無い（この型には仕組みの拍がある。人・物・情報がどこからどこへ動くか、どこで何を見るかを描ける枚を、模式図に）")
+    nt = sum(k in TABLE_KINDS for k in kinds)
+    if kinds and nt * 2 > len(kinds):
+        notes.append(f"表とカードが本文 {len(kinds)} 枚中 {nt} 枚（半分まで。観点の整理でない枚は、型の拍のおすすめの図に）")
+    if notes:
+        return [("△", "型と図", "。".join(notes) + f"。拍ごとのおすすめは `python <skill>/scripts/story.py --figs {arc[0]}`（変えないなら中身に「外す理由：…」）")]
+    return [("✔", "型と図", "型の拍の枚の図は、どれもその拍のおすすめ")]
+
+
 if __name__ == "__main__":   # python story.py --aims：ねらいと既定の型の一覧（地図の担当・設計の担当が見る）
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     if "--aims" in sys.argv:
         print(aims_table())
+    elif "--figs" in sys.argv and len(sys.argv) > sys.argv.index("--figs") + 1:
+        print(figs_table(sys.argv[sys.argv.index("--figs") + 1]))
     elif "--aim" in sys.argv and len(sys.argv) > sys.argv.index("--aim") + 2:
         k = sys.argv.index("--aim")
         w, a = Path(sys.argv[k + 1]), sys.argv[k + 2]

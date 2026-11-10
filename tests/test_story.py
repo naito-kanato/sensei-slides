@@ -16,7 +16,7 @@ def marks(text):
 
 
 def test_example_has_story(outline):
-    assert marks(outline) == {"話の筋": "✔", "前の枚から": "✔", "話の型": "✔"}
+    assert marks(outline) == {"話の筋": "✔", "前の枚から": "✔", "話の型": "✔", "型と図": "✔"}
 
 
 def test_missing_story_blocks(outline):
@@ -72,3 +72,22 @@ def test_split_link():
     assert story.split_link("しかし（壁）") == ("しかし", "壁")
     assert story.split_link("だから:手段") == ("だから", "手段")
     assert story.split_link("—") == ("—", "")
+
+
+def test_beat_figs_cover_every_arc():
+    """全部の型の拍に、おすすめの図の目的がある（拍と同じ数・選択肢の目的だけ）。"""
+    import figplan
+    for arc in story.ARCS:
+        figs = story.BEAT_FIGS[arc[0]]
+        assert len(figs) == len(arc[4]), arc[0]
+        assert all(p in figplan.PURPOSE_NAMES for t in figs for p in t), arc[0]
+    assert "模式図" in story.figs_table("今の形から由来へ")
+
+
+def test_fig_check_no_schema(outline):
+    """仕組みの拍がある型で、模式図・資料の図が1枚も無ければ △。拍に合わない図も △。"""
+    import figplan
+    text = re.sub(r"仕組み：(模式図|資料の図)", "観点：表", outline)
+    text = re.sub(r"実物：資料の図", "観点：表", text)
+    res = {item: (mark, d) for mark, item, d in story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")}
+    assert res["型と図"][0] == "△" and ("模式図が1枚も無い" in res["型と図"][1] or "型の拍に合わない図" in res["型と図"][1])

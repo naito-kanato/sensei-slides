@@ -54,3 +54,12 @@ def test_text_with_room_passes():
     figkit.arrow(ax, (3.5, 1.9), (3.5, 1.3))
     ax.text(1.3, 1.9, "明日の天気", ha="center", va="center", fontsize=16)
     assert figkit.text_on_lines(f) == []
+
+
+def test_box_with_head_indents_body():
+    """見出し＋説明の箱：説明の各行を全角1字下げ、左揃え。"""
+    import figkit
+    f, ax = figkit.blank(3, 2)
+    figkit.box(ax, 0.2, 0.2, 2.5, 1.5, text="説明の1行\n2行目", head="見出し")
+    t = [x for x in ax.texts if "見出し" in x.get_text()][0]
+    assert t.get_text() == "見出し\n　説明の1行\n　2行目" and t.get_ha() == "left"

@@ -1072,8 +1072,8 @@ class Slide:
         return n * line_height_in(size) + pad
 
     def _card(self, x, y, w, h, item, kind, size):
-        head, body = item if isinstance(item, tuple) else (item, "")
-        text = "{ab:" + head + "}" + ("\n" + self._lines(body) if body else "")
+        head, body = item if isinstance(item, tuple) else (item, "")   # 説明は全角1字下げ（見出しとの階層の差。場合分けの部品と同じ）
+        text = "{ab:" + head + "}" + ("\n" + "\n".join("　" + l for l in self._lines(body).split("\n")) if body else "")
         return self.rect(x, y, w, h, fill=C.LIGHT, text=text, size=size, color=C.TEXT, align="l", anchor="t",
                          name=f"カード_{kind}")
 
