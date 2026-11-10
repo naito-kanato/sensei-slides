@@ -153,6 +153,72 @@ def thin_points(rows, what="設計メモ2節"):
     return ("✔", "本文の要点の数", f"本文 {body}枚のうち、要点が {POINTS_MIN}個に満たない枚は {len(thin)}枚")
 
 
+# 事実の行の限定（言い切りを弱める言葉）。「または」は並べるときにも使うので、事実の側では見ない（枚の側で残っていれば通す）
+HEDGE_FACT = re.compile(r"とされ|考慮|望ましい|努力義務|場合が?ある|ことがある|可能性|一部|原則")
+HEDGE = re.compile(HEDGE_FACT.pattern + r"|または|あるいは|いずれか|選択肢|例[：:）)]|の例|目安|など")
+
+
+def hedged_facts(text: str, rows):
+    """事実の行（3節）の限定（または・一部・〜とされる・考慮・望ましい など）が、その〔事実N〕を使う枚の青帯・本文の要点で
+    外れていないか（その枚の文に限定の言葉が1つも無ければ △）。試しの回で、「要件または考慮要素とされる」が「承認要件化」→「受審が必須」と強まった。"""
+    try:
+        import facts
+        _, fh, frows = facts.memo_facts(text)
+    except (SystemExit, Exception):
+        return None
+    head = [h.strip() for h in rows[0]]
+    cols = [i for i, h in enumerate(head) if "青帯" in h or "結論" in h or "本文の要点" in h]
+    if not cols:
+        return None
+    hits = []
+    for r in rows[1:]:
+        if not r or not r[0].strip().isdigit():
+            continue
+        line = " ".join(r)
+        said = " ".join(r[i] for i in cols if i < len(r))
+        for k in sorted({int(x) for x in re.findall(r"事実\s*(\d+)", line)}):
+            if not 1 <= k <= len(frows):
+                continue
+            words = sorted(set(HEDGE_FACT.findall(" ".join(frows[k - 1][:2]))))
+            if words and not HEDGE.search(said):
+                hits.append(f"[{r[0].strip()}] 事実{k}の「{'・'.join(words[:2])}」")
+    if not hits:
+        return None
+    return ("△", "事実の限定", "事実の行の限定が、その事実を使う枚の青帯・本文の要点で外れている：" + "、".join(hits[:6])
+            + ("…" if len(hits) > 6 else "") + "。限定を残す（「要件または考慮要素」を「要件化」「必須」にしない）")
+
+
+WHEN = re.compile(r"\d{4}\s*年|年度|\d+\s*月|時点|現在|\d{4}[-/.]\d")
+DENOM = re.compile(r"分母|÷|／|うち|中\s*\d|中の|に対し|あたり|当たり|全国|全体|のなかで|に占める")
+
+
+def data_slides(rows, what="設計メモ2節"):
+    """データN を使う枚（図の案か本文の要点で指す）の青帯・本文の要点に、時点（年・年度・月・時点）が無い、
+    割合（%・割）なのに分母（〜のうち・全国の・÷）が無い → △。試しの回で、時点の違う値が1枚に混ざり（2019年の全国平均と2026年の値）、
+    よかった回は「分子：認定病院数（各年3月末）／分母：全国病院数（各前年3月末）」まで書いていた。"""
+    head = [h.strip() for h in rows[0]]
+    cols = [i for i, h in enumerate(head) if "青帯" in h or "結論" in h or "本文の要点" in h]
+    if not cols:
+        return None
+    no_when, no_denom = [], []
+    for r in rows[1:]:
+        if not r or not r[0].strip().isdigit() or not re.search(r"データ\s*\d", " ".join(r)):
+            continue
+        said = " ".join(r[i] for i in cols if i < len(r))
+        if not WHEN.search(said):
+            no_when.append(f"[{r[0].strip()}]")
+        if re.search(r"%|％|割", said) and not DENOM.search(said):
+            no_denom.append(f"[{r[0].strip()}]")
+    notes = []
+    if no_when:
+        notes.append("時点が無い：" + "・".join(no_when[:8]) + "（いつの値か。「2026年3月末」「2024年度」）")
+    if no_denom:
+        notes.append("割合なのに分母が無い：" + "・".join(no_denom[:8]) + "（何のうちの割合か。「全国の病院のうち」「÷ 全国病床数」）")
+    if not notes:
+        return None
+    return ("△", "データの枚の時点と分母", f"{what}でデータを使う枚の青帯・本文の要点に、" + "。".join(notes) + "。1枚に違う時点の値を混ぜるなら、それぞれに時点を書く")
+
+
 FULLWIDTH = re.compile(r"[０-９Ａ-Ｚａ-ｚ．％]+")
 
 
@@ -263,9 +329,9 @@ def check(memo: Path, require_review: bool = False):
         ut = untagged_numbers(rows)
         if ut:
             res.append(ut)
-        fw = fullwidth_alnum(rows)
-        if fw:
-            res.append(fw)
+        for extra in (fullwidth_alnum(rows), hedged_facts(text, rows), data_slides(rows)):
+            if extra:
+                res.append(extra)
         import structures
         roles = structures.check_roles(text, "memo", "設計メモ2節")
         res += roles if roles is not None else [("✘", "役割", "設計メモ2節の" + f"表に「役割」の列が無い。枚ごとに {'・'.join(structures.ROLES)} から選んで書く（結論の一文を置くのは本文だけ）")]

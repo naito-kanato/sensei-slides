@@ -257,7 +257,11 @@ def share_bar(ax, parts, highlight=0, fs=14, label_min=0.08):
 
 def timeline(ax, start, end, eras=(), events=(), highlight=None, fs=14):
     """図の種類「年表」：横の時間軸に、時代の帯 eras = [(名前, 始め, 終わり), ...] と、
-    出来事 events = [(年, 名前), ...] の印を置く。highlight（出来事の番号）だけ赤。年は数（1997.25 のような小数も可）。"""
+    出来事 events = [(年, 名前), ...] の印を置く。highlight（出来事の番号）だけ赤。年は数（1997.25 のような小数も可）。
+    出来事と時代の帯が合わせて2つ以下なら WARN（線の上に点が2つだけの年表は、表か本文の1行で足りる。試しの回で2枚あった）。"""
+    if len(events) + len(eras) <= 2:
+        print(f"  [WARN] 年表：出来事と時代の帯が {len(events) + len(eras)} つだけ → 3つ以上の出来事・時代の区切りが無いなら、"
+              "本文の1行か表にする（年表にするなら、前後の出来事を足して流れが見えるように）")
     pale = [COL.pale, COL.lblue, COL.blue]
     for i, (name, a, b) in enumerate(eras):
         c = pale[i % len(pale)]

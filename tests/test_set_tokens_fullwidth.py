@@ -38,3 +38,29 @@ def test_main_web_problem():
     assert msg.startswith("△") and "3 回" in msg
     assert run_record.WEB.search('await tools.web__run({search_query:[]})') and run_record.WEB.search("WebSearch")
     assert not run_record.WEB.search("python next_step.py _work/x --short")
+
+
+def test_hedged_facts_and_data_slides():
+    """事実の行の限定（〜とされる・考慮・一部・原則）が枚で外れたら △。データの枚に時点・割合の分母が無ければ △。"""
+    memo = ("## 2. 話の順番\n\n| # | ●見出し | 青帯（結論） | 図で見せるもの | 本文の要点 |\n|---|---|---|---|---|\n"
+            "| 2 | a | 地域医療支援病院の承認要件化 | 観点：表：x | 要件化された〔事実1〕 |\n"
+            "| 3 | b | 要件または考慮要素とされる | 観点：表：x | 考慮される〔事実1〕 |\n"
+            "| 4 | c | 認定は病床の4割 | 比べる：棒グラフ：データ1 | 病床の43.8% |\n"
+            "| 5 | d | 2026年3月末で病床の4割 | 比べる：棒グラフ：データ2 | 全国の病床のうち43.8% |\n\n"
+            "## 3. 事実と出典\n\n| 主張 | 値・式 | 出典（書名・URL） | 確認 |\n|---|---|---|---|\n"
+            "| 第三者評価が要件または考慮要素とされている | 施設基準 | 厚労省 | ○ |\n")
+    rows = cm.table_rows(memo, "話の順番")
+    h = cm.hedged_facts(memo, rows)
+    assert h and "[2]" in h[2] and "[3]" not in h[2]
+    d = cm.data_slides(rows)
+    assert d and "時点が無い：[4]" in d[2] and "分母が無い：[4]" in d[2] and "[5]" not in d[2]
+
+
+def test_timeline_warns_with_two_points(capsys):
+    import figkit
+    import figlib
+    f, ax = figkit.fig(4, 2)
+    figlib.timeline(ax, 1990, 2010, events=[(1996, "a"), (1997, "b")])
+    assert "[WARN] 年表" in capsys.readouterr().out
+    figlib.timeline(ax, 1990, 2010, events=[(1996, "a"), (1997, "b"), (2002, "c")])
+    assert "[WARN] 年表" not in capsys.readouterr().out
