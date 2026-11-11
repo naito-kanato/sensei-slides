@@ -125,7 +125,7 @@ def steps_for(work: Path):
         if bad and not nxt:
             nxt = f"手順2：check_outline の ✘ を直す（python {SKILL}/scripts/check_outline.py {plan.as_posix()}）"
         if not rv.exists() and not nxt:
-            nxt = "手順2：構成案を【別のエージェント】にレビューさせ、結果を outline_review.md に残す（references/outline-review.md の B）。そのあとユーザーに構成案を見せて OK をもらう"
+            nxt = "手順2：レビュー担当を新しく起動し（`brief.py レビュー担当 <work>`。資料を読む A とレビューの B を続けて行う）、結果を outline_review.md に残す。そのあとユーザーに構成案を見せて OK をもらう"
         if rv.exists() and not nxt and not fixed(work):
             add(False, "レビューのあとの直し", "まだ")
             nxt = "手順2：直し。直しの担当を新しく起動（`brief.py 直しの担当 <work>`。outline_review.md の採否を決めて直し、scaffold.py まで）。そのあと構成案をユーザーに見せる"
