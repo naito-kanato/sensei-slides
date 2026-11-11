@@ -660,10 +660,25 @@ class Slide:
         return box
 
     def caption(self, box: Box, text: str, right: bool = True, size: float = 14) -> Box:
-        """図のすぐ下に小さな灰色の注記（「（概略）」「温度は代表値」などの断り書き）。box は image() の戻り値。"""
-        w = text_width_pt(parse_markup(text), size) / 72.0 + 2 * INSET_X + 0.05
+        """図のすぐ下に小さな灰色の注記（「（概略）」「温度は代表値」などの断り書き）。box は image() の戻り値。
+        図より長い注記が図の左へ伸びて、そこに本文があるときは、図の左端から置く（左文右図で、右寄せの出典が左の本文にかぶっていた）。
+        図の左端から右の余白までに入らなければ2行に折り、それでも入らなければ12ptにする。"""
+        def width(t, sz):
+            return max(text_width_pt(l, sz) for l in split_lines(parse_markup(t))) / 72.0 + 2 * INSET_X + 0.05
+        y = box.bottom + 0.02
+        w = width(text, size)
         x = box.right - w if right else box.x
-        return self.text(x, box.bottom + 0.02, text, size=size, color=C.GRAY)
+        h = line_height_in(size) + 2 * INSET_Y
+        if x < box.x - 0.01 and any(kind != "image" and b.x < box.x and x < b.right and b.y < y + h and y < b.bottom
+                                    for kind, b in self.boxes):
+            area = getattr(self.deck, "area", None) or {}
+            room = max(box.w, area.get("right", SLIDE_W - 0.5) - box.x)
+            if w > room:
+                text = wrap_to(text, room, size)
+                if width(text, size) > room:
+                    size = 12
+            x = box.x
+        return self.text(x, y, text, size=size, color=C.GRAY)
 
     def table(self, x: float, y: float, col_w, row_h: float, header: list[str], rows: list,
               label_w: float = 0.0, size: float = 16) -> float:
@@ -1442,10 +1457,16 @@ class Deck:
         s = Slide(self, slide)
         text = "\n".join(lines)
         runs = split_lines(parse_markup(text))
-        tw = max(text_width_pt(l, size) for l in runs) / 72.0 + 2 * INSET_X + 0.1
+        x0, x1 = self._cover_span(self.layout_title)
+        while True:   # 題が表紙の幅に入らなければ 2pt ずつ小さく（32pt まで。それでも入らなければ \n で折るよう知らせる）
+            tw = max(text_width_pt(l, size) for l in runs) / 72.0 + 2 * INSET_X + 0.1
+            if tw <= x1 - x0 - 0.4 or size <= 32:
+                break
+            size -= 2
+        if tw > x1 - x0 - 0.4:
+            print(f"[WARN] 表紙の題が幅に入らない（{size}pt でも {tw:.1f} in > {x1 - x0 - 0.4:.1f} in）：「{text[:16]}」 → \\n で行を分ける")
         th = len(runs) * line_height_in(size) * 0.95 + 2 * INSET_Y
         top = 2.44 if len(runs) >= 2 else 2.75
-        x0, x1 = self._cover_span(self.layout_title)
         cx = (x0 + x1) / 2
         s.text(cx - tw / 2, top, text, size=size, bold=bold, align="c", w=tw)
         y = top + th + 0.25

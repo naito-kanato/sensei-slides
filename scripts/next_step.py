@@ -154,7 +154,7 @@ def steps_for(work: Path):
             nxt = "references/course.md 手順4：設計メモを【別のエージェント】にレビューさせ、結果を memo_review.md に残し、9節に手当てを書く"
         if rv.exists() and not nxt and not fixed(work):
             add(False, "レビューのあとの直し", "まだ")
-            nxt = "references/course.md 手順4⑤：直し。設計の担当に【続けて頼む】で `brief.py 直しの担当 <work>` の出力を送る（設計メモを覚えているので読み直しが少ない。続けて頼めない道具・担当が残っていないときは、新しく起動する）"
+            nxt = "references/course.md 手順4⑤：直し。直しの担当を新しく起動する（`brief.py 直しの担当 <work>`。設計の担当に続けて頼むと、長い会話のまま何度も読み直して重い）"
     else:
         add(True, "答えの下書き（answers.md）")
     # 2. 図
