@@ -171,9 +171,9 @@ def check(pptx: Path, work: Path | None, record: bool = True):
 
     # 1a. 作業フォルダのスクリプト（部品の代わりを作っていないか）
     if work and work.is_dir():
-        extra = sorted(p.name for p in work.glob("*.py") if p.name not in ("build.py", "figs.py"))
+        extra = sorted(p.name for p in work.glob("*.py") if p.name not in ("build.py", "figs.py") and not re.fullmatch(r"figs_[0-9]\.py", p.name))
         res.append(("✘" if extra else "✔", "作業フォルダのスクリプト",
-                    f"{'・'.join(extra)} がある（置いてよいのは build.py と figs.py だけ。原稿HTMLは notes_html.py、図は figs.py と figkit、"
+                    f"{'・'.join(extra)} がある（置いてよいのは build.py と figs.py（図の担当が2人なら figs_1.py・figs_2.py も）だけ。原稿HTMLは notes_html.py、図は figs.py と figkit、"
                     "一覧画像は grid.py で作る。部品が動かないなら、代わりを作らずユーザーに伝える）" if extra else "build.py と figs.py だけ"))
 
     # 1b. 図の検査（figkit の save を通したか。別名のスクリプトで描いていないか）
@@ -183,7 +183,9 @@ def check(pptx: Path, work: Path | None, record: bool = True):
         bad_figs = []
         for py in sorted(work.glob("*.py")):
             t = py.read_text(encoding="utf-8", errors="replace")
-            if py.name == "figs.py":
+            if py.name == "figs.py" and "runpy" in t and list(work.glob("figs_[0-9].py")):
+                continue   # 図の担当が2人のとき：figs_1.py・figs_2.py を動かすだけ（brief.py が置いた）
+            if py.name == "figs.py" or re.fullmatch(r"figs_[0-9]\.py", py.name):
                 if not (uses_figkit.search(t) and re.search(r"\bsave\s*\(", t)) or "savefig" in t:
                     bad_figs.append(py.name)
             elif draws.search(t) and not uses_figkit.search(t):

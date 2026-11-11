@@ -8,7 +8,7 @@
     python <skill>/scripts/brief.py 仕上げ役 _work/〇〇講座_01
     python <skill>/scripts/brief.py 裏取りの担当 _work/X講座_01 --n 2
     python <skill>/scripts/brief.py 地図の担当 X講座 --note "学習者：…／回数：3"
-    python <skill>/scripts/brief.py 制作役 _work/X講座_01 --part 1/2   # 本文が8枚以上なら2人（next_step が言う）と、図の担当（brief.py 図の担当 <work>）
+    python <skill>/scripts/brief.py 制作役 _work/X講座_01 --part 1/2   # 本文が8枚以上なら2人（next_step が言う）と、図の担当（brief.py 図の担当 <work>。自分で描く図が8枚以上なら --part 1/2・2/2 の2人）
     python <skill>/scripts/brief.py 仕上げ役 _work/X講座_01 --over      # 回数の上限を超えて起動する（ユーザーが許したときだけ）
 
 依頼文を出すたびに、その担当の起動を1回と数える（budget.py。上限なら依頼文を出さずに ✘ で止まる）。
@@ -124,9 +124,18 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
         if n_part > 1:
             part_note = (f"制作役は {n_part} 人で、あなたは {k_part} 人目（{'前半' if k_part == 1 else '後半'}の枚。図は図の担当が同時に描いている）。"
                          "ほかの人の枚・parts は読まない・書かない。merge は仕上げ役が最初にする")
+    figfile, figpart = f"{Path(work).as_posix()}/figs.py", ""
+    if role == "図の担当" and n_part > 1:   # 図の担当が2人：figs_1.py・figs_2.py に半分ずつ。figs.py は2つを動かすだけ
+        import figdraft
+        figdraft.ensure_runner(Path(target))
+        mine_f = figdraft.part_of(figdraft.drawn(figdraft.plan_cells(Path(target))[1]), part)
+        figfile, figpart = f"{Path(work).as_posix()}/figs_{k_part}.py", f" --part {part}"
+        part_note = (f"図の担当は {n_part} 人で、あなたは {k_part} 人目。描くのは {'・'.join(f'{x}枚目' for x in mine_f) or '（無し）'} の図だけ"
+                     f"（`{figfile}` に書き、作業フォルダで `python figs_{k_part}.py` を走らせて描く。figs.py は2人分を動かすだけなので書き換えない）。"
+                     "ほかの人の図・figs_N.py は読まない・書かない")
     vals = {"skill": rel(SKILL), "work": Path(work).as_posix(), "course": course, "plan_name": plan_name,
             "review_name": review_name, "n": n, "role": role, "kind": k, "cwd": Path.cwd().as_posix(),
-            "cards": cards, "part_note": part_note}
+            "cards": cards, "part_note": part_note, "figfile": figfile, "figpart": figpart}
     text = HEAD.format(**vals) + "\n" + "\n".join(lines).format(**vals)
     if note:
         text += "\n\nユーザーの答え・メインからの補足：" + note

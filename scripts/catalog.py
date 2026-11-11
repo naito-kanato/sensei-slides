@@ -45,7 +45,10 @@ def main(work, prefix, cols=6, tw=300, th=210, page_h=2400):
     for d in decks:
         files = sorted((d / "figs").glob("*.png"))
         if files:
-            blocks.append((d.name, files, func_map(d / "figs.py")))
+            fmap = {}
+            for f in [d / "figs.py", *sorted(d.glob("figs_[0-9].py"))]:   # 図の担当が2人なら figs_1.py・figs_2.py
+                fmap.update(func_map(f))
+            blocks.append((d.name, files, fmap))
     pages, cur, y = [], [], 0
     for name, files, fmap in blocks:
         h = 46 + ((len(files) + cols - 1) // cols) * (th + 44)

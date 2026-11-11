@@ -60,11 +60,12 @@ def short(text, limit=12):
 
 
 def figs_stale(work: Path) -> bool:
-    f = work / "figs.py"
-    if not f.exists():
+    import figdraft
+    fs = figdraft.fig_files(work)   # figs.py と、図の担当が2人のときの figs_1.py・figs_2.py
+    if not (work / "figs.py").exists() or not fs:
         return False
     pngs = list((work / "figs").glob("*.png")) if (work / "figs").is_dir() else []
-    return not pngs or max(p.stat().st_mtime for p in pngs) < f.stat().st_mtime
+    return not pngs or max(p.stat().st_mtime for p in pngs) < max(f.stat().st_mtime for f in fs)
 
 
 def has_powerpoint() -> bool:

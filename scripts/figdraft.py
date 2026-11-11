@@ -2,6 +2,7 @@
 
     python <skill>/scripts/figdraft.py <work>            # 描く図ごとの下書きの雛形（グラフはデータの「驚き」入り）を出す
     python <skill>/scripts/figdraft.py <work> --check    # figs.py の図の関数に下書きがあるか、模式図が箱と矢印だけでないか
+    （図の担当が2人のときは、どちらにも --part 1/2・--part 2/2 を付ける。自分の分の枚だけを出し・確かめる。図は figs_1.py・figs_2.py に描く）
 
 図の関数（figs.py の def f_…）の説明（docstring）の頭に、次の行を書いてから描く：
 
@@ -143,16 +144,55 @@ def has_key(doc: str, key: str) -> bool:
     return re.search(rf"(?m)^\s*{key}\s*[：:]\s*\S", doc) is not None or re.search(rf"{key}\s*[：:]\s*[^（(\s]", doc) is not None
 
 
-def check(work: Path) -> list:
+FIG_SPLIT_AT = 8   # 自分で描く図がこの枚数以上で、制作役が2人なら、図の担当も2人（figs_1.py・figs_2.py）。
+# 論文から作った講座の試しで、制作役2人は6分で書き終えたのに、図の担当1人が15枚を13分かけて描き、制作の段が図を待っていた
+RUNNER = '''"""図の担当が2人で描いた figs_1.py・figs_2.py を順に動かす（brief.py が置いた。図を直すときは figs_N.py を直す）。"""
+import runpy
+from pathlib import Path
+
+for p in sorted(Path(__file__).resolve().parent.glob("figs_[0-9].py")):
+    runpy.run_path(str(p), run_name="__main__")
+'''
+
+
+def fig_files(work: Path) -> list:
+    """図を描くスクリプト：figs.py と、図の担当が2人のときの figs_1.py・figs_2.py（あるものだけ）。"""
+    work = Path(work)
+    return [p for p in [work / "figs.py", *sorted(work.glob("figs_[0-9].py"))] if p.exists()]
+
+
+def part_of(nums, part: str) -> list:
+    """図の枚の番号を、part（"1/2"）の分だけ。前から順に、なるべく同じ数に分ける。"""
+    k, n = (int(x) for x in part.split("/"))
+    ns = sorted(nums)
+    size = -(-len(ns) // n)
+    return ns[(k - 1) * size:k * size]
+
+
+def ensure_runner(work: Path) -> None:
+    """図の担当が2人のとき、figs.py を、figs_1.py・figs_2.py を動かすだけのものにする（無ければ置く）。"""
+    f = Path(work) / "figs.py"
+    if not f.exists():
+        f.write_text(RUNNER, encoding="utf-8")
+
+
+def check(work: Path, part: str = "") -> list:
     work = Path(work)
     _, cells, _ = plan_cells(work)
     want = drawn(cells)
+    if part:
+        mine = set(part_of(want, part))
+        want = {n: v for n, v in want.items() if n in mine}
     if not want:
         return [("・", "図の下書き", "自分で描く模式図・グラフの枚が図の案に無い")]
-    every = all_functions(work / "figs.py")
+    files = fig_files(work)
+    every = [x for f in files for x in all_functions(f)]
     if not every:
         return [("・", "図の下書き", "figs.py に図の関数（def f_…）がまだ無い（描いたら確かめる）")]
-    fns = functions(work / "figs.py")
+    fns: dict[int, list] = {}
+    for f in files:
+        for n, v in functions(f).items():
+            fns.setdefault(n, []).extend(v)
     res, ok = [], []
     # 番号の読めない関数（ファイル名を変数で組んでいる など）も、少なくとも「気づく」の行は見る
     for name, doc, _, nums in every:
@@ -187,13 +227,17 @@ def main(argv=None):
         print(__doc__)
         return 0
     work = Path(argv[0])
+    part = argv[argv.index("--part") + 1] if "--part" in argv and argv.index("--part") + 1 < len(argv) else ""
     if "--check" in argv:
         import report
-        res = check(work)
+        res = check(work, part)
         report.show(res, "--all" in argv)
         return 1 if any(m == "✘" for m, _, _ in res) else 0
     _, cells, text = plan_cells(work)
     want = drawn(cells)
+    if part:
+        mine = set(part_of(want, part))
+        want = {n: v for n, v in want.items() if n in mine}
     if not want:
         print("自分で描く模式図・グラフの枚は、図の案に無い")
         return 0

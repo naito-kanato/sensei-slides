@@ -381,7 +381,9 @@ def try_part(work: Path, n: int) -> int:
     import figplan
     import structures
     from pptx import Presentation
+    import check_layout
     prs = Presentation(str(out))
+    tm = check_layout.text_marks(out).get(1, {})   # 仕上げの描画の検査と同じ見方を、書いたその場で（仕上げの組み直しを減らす）
     out.unlink(missing_ok=True)
     kind = "memo" if (work / "memo.md").exists() else "answers" if (work / "answers.md").exists() else "outline"
     text = (work / {"memo": "memo.md", "answers": "answers.md"}.get(kind, "outline.md")).read_text(encoding="utf-8")
@@ -406,6 +408,11 @@ def try_part(work: Path, n: int) -> int:
     chars = sum(len(_flat(l)) for l in lines)
     long_ = [l for l in lines if len(_flat(l)) > 20]
     rows_.append(("△" if long_ else "✔", "1行20字", "超える行：" + "／".join(l[:24] for l in long_[:3]) if long_ else "すべて20字まで"))
+    if tm.get("notes"):
+        rows_.append(("△", "出どころの断り", "／".join(x[:28] for x in tm["notes"][:3]) + " → スライドから外し、原稿の ※ 行へ"
+                      "（残してよいのは図の「（概略）」と「（講師の解釈）」〔発表は「（発表者の解釈）」〕だけ）"))
+    if tm.get("subs"):
+        rows_.append(("△", "下付き", "・".join(dict.fromkeys(tm["subs"])) + " → 下付きは `_{p}` で書く（例 \"Q⁻¹_{p}\"）"))
     rows_.append(("・", "本文の字数", f"{chars}字（図の代わりの部品の文字も含む参考値。字数の合否は仕上げ役の make_deck が見る）"))
     for mk, item, msg in rows_:
         print(f"{mk} {item}：{msg}")
@@ -483,7 +490,7 @@ def main(argv=None):
         if fig_rows:
             print("[図]\n  " + "\n  ".join(f"{m} {msg}" for m, _, msg in fig_rows))
         bad += any(m == "✘" for m, _, _ in fig_rows)
-        print(f"\n✘ のある枚：{bad}。✘ と「1行20字」の △ を直してから渡す（字数の値は参考）")
+        print(f"\n✘ のある枚：{bad}。✘ と「1行20字」「出どころの断り」「下付き」の △ を直してから渡す（字数の値は参考）")
         return 1 if bad else 0
     if "--merge" in argv:
         done, refused = merge(work)

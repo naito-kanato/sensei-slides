@@ -160,11 +160,17 @@ def steps_for(work: Path):
     # 2. 図
     figs = work / "figs.py"
     pngs = list((work / "figs").glob("*.png")) if (work / "figs").is_dir() else []
-    fig_ok = figs.exists() and pngs and max(p.stat().st_mtime for p in pngs) >= figs.stat().st_mtime - 1
+    import figdraft
+    fsrc = figdraft.fig_files(work)   # figs.py と、図の担当が2人のときの figs_1.py・figs_2.py
+    fig_ok = figs.exists() and pngs and max(p.stat().st_mtime for p in pngs) >= max(f.stat().st_mtime for f in fsrc) - 1
     if add(bool(fig_ok), "図（figs.py → figs/）", "" if fig_ok else ("figs.py が無い" if not figs.exists() else "figs.py を直したあと描き直していない")) is False and not nxt:
         import brief
         nc = len(brief.card_numbers(work))
-        who = (f"カードが {nc} 枚なので、制作役2人と図の担当1人の3人を同時に起動（`brief.py 制作役 <work> --part 1/2` は前半、`--part 2/2` は後半、"
+        nf = len(figdraft.drawn(figdraft.plan_cells(work)[1])) if nc >= brief.SPLIT_AT else 0
+        who = (f"カードが {nc} 枚・自分で描く図が {nf} 枚なので、制作役2人と図の担当2人の4人を同時に起動（`brief.py 制作役 <work> --part 1/2` は前半、"
+               "`--part 2/2` は後半、`brief.py 図の担当 <work> --part 1/2`・`--part 2/2` は図を半分ずつ figs_1.py・figs_2.py に。merge は仕上げ役が最初にする）"
+               if nf >= figdraft.FIG_SPLIT_AT else
+               f"カードが {nc} 枚なので、制作役2人と図の担当1人の3人を同時に起動（`brief.py 制作役 <work> --part 1/2` は前半、`--part 2/2` は後半、"
                "`brief.py 図の担当 <work>` は図。merge は仕上げ役が最初にする）" if nc >= brief.SPLIT_AT else
                "制作役1人（`brief.py 制作役 <work>`）が figs.py で図、カードを1枚ずつ読んで parts/NN.py・parts/NN.md、scaffold.py <work> --merge で戻す")
         nxt = ("手順3〜5（SKILL.md「手順と担当」）：" + ("" if nc else "python <skill>/scripts/scaffold.py <work> で骨組みとカード（cards/）を作り、") + who +
