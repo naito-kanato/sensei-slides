@@ -12,7 +12,7 @@
   発表時間が書いていない（ひとりゼミなど）ときは数えない。
   前提と丁寧さ：必須の「聞き手のテーマへの詳しさ（初学者・多少知っている／かなり知っている）」と「聞き手の前提知識（知っている＝…／知らない＝…）」が
     書いてある。無ければ ✘（小さな依頼でも。聞いて書くまで先へ進まない）。丁寧さは、書いていなければ詳しさから（0・1・2）
-    （構成案のレビューの推論距離の監査が、これを前提にする。references/outline-review.md）
+    （構成案のレビューの推論距離の監査が、これを前提にする。references/inference-distance.md）
   推論距離の手当て：構成案のレビューの結果（outline.md と同じフォルダの outline_review.md）の
     穴の行（「[番号] 「A ⇒ B」｜種類｜要否｜…」、穴1つに1行。要否は 要1〜要4・深 のうち当たるもの全部）で、要1・要2・要4があるスライドと、要3が丁寧さより多いスライドが、
     outline.md の「## 引っかかりへの手当て」に [番号] で全部載っている（採らなかったものも理由つきで載せる）。「深」と、要と深の両方の行（迷い）は数えない（迷いは一覧に出す）。
@@ -111,6 +111,9 @@ def holes(review_text: str):
 HOLE_ANY = re.compile(r"^\s*[-*]?\s*\[\s*(\d+)\s*\]\s*「(.+?)」\s*｜\s*([^｜\r\n]+?)\s*｜\s*([^｜\r\n]+?)\s*｜([^\r\n]*)$", re.M)
 
 
+NAMES_MAX = 2   # 1枚に新しく出る名前（要2）の数の目安（inference-distance.md 1節）
+
+
 def hole_form(review_text: str):
     """推論距離の行の形の [(印, 項目, 説明)]：種類が6つでない・要否が読めない行（数えていない）は ✘、
     要4 の補う前提が「像：」で始まらない行と、全部の枚がちょうど1穴にそろった形は △。"""
@@ -129,6 +132,14 @@ def hole_form(review_text: str):
         per[int(n)] = per.get(int(n), 0) + 1
     if len(per) >= 6 and set(per.values()) == {1}:
         res.append(("△", "推論距離の数", f"{len(per)} 枚が全部ちょうど1穴にそろっている。枚ごとの数はそろえない（穴の無い枚は書かず、つなぎ目ごとに穴があれば何行でも）。つなぎ目を試し直す"))
+    names = {}   # 要2（名前の付いた知らない語）の穴を枚ごとに数える。迷いの行は数えない
+    for n, _, _, need, _ in rows:
+        if "要2" in labels(need) and not unsure(need):
+            names[int(n)] = names.get(int(n), 0) + 1
+    many = sorted(n for n, c in names.items() if c > NAMES_MAX)
+    if many:
+        res.append(("△", "推論距離の名前の数", "知らない名前（要2）が1枚に3つ以上ある枚：" + "・".join(f"{n}枚目（{names[n]}つ）" for n in many)
+                    + f"。1枚に新しく出る名前は{NAMES_MAX}個まで：枚を分けるか、前の枚で先に出す（どうしても要るなら、手当ての行に理由を書く）"))
     return res
 
 
@@ -188,7 +199,7 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
     hs = holes(rv_text)
     res += hole_form(rv_text)
     if not hs:
-        res.append(("✘", "推論距離の手当て", f"{REVIEW} に推論距離の行が無い（穴1つを1行で、{HOLE_FORM} の形。references/outline-review.md の8）"))
+        res.append(("✘", "推論距離の手当て", f"{REVIEW} に推論距離の行が無い（穴1つを1行で、{HOLE_FORM} の形。references/inference-distance.md 4節）"))
         return res
     need = need_care(hs, lv if lv is not None else (default_level if default_level is not None else 1))
     missing = [i for i in need if i not in cared(text)]

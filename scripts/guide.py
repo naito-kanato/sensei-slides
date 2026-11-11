@@ -6,7 +6,7 @@
     python <skill>/scripts/guide.py tools コマンドの書き方 # 見出しにその語を含む節
 
 ファイルの名前：skill（SKILL.md）か、references の名前（course・figures・style-guide・structures・final-review・
-outline-review・agents・tools・answer-deck・series・templates など。.md は省ける）。
+outline-review・inference-distance・agents・tools・answer-deck・series・templates など。.md は省ける）。
 """
 from __future__ import annotations
 

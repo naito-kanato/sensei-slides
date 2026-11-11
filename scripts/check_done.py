@@ -9,7 +9,7 @@
   1. 作業フォルダ：構成案（outline.md。講座は memo.md、質問回答デッキは answers.md）・build.py・notes.md がある
   1c. 構成案（発表の回だけ。<work>/outline.md）：check_outline.py と同じ確認。前提知識と丁寧さ、構成案のレビューの結果 outline_review.md と
       「## 引っかかりへの手当て」の突き合わせ（本文5枚以下の小さな依頼はレビュー結果を求めない）。
-      講座の回は設計メモ（memo.md）で同じ照合をする（レビューの結果は memo_review.md、丁寧さの既定は 0）
+      講座の回は設計メモ（memo.md）で同じ照合をする（レビューの結果は memo_review.md、丁寧さは詳しさから）
   1a. 作業フォルダのスクリプト：置いてよいのは build.py と figs.py だけ。部品の代わり（自作の原稿HTML・図の描き方など）を作らない
   1b. 図の検査：図は <work>/figs.py に figkit の save で描いている（save が文字の大きさ・ラベルの数・文字と線の重なりを検査する）。
       作業フォルダのほかのスクリプトが savefig や PIL の ImageDraw で図を描いていたら ✘

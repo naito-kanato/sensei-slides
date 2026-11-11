@@ -81,6 +81,26 @@ def targets(kind, per) -> list:
             "- **構成案の数値・不等号（以上・未満・≳・約）・固有名詞と、限定（または・一部・〜とされる）は変えない**（強めない）。資料と違って見えたら、そこは書かずに理由を1行で返す"]
 
 
+DEEP_MAX = 2   # 1枚のカードに渡す「深」の候補の数
+
+
+def deep_rows(work: Path, kind) -> dict:
+    """レビューの推論距離のうち「深」だけの行の補う前提 {番号: [文]}（原稿の ※ に入れてよい候補。inference-distance.md 6節）。
+    今までは捨てていて、講座で質問が来たときの材料にも、原稿の補足にも届いていなかった。迷い（要と深の両方）はメイン側が決めるので渡さない。"""
+    import check_outline as co
+    rv = Path(work) / ("memo_review.md" if kind == "memo" else "outline_review.md")
+    if not rv.exists():
+        return {}
+    out = {}
+    for n, _, _, need, rest in co.HOLE_ANY.findall(rv.read_text(encoding="utf-8")):
+        if co.labels(need) != {"深"}:
+            continue
+        m = re.search(r"補う前提\s*[：:]\s*([^｜]+)", rest)
+        if m and len(out.setdefault(int(n), [])) < DEEP_MAX:
+            out[int(n)].append(m.group(1).strip())
+    return out
+
+
 def writer(work: Path, kind, rows, care, minutes=None, source=None):
     """{番号: カードの文}（本文の枚だけ）。source（資料の PDF・テキスト）があれば、範囲の所を抜き出して入れる。"""
     import excerpt
@@ -94,6 +114,7 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
     if head:        # 要旨は数値の要約が入っていることが多いので、どの枚のカードからも指す（書き手ごとに1回だけ読む）
         out["資料0.md"] = f"# 資料の抜き出し：要旨（{source.name} の最初の節より前）\n\n```text\n{head}\n```\n"
     text = (work / {"memo": "memo.md", "answers": "answers.md"}.get(kind, "outline.md")).read_text(encoding="utf-8")
+    deep = deep_rows(work, kind)
     st = story.story_table(text) or {}
     beats = story.beat_map(text, kind) if kind in ("memo", "outline") else {}
     arc_name = (story.arc_of(text)[1] or ("",))[0]
@@ -169,6 +190,8 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
               f"- ノートへ（原稿で言う細部）：{col(r, 'ノートへ', 'ノート') or 'なし'}"]
         for c in care.get(n, []):
             L.append(f"- 手当て（必ず原稿か本文に入れる）：{c}")
+        for d in deep.get(n, []):
+            L.append(f"- 原稿の ※ に入れてよい候補（入れなくてよい。入れるなら1〜2文。スライドには書かない）：{d}")
         src = col(r, "範囲")
         # 要点の出どころ〔…〕が範囲の外の節・図を指していれば、それも抜き出す（要旨・事実N・自分の計算は除く）
         tags = [t.strip() for g in re.findall(r"〔([^〕]+)〕", col(r, "本文の要点")) for t in g.split("・")]

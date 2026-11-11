@@ -25,7 +25,7 @@ DEFAULT_TEMPLATE = "同梱（既定）"
 BUNDLED_DIR = SKILL / "assets" / "templates"   # 同梱のテンプレート（名前＝ファイル名。テンプレート1〜8、番号は見やすさの順。色は 配色.json）
 BUNDLED = BUNDLED_DIR / "テンプレート1.pptx"   # 名前を言わないときのテンプレート
 
-# 聞き手のテーマへの詳しさ → 丁寧さ（推論距離のつまみ。references/outline-review.md）
+# 聞き手のテーマへの詳しさ → 丁寧さ（推論距離のつまみ。references/inference-distance.md 1節）
 FAMILIARITY = {"初学者": 0, "多少知っている": 0, "かなり知っている": 1}   # 選択肢は「初学者・多少知っている」と「かなり知っている」の2つ（前の3つの言葉も読める）
 FAMILIARITY_KEY = "聞き手のテーマへの詳しさ"
 

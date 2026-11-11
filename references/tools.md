@@ -27,7 +27,8 @@
 | `scripts/make_template.py`・`analyze_template.py`・`analyze_structure.py` | テンプレートを作る（`references/templates.md`） |
 | `references/steps.md` | 手順0〜8の中身 |
 | `references/story.md`・`structures.md`・`figures.md`・`style-guide.md` | 話の筋／本文の形と図解の型／図の作り方／書式と文章 |
-| `references/outline-review.md`・`final-review.md` | 構成案のレビュー（推論距離）・完成後のレビュー（指摘の型） |
+| `references/outline-review.md`・`final-review.md` | 構成案のレビュー・完成後のレビュー（指摘の型） |
+| `references/inference-distance.md` | 推論距離の決まり（前提知識と丁寧さ・書くときから避ける・監査・出力の形・手当て・検査・確かめた記録） |
 | `references/course.md`・`answer-deck.md`・`series.md`・`templates.md`・`agents.md` | 講座／質問回答／続きもの／テンプレート／道具の対応表と許可リスト |
 
 依存：`<skill>/requirements.txt`。`No module named 'pptx'` などと出たら、`.venv` の Python でなく `python` のまま動かした可能性が高い。
