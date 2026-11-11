@@ -20,9 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 SKILL = "<skill>"
 
 
-TWO = "数字を探す担当を2人、同時に起動（`brief.py 数字を探す担当 <work> --n 1` と `--n 2`）"
-ONE = ("数字を探す担当を1人起動（`brief.py 数字を探す担当 <work> --n 1`。資料が土台なので、資料の表・図の数字と事実から先に探す。"
-       "2人にすると、同じ資料から同じ組を拾って重なっていた）")
+TWO = "数字を探す担当を1人起動（`brief.py 数字を探す担当 <work> --n 1`。差と意外・変化と内訳の両方を1人で見る）"   # 前は2人。同じ組を拾って重なっていた
+ONE = "数字を探す担当を1人起動（`brief.py 数字を探す担当 <work> --n 1`。資料が土台なので、資料の表・図の数字と事実から先に探す）"
 
 
 def source_based(readme: Path) -> bool:
@@ -124,7 +123,7 @@ def steps_for(work: Path):
         one = source_based(work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md")
         return out, ("references/course.md 手順4⓪：" + (ONE if one else TWO) if not found else
                      "references/course.md 手順4①：設計の担当（`brief.py 設計の担当 <work>`）。data_N.md を見てから筋を決め、data.py merge で3b節に入れる"
-                     + ("（数字を探す担当を2人起動したなら、もう1人が返してから）" if len(found) == 1 and not one else ""))
+                     )
     if not plan.exists():
         add(False, "構成案", "outline.md が無い")
         return out, ("手順2：構成案（outline.md）を作る。`guide.py steps 2`。講座なら references/course.md の手順4（設計メモ memo.md）")
