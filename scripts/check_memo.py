@@ -223,7 +223,7 @@ FULLWIDTH = re.compile(r"[０-９Ａ-Ｚａ-ｚ．％]+")
 
 
 def fullwidth_alnum(rows, what="設計メモ2節"):
-    """青帯（結論）と本文の要点にある全角の英数字（「第３世代」「Ｖｅｒ３．０」）を △。スライドにそのまま出て、半角の数字と混ざる。"""
+    """青帯（結論）と本文の要点にある全角の英数字（「第２版」「Ｖｅｒ２．０」）を △。スライドにそのまま出て、半角の数字と混ざる。"""
     head = [h.strip() for h in rows[0]]
     cols = [i for i, h in enumerate(head) if "青帯" in h or "結論" in h or "本文の要点" in h]
     if not cols:
@@ -238,7 +238,7 @@ def fullwidth_alnum(rows, what="設計メモ2節"):
     if not hits:
         return None
     return ("△", "全角の英数字", f"{what}の青帯・本文の要点に全角の英数字：{'、'.join(hits[:6])}{'…' if len(hits) > 6 else ''}。"
-            "半角に直す（「第3世代」「Ver.3.0」「90項目」）。スライドにそのまま出て、半角の数字と混ざる")
+            "半角に直す（「第2版」「Ver.2.0」「50項目」）。スライドにそのまま出て、半角の数字と混ざる")
 
 
 MEMO_REVIEW = "memo_review.md"

@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "sensei-slides: an agent skill for lecture and seminar slides that audiences can follow"
+type: software
+authors:
+  - family-names: Naito
+    given-names: Kanato
+version: 0.6.0
+date-released: 2026-11-11
+license: MIT
+repository-code: "https://github.com/naito-kanato/sensei-slides"
+abstract: >-
+  An agent skill that makes lecture and seminar slides, speaker notes and a
+  commentable notes page, either as an AI-taught course built one session at a
+  time or as a single talk from a paper or textbook. It audits the inferential
+  distance for a stated audience (the premises the listener must supply), plans
+  the story as questions and answers, has separate agents write and review, and
+  checks the rendered slides with scripts.
+keywords:
+  - presentation slides
+  - instructional design
+  - LLM agents
+  - inferential distance
+  - curse of knowledge

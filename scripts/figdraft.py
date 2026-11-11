@@ -145,7 +145,7 @@ def has_key(doc: str, key: str) -> bool:
 
 
 FIG_SPLIT_AT = 8   # 自分で描く図がこの枚数以上で、制作役が2人なら、図の担当も2人（figs_1.py・figs_2.py）。
-# 論文から作った講座の試しで、制作役2人は6分で書き終えたのに、図の担当1人が15枚を13分かけて描き、制作の段が図を待っていた
+# 論文から作った講座の試しで、制作役2人が書き終えたあとも図の担当1人が描き続け、制作の段が図を待っていた
 RUNNER = '''"""図の担当が2人で描いた figs_1.py・figs_2.py を順に動かす（brief.py が置いた。図を直すときは figs_N.py を直す）。"""
 import runpy
 from pathlib import Path

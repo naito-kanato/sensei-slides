@@ -264,15 +264,15 @@ def picture_scales(pptx_path, shapes):
 
 
 # 出どころの断り（作る側のメモ）。スライドに出してよいのは図の「（概略）」と解釈の行の「（講師の解釈）」「（発表者の解釈）」だけで、
-# 資料外・自分の計算の断りは原稿の ※ 行に書く。論文から作った講座の試しで、「（資料外・概算）」「（発表者の計算）」「1972 年は資料外」が本文と注記に出ていた
+# 資料外・自分の計算の断りは原稿の ※ 行に書く。論文から作った講座の試しで、「（資料外・概算）」「（発表者の計算）」のような断りが本文と注記に出ていた
 SOURCE_NOTE = re.compile(r"資料外|(?:発表者|講師)の(?:計算|概算|読み|推定|補足|見積)")
 SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺"
 
 
 def text_marks(pptx_path):
-    """スライド番号 → {"notes": [出どころの断りのある行], "subs": [下付きになっていない文字（Q⁻¹p の p）]}。pptx が読めなければ空。
+    """スライド番号 → {"notes": [出どころの断りのある行], "subs": [下付きになっていない文字（x²n の n）]}。pptx が読めなければ空。
     subs は、文字の右肩（⁻¹ や ^{…}）のすぐ後ろに、下付きでない小文字1字が続く所（前は英字。10⁻⁵m のような単位と、p(θ) のような関数は数えない）。
-    試しの講座で、プラトーの値 Q⁻¹_{p} を「Q⁻¹p」と書き、p が下付きにならないまま6枚に出ていた。"""
+    試しの講座で、右肩のある量の添え字を並べて書き、下付きにならないまま何枚もに出ていた。"""
     out = {}
     try:
         from pptx import Presentation
@@ -1112,7 +1112,7 @@ def main(path, pptx_path=None, template=None):
                                  "解釈の行の「（講師の解釈）」〔発表は「（発表者の解釈）」〕だけ）"))
         if tm.get("subs"):
             msgs.append(("WARN", f"下付きになっていない文字：{'・'.join(dict.fromkeys(tm['subs']))}"
-                                 " → 下付きは `_{p}` で書く（例 \"Q⁻¹_{p}\"）"))
+                                 " → 下付きは `_{p}` で書く（例 \"x²_{n}\"）"))
         if band_top != BAND_TOP and not (qa or cover or designed):   # 下の帯の無い枚：本文の下端からページの下までが大きく空いている
             low = max((rect_of(s)[3] for s in items if s.get("ph") is None and s.get("name") not in ("見出し", "章のナビ")), default=0)
             if low and band_top - low > EMPTY_BELOW_NOBAND:

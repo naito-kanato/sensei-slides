@@ -160,7 +160,7 @@ def claude_rows(work: Path, since: float, root_dir: Path | None = None):
             out.append(r)
     # 担当がいれば、メインはその担当を起動した会話だけ（担当の記録は <メインの会話>/subagents/ にある）。
     # 同じフォルダで開いていた別の会話（スキルの保守など）が、あとでこの作業フォルダを読んだだけでメインに数えられ、
-    # 試しの回でトークンの上限が4倍に数えられて止まった（実際 671万を 2725万と数えた）
+    # 試しの回で、トークンの上限が実際の量の数倍に数えられて止まった
     owners = {Path(r["file"]).parent.parent.name for r in out if r["kind"] == "担当"}
     if owners:
         out = [r for r in out if r["kind"] != "メイン" or Path(r["file"]).stem in owners]

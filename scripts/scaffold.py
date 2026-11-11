@@ -412,7 +412,7 @@ def try_part(work: Path, n: int) -> int:
         rows_.append(("△", "出どころの断り", "／".join(x[:28] for x in tm["notes"][:3]) + " → スライドから外し、原稿の ※ 行へ"
                       "（残してよいのは図の「（概略）」と「（講師の解釈）」〔発表は「（発表者の解釈）」〕だけ）"))
     if tm.get("subs"):
-        rows_.append(("△", "下付き", "・".join(dict.fromkeys(tm["subs"])) + " → 下付きは `_{p}` で書く（例 \"Q⁻¹_{p}\"）"))
+        rows_.append(("△", "下付き", "・".join(dict.fromkeys(tm["subs"])) + " → 下付きは `_{p}` で書く（例 \"x²_{n}\"）"))
     rows_.append(("・", "本文の字数", f"{chars}字（図の代わりの部品の文字も含む参考値。字数の合否は仕上げ役の make_deck が見る）"))
     for mk, item, msg in rows_:
         print(f"{mk} {item}：{msg}")

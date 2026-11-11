@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 SKILL = "<skill>"
 
 
-TWO = "数字を探す担当を1人起動（`brief.py 数字を探す担当 <work> --n 1`。差と意外・変化と内訳の両方を1人で見る）"   # 前は2人。同じ組を拾って重なっていた
+ANY = "数字を探す担当を1人起動（`brief.py 数字を探す担当 <work> --n 1`。差と意外・変化と内訳の両方を1人で見る）"   # 前は2人。同じ組を拾って重なっていた
 ONE = "数字を探す担当を1人起動（`brief.py 数字を探す担当 <work> --n 1`。資料が土台なので、資料の表・図の数字と事実から先に探す）"
 
 
@@ -121,9 +121,8 @@ def steps_for(work: Path):
         add(bool(found), "数字を探す（data_N.md）", "・".join(f.name for f in found) if found else "まだ")
         add(False, "設計メモ（memo.md）", "まだ")
         one = source_based(work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md")
-        return out, ("references/course.md 手順4⓪：" + (ONE if one else TWO) if not found else
-                     "references/course.md 手順4①：設計の担当（`brief.py 設計の担当 <work>`）。data_N.md を見てから筋を決め、data.py merge で3b節に入れる"
-                     )
+        return out, ("references/course.md 手順4⓪：" + (ONE if one else ANY) if not found else
+                     "references/course.md 手順4①：設計の担当（`brief.py 設計の担当 <work>`）。data_N.md を見てから筋を決め、data.py merge で3b節に入れる")
     if not plan.exists():
         add(False, "構成案", "outline.md が無い")
         return out, ("手順2：構成案（outline.md）を作る。`guide.py steps 2`。講座なら references/course.md の手順4（設計メモ memo.md）")
@@ -252,7 +251,7 @@ def course_next(course: Path):
         w = unfinished[0]
         return lines, f"{w.name} の途中：python {SKILL}/scripts/next_step.py {(root / w.name).as_posix()} で続きを見る"
     n = max(int(m[:2]) for m in made) + 1 if made else 1
-    first = ((ONE if source_based(readme) else TWO).replace("<work>", f"_work/{course.name}_{n:02d}") + " → "
+    first = ((ONE if source_based(readme) else ANY).replace("<work>", f"_work/{course.name}_{n:02d}") + " → "
              f"設計の担当が data_N.md を見て _work/{course.name}_{n:02d}/memo.md を書く（references/course.md 手順4）")
     return lines, (f"第{n}回：{first}。設計の前に、前の回のコメント・答え（00_README.md のつまずき一覧）を読む" if made else
                    f"第1回：ユーザーが 00_README.md の地図に OK を出したら、{first}")

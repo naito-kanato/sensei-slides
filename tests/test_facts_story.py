@@ -386,8 +386,8 @@ def test_cover_name_defaults(tmp_path):
     w.mkdir(parents=True)
     (w / "memo.md").write_text("## 1. この回のゴールと前提\n\n- 丁寧さ：2\n", encoding="utf-8")
     assert sp.author(sp.load_profile(w)) == "病院講座（全3回）"
-    (w / "memo.md").write_text("## 1. この回のゴールと前提\n\n- 学習者の名前：内藤\n", encoding="utf-8")
-    assert sp.author(sp.load_profile(w)) == "病院講座（全3回）・内藤さん向け"
+    (w / "memo.md").write_text("## 1. この回のゴールと前提\n\n- 学習者の名前：山田\n", encoding="utf-8")
+    assert sp.author(sp.load_profile(w)) == "病院講座（全3回）・山田さん向け"
     z = tmp_path / "_work" / "ゼミ"
     z.mkdir()
     (z / "outline.md").write_text("## オプション\n\n| オプション | 今の値 |\n|---|---|\n| 答えの位置 | 先 |\n", encoding="utf-8")
