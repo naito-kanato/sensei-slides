@@ -5,7 +5,7 @@
 （<work> は作業フォルダ。地図の担当だけは講座名。ユーザーの答えがあれば、その下に「ユーザーの答え：…」と続ける）
 
     python <skill>/scripts/brief.py --list                       # 担当の一覧
-    python <skill>/scripts/brief.py 仕上げ役 _work/病院機能評価講座_01
+    python <skill>/scripts/brief.py 仕上げ役 _work/〇〇講座_01
     python <skill>/scripts/brief.py 裏取りの担当 _work/X講座_01 --n 2
     python <skill>/scripts/brief.py 地図の担当 X講座 --note "学習者：…／回数：3"
     python <skill>/scripts/brief.py 制作役 _work/X講座_01 --part 1/2   # 本文が8枚以上なら2人（next_step が言う）と、図の担当（brief.py 図の担当 <work>）
