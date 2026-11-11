@@ -20,6 +20,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 SKILL = "<skill>"
 
 
+TWO = "数字を探す担当を2人、同時に起動（`brief.py 数字を探す担当 <work> --n 1` と `--n 2`）"
+ONE = ("数字を探す担当を1人起動（`brief.py 数字を探す担当 <work> --n 1`。資料が土台なので、資料の表・図の数字と事実から先に探す。"
+       "2人にすると、同じ資料から同じ組を拾って重なっていた）")
+
+
+def source_based(readme: Path) -> bool:
+    """README の「資料の扱い」が土台（資料で講座を作る）か。土台なら、数字と事実は資料の表・図から先に探せるので、数字を探す担当は1人。"""
+    try:
+        t = Path(readme).read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return bool(re.search(r"資料の扱い[^\n]*土台", t))
+
+
 def _mtime(p: Path):
     return p.stat().st_mtime if p.exists() else None
 
@@ -107,9 +121,10 @@ def steps_for(work: Path):
         found = data.files(work)
         add(bool(found), "数字を探す（data_N.md）", "・".join(f.name for f in found) if found else "まだ")
         add(False, "設計メモ（memo.md）", "まだ")
-        return out, ("references/course.md 手順4⓪：数字を探す担当を2人、同時に起動（`brief.py 数字を探す担当 <work> --n 1` と `--n 2`）" if not found else
+        one = source_based(work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md")
+        return out, ("references/course.md 手順4⓪：" + (ONE if one else TWO) if not found else
                      "references/course.md 手順4①：設計の担当（`brief.py 設計の担当 <work>`）。data_N.md を見てから筋を決め、data.py merge で3b節に入れる"
-                     + ("（数字を探す担当を2人起動したなら、もう1人が返してから）" if len(found) == 1 else ""))
+                     + ("（数字を探す担当を2人起動したなら、もう1人が返してから）" if len(found) == 1 and not one else ""))
     if not plan.exists():
         add(False, "構成案", "outline.md が無い")
         return out, ("手順2：構成案（outline.md）を作る。`guide.py steps 2`。講座なら references/course.md の手順4（設計メモ memo.md）")
@@ -238,7 +253,7 @@ def course_next(course: Path):
         w = unfinished[0]
         return lines, f"{w.name} の途中：python {SKILL}/scripts/next_step.py {(root / w.name).as_posix()} で続きを見る"
     n = max(int(m[:2]) for m in made) + 1 if made else 1
-    first = (f"数字を探す担当を2人、同時に起動（`brief.py 数字を探す担当 _work/{course.name}_{n:02d} --n 1` と `--n 2`）→ "
+    first = ((ONE if source_based(readme) else TWO).replace("<work>", f"_work/{course.name}_{n:02d}") + " → "
              f"設計の担当が data_N.md を見て _work/{course.name}_{n:02d}/memo.md を書く（references/course.md 手順4）")
     return lines, (f"第{n}回：{first}。設計の前に、前の回のコメント・答え（00_README.md のつまずき一覧）を読む" if made else
                    f"第1回：ユーザーが 00_README.md の地図に OK を出したら、{first}")

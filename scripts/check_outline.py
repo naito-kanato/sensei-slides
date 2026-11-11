@@ -172,7 +172,7 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
     fam = familiarity(text)
     lv = politeness(text)
     if lv is None and fam is not None:
-        lv = FAMILIARITY[fam]          # 丁寧さは、書いていなければ詳しさから（初学者 0・多少知っている 1・かなり知っている 2）
+        lv = FAMILIARITY[fam]          # 丁寧さは、書いていなければ詳しさから（初学者 0・多少知っている 0・かなり知っている 2）
     miss = [w for w, ok in (("聞き手のテーマへの詳しさ（初学者／多少知っている／かなり知っている）", fam is not None),
                             ("聞き手の前提知識（知っている＝…／知らない＝…）", knowledge(text))) if not ok]
     res.append(("✘" if miss else "✔", "前提と丁寧さ",

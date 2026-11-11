@@ -20,6 +20,15 @@
     | <区分2> | <数> |
 
 列は増やしてよい（| 区分 | 2017 | 2019 | のように、時点ごとの列）。値は数（％や単位は「単位」の行に書く）。
+驚きの事実（数字の組にならないが、思い込みと逆のはっきりした事実）は、2つまで次の形で書く（表は無し）：
+
+    ## 事実：<題>
+    - 驚き：<「〜だと思われがちだが、実際は〜」>
+    - 問いの候補：<…か？>
+    - 出典：<「題名」発行者 年 URL 頁（資料なら p.3・Fig. 2）>
+    - 確認：○（出典で確かめた）／△（出典どうしで違う）
+    - 別の読み方：<驚きに見えない読み方（条件が特殊・1つの研究だけ など）>
+
 比べられる組が無いとき（理論の導入・手順の習得・定義から応用へ、のような回）は、無理に出さずに次を書く。これも正規の結果：
 
     ## 見つからなかった：<理由（統計の対象でない・比べられる区分が無い など）>
@@ -41,6 +50,8 @@ FIELDS = ("驚き", "問いの候補", "単位", "分母", "時点", "出典", "
 REQUIRED = ("驚き", "単位", "時点", "出典", "確認", "別の読み方")
 NOT_FOUND = re.compile(r"^##+\s*見つからなかった\s*[：:]\s*(.*?)\s*$(.*?)(?=^##+\s|\Z)", re.M | re.S)
 NF_LINE = "- 見つからなかった："
+FACT_REQUIRED = ("驚き", "出典", "確認", "別の読み方")
+FACT_HEAD = "### 驚きの事実"
 REF = re.compile(r"データ\s*(\d+)")
 NUM = re.compile(r"^[−\-+]?[\d,]+(\.\d+)?$|^約?[\d,.]+[〜~][\d,.]+$")
 
@@ -63,6 +74,23 @@ def parse(text: str) -> list[dict]:
                 if l.strip().startswith("|") and not re.match(r"^\|\s*:?-", l.strip())]
         out.append({"title": m.group(1), "fields": f, "head": rows[0] if rows else [], "rows": rows[1:]})
     return out
+
+
+def parse_facts(text: str) -> list[dict]:
+    """「## 事実：題」ごとに1つ。{title, fields{...}}（驚きの事実。表は無し）。"""
+    out = []
+    for m in re.finditer(r"^##+\s*事実\s*\d*\s*[：:]\s*(.+?)\s*$(.*?)(?=^##+\s|\Z)", text, re.M | re.S):
+        f = {}
+        for line in m.group(2).splitlines():
+            mm = re.match(r"\s*-\s*(" + "|".join(FIELDS) + r")\s*[：:]\s*(.*)$", line)
+            if mm:
+                f[mm.group(1)] = mm.group(2).strip()
+        out.append({"title": m.group(1), "fields": f})
+    return out
+
+
+def fact_problems(d: dict) -> list[str]:
+    return [f"「{k}」が無い" for k in FACT_REQUIRED if not d["fields"].get(k) or d["fields"][k] in ("—", "-")]
 
 
 def problems(d: dict) -> list[str]:
@@ -105,7 +133,7 @@ def section(text: str) -> str | None:
 
 def datasets(text: str) -> dict[int, dict]:
     """設計メモの3b節の {番号: 組}（見出しの「データN：」の N）。"""
-    sec = section(text) or ""
+    sec = (section(text) or "").split(FACT_HEAD)[0]   # 驚きの事実は組の後ろ（組の中身に混ぜない）
     out = {}
     parts = re.split(r"(?m)^###\s*データ\s*(\d+)\s*[：:]\s*(.*)$", sec)   # [前, 番号, 題, 中身, 番号, 題, 中身, …]
     for i in range(1, len(parts) - 2, 3):
@@ -136,10 +164,15 @@ def merge(work: Path) -> int:
         raise SystemExit(f"✘ {memo} が無い（先に設計メモ・構成案の骨を書く）")
     texts = [f.read_text(encoding="utf-8") for f in files(work)]
     sets = [d for t in texts for d in parse(t)]
+    facts = [d for t in texts for d in parse_facts(t)]
     nfs = [x for t in texts for x in not_found(t)]
-    body = (SECTION + "（data.py merge が data_N.md から入れる。図の案から「データN」で指す。値・単位・注記はこのとおりに描く）\n\n"
+    fact_text = "\n\n".join(f"{FACT_HEAD}{i}：{d['title']}\n" + "\n".join(f"- {k}：{d['fields'][k]}" for k in FIELDS if d["fields"].get(k))
+                            for i, d in enumerate(facts, 1))
+    body = (SECTION + "（data.py merge が data_N.md から入れる。図の案から「データN」で指す。値・単位・注記はこのとおりに描く。"
+            "驚きの事実は、使うなら3節の事実の行に写す）\n\n"
             + "\n\n".join(render(i, d) for i, d in enumerate(sets, 1))
-            + ("\n\n" if sets and nfs else "")
+            + ("\n\n" if sets and facts else "") + fact_text
+            + ("\n\n" if (sets or facts) and nfs else "")
             + "\n".join(f"{NF_LINE}{r}（調べたこと：{t}）" for r, t in nfs) + "\n\n")
     raw = memo.read_text(encoding="utf-8")
     old = section(raw)
@@ -149,7 +182,7 @@ def merge(work: Path) -> int:
         m = re.search(r"^##\s*4[.．]", raw, re.M) or re.search(r"^##\s*構成\s*$", raw, re.M)   # 設計メモは4節の前、構成案は構成の表の前
         raw = raw[:m.start()] + body + raw[m.start():] if m else raw.rstrip() + "\n\n" + body
     memo.write_text(raw, encoding="utf-8")
-    return len(sets)
+    return len(sets) + len(facts)
 
 
 def refs(cell: str) -> list[int]:
@@ -165,8 +198,13 @@ def main(argv=None):
     if argv[0] == "merge":
         n = merge(work)
         nf = sum(len(not_found(f.read_text(encoding="utf-8"))) for f in files(work))
+        nfact = sum(len(parse_facts(f.read_text(encoding="utf-8"))) for f in files(work))
+        n -= nfact
         where = "設計メモ" if (work / "memo.md").exists() else "構成案"
+        if nfact:
+            print(f"驚きの事実 {nfact} 個も3b節に入れた（使うなら3節の事実の行に写す。確認は○、出典もそのまま）")
         print(f"{where}の3b節に {n} 組を入れた（データ1〜{n}）。強い組だけ、図の案から「目的：種類：データN」で指す" if n else
+              "比べられる数字の組は無い（驚きの事実だけ）。筋の しかし に、驚きの事実を据えられるか先に考える" if nfact else
               "比べられる数字の組は見つからなかった（理由を3b節に書いた）。筋の しかし は、データ無しの意外・疑い・限りで組む" if nf else
               "data_N.md に組が無い（数字を探す担当の結果を待つ）")
         return 0
@@ -185,6 +223,14 @@ def main(argv=None):
             p = problems(d)
             bad += bool(p)
             print(("✘ " if p else "✔ ") + f"{f.name}「{d['title']}」" + ("：" + "・".join(p) if p else ""))
+        facts = parse_facts(f.read_text(encoding="utf-8"))
+        for d in facts:
+            p = fact_problems(d)
+            bad += bool(p)
+            print(("✘ " if p else "✔ ") + f"{f.name} 驚きの事実「{d['title']}」" + ("：" + "・".join(p) if p else ""))
+        if len(facts) > 2:
+            bad += 1
+            print(f"✘ {f.name}：驚きの事実が {len(facts)} 個（2つまで。強いものだけ残す）")
     return 1 if bad else 0
 
 

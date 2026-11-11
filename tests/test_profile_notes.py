@@ -36,7 +36,7 @@ def test_options_come_from_the_decks_own_list(tmp_path):
     (tmp_path / "outline.md").write_text(OUTLINE, encoding="utf-8")
     p = sp.load_profile(tmp_path)
     assert sp.author(p) == "山田太郎"
-    assert sp.politeness(p) == 1                          # 多少知っている → 丁寧さ 1
+    assert sp.politeness(p) == 0                          # 多少知っている → 丁寧さ 0（要はすべて架ける）
     opts = sp.deck_options(p)
     assert opts["template"].name == sp.structure_names()["結論の囲み"] + ".pptx" and opts["color"] == "青緑"
 
