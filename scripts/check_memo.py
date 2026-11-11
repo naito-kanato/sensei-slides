@@ -102,7 +102,7 @@ NUMERIC = re.compile(r"[0-9０-９]")
 def untagged_numbers(rows, what="設計メモ2節"):
     """本文の要点のうち、数値があるのに出どころ〔…〕が無い項目のある枚 → △。書き手（軽いモデル）が材料を探さずに書けるように、
     構成を決めるときに「どこから引くか」まで決めておく（論文なら〔II. Observation〕〔Fig. 2〕〔要旨〕、講座なら〔事実3〕＝3節の表の3行目、
-    自分の計算なら〔発表者の概算〕）。"""
+    自分の計算なら〔発表者の概算〕、講座は〔講師の概算〕）。"""
     head = [h.strip() for h in rows[0]]
     k = next((i for i, h in enumerate(head) if "本文の要点" in h), None)
     kr = next((i for i, h in enumerate(head) if "役割" in h), None)
@@ -121,7 +121,7 @@ def untagged_numbers(rows, what="設計メモ2節"):
         return None
     if bad:
         return ("△", "要点の出どころ", f"数値のある要点に出どころ〔…〕が無い枚：{'・'.join(bad)}。要点の後ろに〔II. Observation〕〔Fig. 2〕〔要旨〕"
-                f"（講座は〔事実3〕＝3節の表の行）、自分の計算なら〔発表者の概算〕と書く（{what}。カードが、その所を書き手に渡す）")
+                f"（講座は〔事実3〕＝3節の表の行）、自分の計算なら〔発表者の概算〕（講座は〔講師の概算〕）と書く（{what}。カードが、その所を書き手に渡す）")
     return ("✔", "要点の出どころ", f"数値のある要点 {n_num}個すべてに出どころ")
 
 

@@ -263,6 +263,51 @@ def picture_scales(pptx_path, shapes):
     return out
 
 
+# 出どころの断り（作る側のメモ）。スライドに出してよいのは図の「（概略）」と解釈の行の「（講師の解釈）」「（発表者の解釈）」だけで、
+# 資料外・自分の計算の断りは原稿の ※ 行に書く。論文から作った講座の試しで、「（資料外・概算）」「（発表者の計算）」「1972 年は資料外」が本文と注記に出ていた
+SOURCE_NOTE = re.compile(r"資料外|(?:発表者|講師)の(?:計算|概算|読み|推定|補足|見積)")
+SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺"
+
+
+def text_marks(pptx_path):
+    """スライド番号 → {"notes": [出どころの断りのある行], "subs": [下付きになっていない文字（Q⁻¹p の p）]}。pptx が読めなければ空。
+    subs は、文字の右肩（⁻¹ や ^{…}）のすぐ後ろに、下付きでない小文字1字が続く所（前は英字。10⁻⁵m のような単位と、p(θ) のような関数は数えない）。
+    試しの講座で、プラトーの値 Q⁻¹_{p} を「Q⁻¹p」と書き、p が下付きにならないまま6枚に出ていた。"""
+    out = {}
+    try:
+        from pptx import Presentation
+        prs = Presentation(str(pptx_path))
+    except Exception:
+        return out
+    for i, sl in enumerate(prs.slides, 1):
+        notes, subs = [], []
+        for sh in sl.shapes:
+            if not getattr(sh, "has_text_frame", False) or not sh.has_text_frame:
+                continue
+            for para in sh.text_frame.paragraphs:
+                t = "".join(r.text for r in para.runs)
+                mo = SOURCE_NOTE.search(t)
+                if mo:   # 断りの前後だけ（行の頭の出典名で切れて、断りが見えなかった）
+                    notes.append(("…" if mo.start() > 10 else "") + t[max(0, mo.start() - 10):mo.end() + 4].strip())
+                chars = []   # (文字, 右肩か, 下付きか)
+                for r in para.runs:
+                    bl = int(r._r.rPr.get("baseline", "0")) if r._r.rPr is not None else 0
+                    chars += [(c, bl > 0 or c in SUP, bl < 0) for c in r.text]
+                for j in range(2, len(chars)):
+                    c, up, down = chars[j]
+                    if not ("a" <= c <= "z") or up or down or not chars[j - 1][1]:
+                        continue
+                    k = j - 1
+                    while k >= 0 and chars[k][1]:
+                        k -= 1
+                    nxt = chars[j + 1] if j + 1 < len(chars) else (" ", False, False)
+                    if k >= 0 and chars[k][0].isascii() and chars[k][0].isalpha() and not (nxt[0].isalpha() or nxt[1] or nxt[0] in "(（"):   # p(θ) は関数
+                        subs.append("".join(x[0] for x in chars[k:j + 1]))
+        if notes or subs:
+            out[i] = {"notes": notes, "subs": subs}
+    return out
+
+
 def underlines(pptx_path):
     """スライド番号 → [下線の付いた文字（続いている下線の文字はまとめて1か所）]。pptx が読めなければ空。"""
     out = {}
@@ -935,6 +980,7 @@ def main(path, pptx_path=None, template=None):
     scales = picture_scales(pptx_path, shapes)
     inks = picture_ink(pptx_path)
     unders = underlines(pptx_path) if pptx_path and Path(pptx_path).exists() else {}
+    marks = text_marks(pptx_path) if pptx_path and Path(pptx_path).exists() else {}
     plains = plain_slides(pptx_path) if pptx_path and Path(pptx_path).exists() else set()
     thin_slides = set()
     reds = red_counts(pptx_path) if pptx_path and Path(pptx_path).exists() else None
@@ -1059,6 +1105,14 @@ def main(path, pptx_path=None, template=None):
             u = unders[i]
             msgs.append(("WARN", f"下線が多い（{len(u)} か所：{'・'.join(x[:10] for x in u[:5])}） → 下線は聞き手に指してほしい語だけ、"
                                  f"1枚{UNDERLINE_MAX}か所まで。用語の小見出しは太字（s.block・s.ask の既定）、強調は赤字に"))
+        tm = marks.get(i, {})
+        if tm.get("notes"):
+            msgs.append(("WARN", f"出どころの断りがスライドに出ている：{' / '.join('「' + x[:28] + '」' for x in tm['notes'][:3])}"
+                                 " → 資料外・自分の計算の断りは原稿の ※ 行へ移す（スライドに残してよいのは、図の「（概略）」と、"
+                                 "解釈の行の「（講師の解釈）」〔発表は「（発表者の解釈）」〕だけ）"))
+        if tm.get("subs"):
+            msgs.append(("WARN", f"下付きになっていない文字：{'・'.join(dict.fromkeys(tm['subs']))}"
+                                 " → 下付きは `_{p}` で書く（例 \"Q⁻¹_{p}\"）"))
         if band_top != BAND_TOP and not (qa or cover or designed):   # 下の帯の無い枚：本文の下端からページの下までが大きく空いている
             low = max((rect_of(s)[3] for s in items if s.get("ph") is None and s.get("name") not in ("見出し", "章のナビ")), default=0)
             if low and band_top - low > EMPTY_BELOW_NOBAND:

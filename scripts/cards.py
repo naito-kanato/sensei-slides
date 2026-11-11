@@ -71,6 +71,9 @@ def targets(kind, per) -> list:
             "- **1行は20字まで**：長い項目は、文字列の中に \\n を入れて意味の切れ目で折る（例：\"片方の時刻を 10 ms より\\n大きくずらした組合せ\"）。"
             "1項目は2行まで。それより長いなら原稿へ回す。図の横の本文は特に短く",
             "- 本文に入れるもの：要点ごとに、数値か具体例を1つ（〔…〕の所から引く）。言い換えや中身の無い行で字数を埋めない",
+            "- 字数を縮めるときも、数値の前の「何の数か」（縦横比・周波数・温度 など）は消さない（「小さい：A と B」でなく「縦横比 A・B」）",
+            "- 出どころの断り（資料外・概算・自分の計算）はスライドに書かず、原稿の ※ 行へ。スライドに添えてよいのは、図の「（概略）」と、"
+            "解釈の行の「（講師の解釈）」〔発表は「（発表者の解釈）」〕だけ。下付きの文字は `_{p}` で書く（`Q⁻¹_{p}`。並べて書くと下付きにならない）",
             f"- 原稿：{per}前後。話し言葉（です・ます）。次の順で書く：①導入（前の枚からの語で1〜2文）②図の読み方（どこを見て、何が読めるか）"
             "③根拠（要点の数値・例を〔…〕の所から）④例か、間違いやすい所 "
             + ("⑤元の枚に戻ってどう読めばよいか（1文）" if kind == "answers" else "⑤次の枚へのつなぎ（1文）")
@@ -169,7 +172,7 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         src = col(r, "範囲")
         # 要点の出どころ〔…〕が範囲の外の節・図を指していれば、それも抜き出す（要旨・事実N・自分の計算は除く）
         tags = [t.strip() for g in re.findall(r"〔([^〕]+)〕", col(r, "本文の要点")) for t in g.split("・")]
-        tags = [t for t in tags if t and not re.match(r"(要旨|事実|発表者|資料外|例|一般)", t)]
+        tags = [t for t in tags if t and not re.match(r"(要旨|事実|発表者|講師|資料外|例|一般)", t)]
         if (src not in EMPTY or tags) and src_text:
             got, miss = excerpt.pieces(src_text, ", ".join(([src] if src not in EMPTY else []) + tags))
             src = src if src not in EMPTY else "（要点の出どころから）"
