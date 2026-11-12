@@ -8,6 +8,7 @@ import shutil
 
 import pytest
 
+import budget
 import check_done as cd
 
 
@@ -33,6 +34,9 @@ def finish(pptx, work, monkeypatch):
     (work / "render" / "shapes.json").write_text(json.dumps({"slideWidth": 960, "slideHeight": 540, "slides": 15, "shapes": []}), encoding="utf-8")
     pptx.with_name("01_生成AIは何をしているか_原稿.html").write_text(GOOD_HTML, encoding="utf-8")
     (work / "review.md").write_text("## 判定\n直してから渡す → 直した\n## 直した点\n- 1枚目の文字量\n", encoding="utf-8")
+    # 担当を起動した記録（brief.py が残す）。見本のファイルの日付が新しい（clone した直後など）と、記録の無い作業は ✘ になるため
+    (work / budget.LOG).write_text("".join(json.dumps({"t": "", "ts": 0, "role": r, "part": ""}, ensure_ascii=False) + "\n"
+                                           for r in ("設計の担当", "制作役", "仕上げ役")), encoding="utf-8")
     monkeypatch.setattr(cd.check_layout, "stale_slides", lambda *a: [])
     monkeypatch.setattr(cd.check_layout, "main", lambda *a: print("6 slides: 0 errors, 2 warnings") or 0)
 
