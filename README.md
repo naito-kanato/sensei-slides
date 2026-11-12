@@ -4,11 +4,11 @@
 
 **An agent skill that makes lecture and seminar slides people can actually follow: an AI-taught course built one session at a time, or a single talk from a paper or textbook.**
 
-![Sample slides from the course and the talk examples (animated)](docs/demo.gif)
+![Sample slides from the course and the talk examples, translated into English (animated)](docs/demo-en.gif)
 
 Version 0.7.0 (2026-11-12). **[Download the latest release](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)** (a ready-to-use work folder with the skill inside). Changes: [CHANGELOG.md](CHANGELOG.md) (in Japanese).
 
-> **The slides, speaker notes, instructions and check messages are in Japanese.** This skill is built for Japanese-language decks. English output is not supported yet.
+> **The slides, speaker notes, instructions and check messages are in Japanese.** This skill is built for Japanese-language decks. English output is not supported yet. The English slides shown on this page are translations of the two Japanese samples: the same build scripts with the text translated and the layout adjusted by hand ([examples/course_en](examples/course_en), [examples/zemi_en](examples/zemi_en)). The script pages are shown in Japanese.
 
 You ask an AI coding agent (Codex, Claude Code; Antigravity and GitHub Copilot can read it too), and it produces a **PowerPoint deck (.pptx), a read-aloud script, and an HTML page** that shows each slide next to its script, where you leave comments and answer quiz questions.
 
@@ -16,6 +16,29 @@ You ask an AI coding agent (Codex, Claude Code; Antigravity and GitHub Copilot c
 |---|---|
 | From a topic or a PDF, the AI plans an N-session course and builds one session at a time. It reads your quiz answers and comments, then adjusts the next session. | One deck from a paper, a textbook section, your own figures, or earlier slides: lab seminars, conference talks, or a "solo seminar" to understand a paper yourself. |
 | ![Course example: script page](docs/course-notes.jpg) | ![Talk example: script page](docs/zemi-notes.jpg) |
+| Sample: AI literacy course, lecture 1, "What Does Generative AI Do?" (15 slides) | Sample: paper review, "First Observation of Gravitational Waves" (Abbott et al., PRL 2016, CC BY 3.0; 16 slides) |
+
+The samples were not picked for quality: we chose a topic and show what the skill made (the English versions below are translations of those decks).
+
+**Course sample, translated** (slides 1–4)
+
+![Course sample in English, slides 1-4](docs/en-course-slides-1.jpg)
+
+<details>
+<summary><b>All remaining slides (5–15)</b></summary>
+
+![Course sample in English, slides 5-15: body, quiz and answers](docs/en-course-slides-2.jpg)
+</details>
+
+**Talk sample, translated** (slides 1–4)
+
+![Talk sample in English, slides 1-4](docs/en-zemi-slides-1.jpg)
+
+<details>
+<summary><b>All remaining slides (5–16)</b></summary>
+
+![Talk sample in English, slides 5-16](docs/en-zemi-slides-2.jpg)
+</details>
 
 ## Design principles
 

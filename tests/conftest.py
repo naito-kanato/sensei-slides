@@ -40,7 +40,7 @@ def built(tmp_path_factory):
     shutil.copytree(src / "assets", dst / "assets")                     # テンプレートの pptx はここ
     shutil.copytree(src / "examples", dst / "examples", ignore=outputs)
     for work in (dst / "examples" / "zemi", dst / "examples" / "course" / "_work" / "AI活用講座_01", dst / "examples" / "template",
-                 dst / "examples" / "structures"):
+                 dst / "examples" / "structures", dst / "examples" / "zemi_en", dst / "examples" / "course_en" / "_work" / "AI_Literacy_01"):
         for script in ("figs.py", "build.py"):
             if not (work / script).exists():                            # テンプレートの見本は図をゼミの見本から借りる
                 continue

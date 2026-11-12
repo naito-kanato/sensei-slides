@@ -3,6 +3,7 @@
 見本を組み直したら（make_deck.py のあと）これを走らせる。
 
     python tools/make_docs_images.py
+    python tools/make_docs_images.py --en   # 英語の README の画像だけ（英語版の見本 examples/zemi_en・course_en の描画から）
 """
 from __future__ import annotations
 
@@ -35,7 +36,22 @@ DEMO = [(COURSE, 1, "講座：AI が講師の連続講座"), (COURSE, 3, "講座
         (ZEMI, 13, "発表：結果と赤丸"), (ZEMI, 15, "発表：想定質問と回答案")]
 
 
-def demo_gif(out: Path, width: int = 800, bar: int = 40, ms: int = 1800):
+# 英語の README 用：日本語の見本を英語に訳して組み直したもの（examples/zemi_en・examples/course_en。スキル自体の出力は日本語）
+EN_COURSE = ROOT / "examples" / "course_en" / "_work" / "AI_Literacy_01" / "render"
+EN_ZEMI = ROOT / "examples" / "zemi_en" / "render"
+EN_JOBS = [
+    ("en-course-slides-1.jpg", EN_COURSE, range(1, 5), 2, 1648),
+    ("en-course-slides-2.jpg", EN_COURSE, range(5, 16), 3, 1654),
+    ("en-zemi-slides-1.jpg", EN_ZEMI, range(1, 5), 2, 1648),
+    ("en-zemi-slides-2.jpg", EN_ZEMI, range(5, 17), 3, 1654),
+]
+EN_DEMO = [(EN_COURSE, 1, "Course: an AI-taught series"), (EN_COURSE, 3, "Course: one conclusion line and a figure"),
+           (EN_COURSE, 6, "Course: numbers as charts"), (EN_COURSE, 12, "Course: quiz"), (EN_ZEMI, 1, "Talk: paper review"),
+           (EN_ZEMI, 8, "Talk: the paper's figures and numbers"), (EN_ZEMI, 13, "Talk: result with a red circle"),
+           (EN_ZEMI, 15, "Talk: anticipated questions")]
+
+
+def demo_gif(out: Path, width: int = 800, bar: int = 40, ms: int = 1800, frames_of=None):
     """DEMO の枚を、上に短い帯を付けて GIF にする（大きさは 2〜3 MB 以内を目安に、幅 800）。"""
     h = round(width * 9 / 16)
     try:
@@ -43,7 +59,7 @@ def demo_gif(out: Path, width: int = 800, bar: int = 40, ms: int = 1800):
     except OSError:
         font = ImageFont.load_default()
     frames = []
-    for folder, n, label in DEMO:
+    for folder, n, label in (frames_of or DEMO):
         f = folder / f"slide-{n:02d}.png"
         if not f.exists():
             continue
@@ -157,7 +173,21 @@ def notes_shots():
             print(Path("docs") / name)
 
 
+def english():
+    """英語の README の画像（docs/en-*.jpg と docs/demo-en.gif）。英語版の見本を描画したあとに：python tools/make_docs_images.py --en"""
+    for name, folder, nums, cols, width in EN_JOBS:
+        out = ROOT / "docs" / name
+        tile(folder, list(nums), cols, width).save(out, quality=88)
+        print(out.relative_to(ROOT))
+    out = ROOT / "docs" / "demo-en.gif"
+    demo_gif(out, frames_of=EN_DEMO)
+    print(out.relative_to(ROOT), f"{out.stat().st_size / 1e6:.1f} MB")
+
+
 def main():
+    if "--en" in sys.argv:
+        english()
+        return
     for name, folder, nums, cols, width in JOBS:
         out = ROOT / "docs" / name
         tile(folder, list(nums), cols, width).save(out, quality=88)
