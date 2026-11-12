@@ -32,3 +32,34 @@ def test_too_many_flows_need_a_reason():
     assert fp.flow_check(8, 11, "", "設計メモ")[0] is None                   # 上限 2枚を超える
     assert fp.flow_check(8, 11, "流れ図の理由：手順の講座", "設計メモ")[0] == "✔"
     assert fp.flow_check(2, 10, "", "設計メモ")[0] == "✔"
+
+
+def test_decision_kind_is_not_taken_for_flow():
+    """「判定の流れ図」を「流れ図」と取り違えない（menu_name は前から探す）。判定の目的のおすすめの先頭。"""
+    import figplan
+    assert figplan.parse_fig("判定：判定の流れ図：30条の4の判定") == ("判定", "判定の流れ図")
+    assert figplan.menu_name("流れ図：申請の手順") == "流れ図"
+    rec = dict((p, k) for p, _, k in figplan.FIG_PURPOSES)
+    assert rec["判定"][0] == "判定の流れ図"
+    assert figplan.pptx_part("判定：判定の流れ図：要件") == "s.decision"
+
+
+def test_decision_slide_kinds(tmp_path):
+    """s.decision の枚は「判定の流れ図」として数え、手順の流れ図の数には入れない。問いが4つ以上は止める。"""
+    import pytest
+    import figplan
+    import slide_profile as sp
+    from pptx import Presentation
+    from zemi import Deck
+    deck = Deck(workdir=tmp_path / "build", **sp.deck_options({}, name="下の帯"))
+    s = deck.slide("t", summary="享受目的が無ければ許諾は不要")
+    s.heading("判定")
+    s.decision([("享受が目的か？", "許諾が要る"), ("利益を不当に害するか？", "許諾が要る")], "許諾なしで使える", y=1.9)
+    with pytest.raises(ValueError):
+        s.decision([("a", "b")] * 4, "c")
+    out = tmp_path / "d.pptx"
+    deck.save(out)
+    slide = Presentation(out).slides[0]
+    kinds = figplan.actual_kinds(slide)
+    assert "判定の流れ図" in kinds and "流れ図" not in kinds
+    assert figplan.slide_type(slide, 1, 1) == "判定の流れ図"

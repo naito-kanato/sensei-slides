@@ -71,3 +71,46 @@ def test_cover_slides_are_not_body():
     body = [{"text": "●重力波"}, {"text": "1916年 アインシュタインが予言"}]
     assert cl.is_cover_slide(cover) is True
     assert cl.is_cover_slide(body) is False
+
+
+def table_cells(rows, cols, size=16):
+    out = [box(1, "見出し", 40, 80, 300, 40, "●表の枚", size=24)]   # ●見出しの無い枚は表紙とみなされ、見ない
+    out += [box(1, "表の見出し", 72 + 120 * c, 140, 110, 30, f"列{c}", size=17) for c in range(cols)]
+    for r in range(rows):
+        out += [box(1, "表のセル", 72 + 120 * c, 175 + 32 * r, 110, 30, f"中身{r}{c}", size=size) for c in range(cols)]
+    return out
+
+
+def test_small_table_text_is_warned(tmp_path, capsys):
+    _, out = run(tmp_path, [title()] + table_cells(3, 3, size=12), capsys)
+    assert "表の文字が小さい" in out
+    _, out = run(tmp_path, [title()] + table_cells(3, 3, size=16), capsys)
+    assert "表の文字が小さい" not in out and "表のマスが多い" not in out
+
+
+def test_crowded_table_is_warned(tmp_path, capsys):
+    _, out = run(tmp_path, [title()] + table_cells(5, 5), capsys)   # 25 マス
+    assert "表のマスが多い" in out
+
+
+def test_small_text_in_figure_is_warned(tmp_path):
+    """figkit.save が書いた MinFontPt と縮尺から、置いた大きさでの図の文字を見る。"""
+    import figkit
+    from pptx import Presentation
+    from pptx.util import Inches
+    paths = {}
+    for size in (12, 16):
+        f, ax = figkit.fig(4.0, 3.0)
+        ax.plot([0, 1], [0, 1])
+        ax.tick_params(labelsize=size)
+        paths[size] = tmp_path / f"f{size}.png"
+        figkit.save(f, paths[size])
+    prs = Presentation()
+    for size in (12, 16):
+        s = prs.slides.add_slide(prs.slide_layouts[6])
+        s.shapes.add_picture(str(paths[size]), Inches(1), Inches(1))
+    pptx = tmp_path / "d.pptx"
+    prs.save(pptx)
+    fonts = cl.picture_fonts(pptx)
+    assert fonts[1][0][1] == 12.0 and abs(fonts[1][0][2] - 1.0) < 0.05
+    assert fonts[2][0][1] == 16.0

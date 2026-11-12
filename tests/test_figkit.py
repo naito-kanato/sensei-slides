@@ -17,7 +17,7 @@ def test_good_figure_passes(capsys):
 
 def test_small_text_is_warned(capsys):
     assert figkit.lint(labeled_figure(2, 11), "small.png") is True
-    assert "13pt 未満" in capsys.readouterr().out
+    assert "14pt 未満" in capsys.readouterr().out
 
 
 def test_too_many_labels_are_warned(capsys):
@@ -29,6 +29,18 @@ def test_save_writes_png(tmp_path):
     out = tmp_path / "figs" / "a.png"
     figkit.save(labeled_figure(1, 14), out)
     assert out.exists() and out.stat().st_size > 0
+
+
+def test_save_records_smallest_text(tmp_path):
+    """save は図の中のいちばん小さい文字の大きさを PNG に書く（check_layout が置いた大きさで見る）。凡例と目盛りも数える。"""
+    from PIL import Image
+    f = labeled_figure(1, 16)
+    f.axes[0].plot([0, 1], [0, 1], label="凡例の線")
+    f.axes[0].legend(fontsize=12)
+    out = tmp_path / "b.png"
+    figkit.save(f, out)
+    with Image.open(out) as im:
+        assert float(im.info["MinFontPt"]) == 12.0
 
 
 def test_text_on_box_edge_is_warned(capsys):

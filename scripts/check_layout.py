@@ -65,6 +65,12 @@ FIG_GAP_MIN_LO = 0.25 * PT  # LibreOffice で描いたとき。文字の範囲�
 LO_BOTTOM_TOL = 6.0       # LibreOffice は文字の高さを PowerPoint より約6pt 高く測る（同じ実測。中央値 +6pt）。下端の判定に足す分（pt）
 FIG_GAP_BELOW_MIN = 0.3 * PT  # 本文の下端と、その下に置いた図・表の上端の間隔の下限
 PIC_SCALE_MIN = 0.95     # 置いた幅／描いた幅 がこれ未満なら「縮小して置いている」
+FIG_FONT_MIN = 14.0      # 図の中のいちばん小さい文字が、置いた大きさでこれ未満なら WARN（figkit.save が画像に書いた大きさ × 縮尺）。
+                         # 試しの回で、目盛りが下限ちょうどの 13pt のまま置かれ、本文 18pt の横で読みにくかった
+TABLE_FONT_MIN = 14.0    # 表のセルの文字の下限（s.table の既定は 16pt。詰め込むために小さくした表がぎっしり見えた）
+TABLE_CELLS_MAX = 20     # 表のマス（見出しの行を除くセルと行ラベル）の上限。超えたら2枚に分けるか、判定の流れ図・ツリーに
+TABLE_NAMES = ("表の見出し", "表の行ラベル", "表のセル")   # zemi.TABLE_NAMES と同じ（s.table の図形の名前）
+TABLE_CELL_NAMES = TABLE_NAMES[1:]
 EMPTY_BOTTOM = 4.5 * PT  # 本文の最下端がここより上で図も表もなければ「下が空いている」
 FIG_MIN_H = 1.0 * PT     # これより低い画像は数式の画像とみなし、図に数えない
 UNDERLINE_MAX = 2         # 1枚の下線の数の上限（下線は聞き手に指してほしい語だけ。ラベルと問いの見出しは太字）
@@ -260,6 +266,40 @@ def picture_scales(pptx_path, shapes):
             placed = Emu(sh.width).inches
             drawn = px_w / dpi
             out.setdefault(i, {})[sh.name] = (placed, drawn, placed / drawn if drawn else 1.0)
+    return out
+
+
+def picture_fonts(pptx_path):
+    """スライド番号 → [(図形名, 図の中のいちばん小さい文字 pt, 縮尺)]。figkit.save が PNG に書いた MinFontPt を読む
+    （書いていない画像・資料の切り出しは見ない）。python-pptx・Pillow か pptx が無ければ空。"""
+    out = {}
+    try:
+        import io
+        from PIL import Image
+        from pptx import Presentation
+        from pptx.util import Emu
+    except ImportError:
+        return out
+    if not pptx_path or not Path(pptx_path).exists():
+        return out
+    try:
+        prs = Presentation(pptx_path)
+    except Exception:
+        return out
+    for i, slide in enumerate(prs.slides, 1):
+        for sh in slide.shapes:
+            if sh.shape_type != MSO_PICTURE or not hasattr(sh, "image"):
+                continue
+            try:
+                with Image.open(io.BytesIO(sh.image.blob)) as im:
+                    mf = float(im.info.get("MinFontPt") or im.text.get("MinFontPt"))
+                px_w = sh.image.size[0]
+                dpi = (sh.image.dpi or (72, 72))[0]
+            except Exception:
+                continue
+            drawn = px_w / dpi if dpi and dpi >= 100 else None
+            sc = Emu(sh.width).inches / drawn if drawn else 1.0
+            out.setdefault(i, []).append((sh.name, mf, sc))
     return out
 
 
@@ -978,6 +1018,7 @@ def main(path, pptx_path=None, template=None):
         print(f"[ERROR] 描画結果が今の pptx と食い違う（スライド {', '.join(map(str, stale[:10]))}）: "
               "PowerPoint が古い版を開いた。render_check.ps1 をやり直す（一時フォルダの複製から開く版か確かめる）")
     scales = picture_scales(pptx_path, shapes)
+    pic_fonts = picture_fonts(pptx_path)
     inks = picture_ink(pptx_path)
     unders = underlines(pptx_path) if pptx_path and Path(pptx_path).exists() else {}
     marks = text_marks(pptx_path) if pptx_path and Path(pptx_path).exists() else {}
@@ -1092,6 +1133,23 @@ def main(path, pptx_path=None, template=None):
             if sc < PIC_SCALE_MIN:
                 msgs.append(("WARN", f"図を縮小して置いている（描いた幅 {drawn:.2f}in → 置いた幅 {placed:.2f}in、×{sc:.2f}）: {name}"
                                      " → 図の文字が目安より小さくなる。fig()/blank() の幅を置く幅に合わせて描き直す"))
+        # 図の中の文字の大きさ（置いた大きさで）。目盛り・注記が本文よりずっと小さいと読めない
+        for name, mf, sc in pic_fonts.get(i, []):
+            eff = mf * sc
+            if eff < FIG_FONT_MIN - 0.25:
+                msgs.append(("WARN", f"図の文字が小さい（いちばん小さい字が置いた大きさで {eff:.1f}pt < {FIG_FONT_MIN:g}pt）: {name}"
+                                     " → figs.py で目盛り・注記の fontsize を 14 以上にする（入らなければラベルを減らすか、図を大きく描く）"))
+        # 表の文字とマスの数（詰め込んだ表は、ぎっしり見えて読まれない）
+        cells = [s for s in items if s.get("name") in TABLE_NAMES and s.get("text")]
+        if cells and not cover:
+            sizes = [s["size"] for s in cells if s.get("size")]
+            if sizes and min(sizes) < TABLE_FONT_MIN - 0.25:
+                msgs.append(("WARN", f"表の文字が小さい（{min(sizes):g}pt < {TABLE_FONT_MIN:g}pt）"
+                                     " → 列か行を減らす・セルの言葉を短くする・表を2枚に分ける（s.table の size は 16 が既定）"))
+            n_cells = sum(s.get("name") in TABLE_CELL_NAMES for s in cells)
+            if n_cells > TABLE_CELLS_MAX:
+                msgs.append(("WARN", f"表のマスが多い（{n_cells} マス > {TABLE_CELLS_MAX}）"
+                                     " → 言いたい比べに要る行・列だけ残すか、2枚に分ける。条件で結論が分かれる表なら、判定の流れ図・ツリーに"))
         # 下が空いている: 本文スライド（タイトルあり）で、図も表もなく、本文の最下端が 4.5in より上
         designed = any(s.get("name") in ("大きな数字", "比較の左") for s in items)   # 大きな数字・比べる型は、下が空く形
         if chars and any(s.get("ph") == PH_TITLE for s in items) and not figs and not designed:

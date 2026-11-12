@@ -28,7 +28,9 @@ FIG_MENU = [
     ("帯グラフ", "全体の内訳・割合", "figlib.share_bar", ("割合の帯", "内訳の帯")),
     ("年表", "いつ何が起きたか・時代の区切り", "figlib.timeline", ("時間軸",)),
     ("模式図", "仕組み・構造・配置・縮尺", "blank() に box・arrow など（figkit）", ("仕組みの図", "断面図", "縮尺図", "作図", "装置図")),
-    ("流れ図", "手順・因果・分類（順番や枝分かれに意味がある）", "s.flow（PowerPoint の図形）", ("フロー", "ブロック図")),
+    # 「流れ図」より前に置く（menu_name は前から探すので、「判定の流れ図」を「流れ図」と取り違えない）
+    ("判定の流れ図", "条件で結論が分かれる（要件・例外・場合分け。はい／いいえの枝）", "s.decision", ("判定図", "判定の図")),
+    ("流れ図","手順・因果・分類（順番や枝分かれに意味がある）", "s.flow（PowerPoint の図形）", ("フロー", "ブロック図")),
     ("表", "項目×観点（2つ以上の比較を、数や語で）", "s.table", ("比較表",)),
     ("比較", "2つを左右に並べて違いを見せる", "s.compare", ("並べて比べ",)),
     ("前後", "変える前と後", "s.before_after", ("ビフォー",)),
@@ -59,6 +61,7 @@ FIG_PURPOSES = [
     ("時期", "いつ何が起きたか・時代の区切り", ("年表",)),
     ("仕組み", "仕組み・構造・配置・縮尺", ("模式図", "資料の図")),
     ("流れ", "手順・因果・分類の枝分かれ", ("流れ図",)),
+    ("判定", "条件で結論が分かれる（要件・例外・場合分け・選び方）", ("判定の流れ図", "ツリー", "表")),
     ("観点", "項目×観点で整理する", ("表",)),
     ("違い", "2つの状態・方法の違い", ("前後", "比較")),
     ("並び", "同格の要素を並べる", ("カード",)),
@@ -81,7 +84,7 @@ def parse_fig(cell: str):
     return None, menu_name(d)
 
 
-PPT_KINDS = ("表", "大きな数字", "流れ図", "比較", "前後", "カード", "ツリー")   # 画像でなく PowerPoint の部品で組む種類
+PPT_KINDS = ("表", "大きな数字", "流れ図", "判定の流れ図", "比較", "前後", "カード", "ツリー")   # 画像でなく PowerPoint の部品で組む種類
 
 
 def pptx_part(cell: str):
@@ -143,7 +146,7 @@ def planned_kind(desc: str):
         return None
     purpose, k = parse_fig(d)
     if purpose is not None and k is not None:
-        return k if k in ("大きな数字", "比較", "流れ図", "表") else "図"
+        return k if k in ("大きな数字", "比較", "流れ図", "判定の流れ図", "表") else "図"
     if "大きな数字" in d:
         return "大きな数字"
     if re.search(r"並べて比べ|比較", d) and not TABLE_WORDS.search(d):
@@ -212,6 +215,9 @@ def plan_from_text(text: str, kind: str):
     return plan
 
 
+DECISION_PREFIX = "判定の"   # s.decision の図形の名前（判定の問い・判定の結論・判定の枝）
+
+
 def actual_kinds(slide):
     """スライドにある図の種類の集合（流れ図・表・図）。"""
     from structures import TEXT_SHAPE_NAMES
@@ -223,8 +229,11 @@ def actual_kinds(slide):
     arrows = [s for s in shapes if s.name == "矢印"]
     boxes = [s for s in shapes if s.shape_type == MSO_SHAPE_TYPE.AUTO_SHAPE and s.has_text_frame and s.text_frame.text.strip()
              and s.name not in ("青帯", "注目の輪", "注目の吹き出し", "章のナビ") and s.name not in TEXT_SHAPE_NAMES
-             and not s.name.startswith(DIAGRAM_PREFIX)]
+             and not s.name.startswith(DIAGRAM_PREFIX) and not s.name.startswith(DECISION_PREFIX)]
     kinds = set()
+    if any(n.startswith(DECISION_PREFIX) for n in names):
+        kinds.add("判定の流れ図")   # s.decision。手順の流れ図とは別に数える（言い換えの箱の並べすぎの数に入れない）
+        arrows = []
     if pics or diagram:
         kinds.add("図")
     if cards:
@@ -247,7 +256,7 @@ def slide_type(slide, W, H):
     if "区切りの地" in names:
         return "区切り"
     for prefix, kind in (("カード_並列", "並列カード"), ("カード_格子", "格子のカード"), ("カード_段違い", "段違いの順序"),
-                         ("カード_循環", "循環"), ("ツリー", "ツリー"), ("前後_", "前後")):
+                         ("カード_循環", "循環"), ("ツリー", "ツリー"), ("前後_", "前後"), ("判定の", "判定の流れ図")):
         if any(n.startswith(prefix) for n in names):
             return kind
     if sum(n == "並べた図" for n in [s.name for s in shapes]) >= 2:
@@ -299,6 +308,8 @@ def mismatches(prs, plan: dict, skip=()):
             got = slide_type(sl, prs.slide_width, prs.slide_height)
             if got != want:
                 out.append((i, f"案は{want}（{plan[i][:24]}）なのに{got}"))
+        elif want == "判定の流れ図" and want not in have:
+            out.append((i, f"案は判定の流れ図（{plan[i][:24]}）なのに{'・'.join(sorted(have)) or '図なし'}"))
         elif want in ("流れ図", "表") and not (have & {want, "図"}):
             out.append((i, f"案は{want}（{plan[i][:24]}）なのに{'・'.join(sorted(have)) or '図なし'}"))
         elif want is None and "流れ図" in have:

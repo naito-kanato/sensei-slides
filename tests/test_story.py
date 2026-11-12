@@ -91,3 +91,21 @@ def test_fig_check_no_schema(outline):
     text = re.sub(r"実物：資料の図", "観点：表", text)
     res = {item: (mark, d) for mark, item, d in story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")}
     assert res["型と図"][0] == "△" and ("模式図が1枚も無い" in res["型と図"][1] or "型の拍に合わない図" in res["型と図"][1])
+
+
+def test_figs_table_shows_pitfalls():
+    """--figs は型ごとの陥りやすいミスも見せる。制度・由来の型では、要件を表に並べずに判定の流れ図を、とすすめる。"""
+    t = story.figs_table("今の形から由来へ")
+    assert "陥りやすいミス" in t and "判定の流れ図" in t
+    assert all(story.ARC_PITFALLS.get(a[0]) for a in story.ARCS)   # どの型にもミスの例がある
+
+
+def test_many_tables_without_decision_warn(outline):
+    """判定の拍がある型で、表が3枚以上あって判定の流れ図が無ければ △。"""
+    text = re.sub(r"\| (仕組み|比べる|実物|違い|推移)：[^|]*\|", "| 観点：表：要件の一覧 |", outline)
+    body = story.body_numbers(text, "outline")
+    res = story.fig_check(text, "outline", body)
+    assert not any("判定の流れ図が無い" in d for _, _, d in res)        # 論文紹介（方法から）には判定の拍が無い
+    text = re.sub(r"^話の型：.*$", "話の型：論文紹介（問題から）", text, flags=re.M)
+    res = story.fig_check(text, "outline", body)
+    assert res and res[0][0] == "△" and "判定の流れ図が無い" in res[0][2]

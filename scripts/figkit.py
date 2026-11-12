@@ -59,8 +59,8 @@ rcParams.update({
     "font.size": 15,
     "axes.labelsize": 16,
     "axes.titlesize": 16,
-    "xtick.labelsize": 13,
-    "ytick.labelsize": 13,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14,
     "axes.edgecolor": COL.ink,
     "axes.labelcolor": COL.ink,
     "xtick.color": COL.ink,
@@ -101,8 +101,27 @@ import sys  # noqa: E402
 if hasattr(sys.stdout, "reconfigure"):  # cp932 の端末でも WARN の日本語が化けないように
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-MIN_FONT = 13      # 図の文字の下限（基本は14pt。これ未満は WARN）
+MIN_FONT = 14      # 図の文字の下限（これ未満は WARN。本文は 18pt 前後。前は 13pt で、目盛りが 13pt のまま置かれて読みにくかった）
 MAX_LABELS = 5     # 1つの図に書くラベル（自由テキスト・注釈）の数の目安
+
+
+def all_texts(f):
+    """図の中の文字（自由テキスト・注釈・軸ラベル・目盛り・凡例・図全体の題）のうち、中身のあるもの。"""
+    out = [t for t in f.texts if t.get_text().strip()]
+    for ax in f.axes:
+        out += [t for t in ax.texts if t.get_text().strip()]
+        out += [t for t in [ax.xaxis.label, ax.yaxis.label, ax.title] if t.get_text().strip()]
+        out += [t for t in list(ax.get_xticklabels()) + list(ax.get_yticklabels()) if t.get_text().strip() and t.get_visible()]
+        leg = ax.get_legend()
+        if leg is not None:
+            out += [t for t in leg.get_texts() if t.get_text().strip()]
+    return out
+
+
+def min_font(f):
+    """図の中のいちばん小さい文字の大きさ（pt）。文字が無ければ None。save が PNG に MinFontPt として書き、check_layout が読む。"""
+    sizes = [t.get_fontsize() for t in all_texts(f)]
+    return min(sizes) if sizes else None
 
 
 def lint(f, name=""):
@@ -110,14 +129,14 @@ def lint(f, name=""):
     過去の質問回答デッキで、全部の図を下限の12ptで書き、ラベルを5〜6個詰めて読めなくなった反省。"""
     import re
     small, n_lab = [], 0
+    f.canvas.draw()   # 目盛りの文字は描いてから決まる
     for ax in f.axes:
         labs = [t for t in ax.texts if t.get_text().strip()]
         # ラベルの数は4文字以上の文（原子記号「Si」や「結晶」のような短い名札は数えない）
         n_lab += sum(len(re.sub(r"[$_^{}\\\s]", "", t.get_text())) >= 4 for t in labs)
-        texts = labs + [ax.xaxis.label, ax.yaxis.label] + list(ax.get_xticklabels()) + list(ax.get_yticklabels())
-        for t in texts:
-            if t.get_text().strip() and t.get_fontsize() < MIN_FONT:
-                small.append(f"「{t.get_text().strip()[:10]}」{t.get_fontsize():g}pt")
+    for t in all_texts(f):
+        if t.get_fontsize() < MIN_FONT:
+            small.append(f"「{t.get_text().strip()[:10]}」{t.get_fontsize():g}pt")
     if small:
         print(f"  [WARN] {name}: 文字が {MIN_FONT}pt 未満 → 14pt を基本にする（図を大きく描くか、ラベルを減らす）: " + "、".join(small[:6]))
     if n_lab > MAX_LABELS:
@@ -166,10 +185,14 @@ def save(f, path, tight=True):
     from pathlib import Path
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     lint(f, Path(path).name)
+    kw = {}
+    mf = min_font(f)
+    if mf is not None and str(path).lower().endswith(".png"):
+        kw["metadata"] = {"MinFontPt": f"{mf:g}"}   # 描画の検査（check_layout）が、置いた大きさでの文字の大きさを見る
     if tight:
-        f.savefig(path, bbox_inches="tight", pad_inches=0.06)
+        f.savefig(path, bbox_inches="tight", pad_inches=0.06, **kw)
     else:
-        f.savefig(path)
+        f.savefig(path, **kw)
     plt.close(f)
     print(f"saved {path}")
 
@@ -200,7 +223,7 @@ def box(ax, x, y, w, h, text=None, fc=COL.pale, ec=COL.ink, fs=14, color=COL.ink
         ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=fs, color=color)
 
 
-def callout(ax, text, target, at, color=COL.ink, fs=12, boxed=True):
+def callout(ax, text, target, at, color=COL.ink, fs=14, boxed=True):
     """引き出し線つきラベル（図の中の一部を名指しする囲みラベル）。
     target = 指す点、at = ラベルの中心。"""
     bbox = dict(boxstyle="square,pad=0.25", fc="white", ec=color, lw=LW.thin) if boxed else None

@@ -37,14 +37,14 @@ from matplotlib.patches import Circle, Ellipse, FancyArrowPatch
 from figkit import COL, LW, arrow, noticks
 
 
-def _label(ax, spec, color, fs=12, **kw):
+def _label(ax, spec, color, fs=14, **kw):
     """spec = (文字列, (x, y)) なら ax.text で置く。None なら何もしない。"""
     if spec:
         text, (x, y) = spec
         ax.text(x, y, text, color=color, fontsize=fs, **kw)
 
 
-def compare(ax, x, main, ref, main_label=None, ref_label=None, main_color=COL.blue, ref_color=COL.gray, fs=12):
+def compare(ax, x, main, ref, main_label=None, ref_label=None, main_color=COL.blue, ref_color=COL.gray, fs=14):
     """主役を青の実線、比較対象を灰色の破線で重ねる。ラベルは (文字列, (x, y)) で線の近くに直接書く（凡例は使わない）。"""
     ax.plot(x, ref, color=ref_color, ls="--", lw=2)
     ax.plot(x, main, color=main_color)
@@ -52,7 +52,7 @@ def compare(ax, x, main, ref, main_label=None, ref_label=None, main_color=COL.bl
     _label(ax, ref_label, ref_color, fs)
 
 
-def decompose(ax, x, parts, total_label=None, part_styles=None, fs=12):
+def decompose(ax, x, parts, total_label=None, part_styles=None, fs=14):
     """成分を破線で描き、その和を青の実線で重ねる。parts = [(配列, (ラベル, (x, y)) or None, 色), ...]。
     戻り値は和の配列。"""
     total = np.zeros_like(np.asarray(x, dtype=float))
@@ -94,7 +94,7 @@ def extrapolate(ax, lines, x_from, x_to=1.0, intercept=1.0, mark_label=None, fs=
                     arrowprops=dict(arrowstyle="-|>", color=COL.red, lw=1.3))
 
 
-def data_fit(ax, xs, ys, labels=None, deg=2, logx=True, logy=True, x_range=None, label_dx=1.18, label_dy=1.25, fs=13):
+def data_fit(ax, xs, ys, labels=None, deg=2, logx=True, logy=True, x_range=None, label_dx=1.18, label_dy=1.25, fs=14):
     """資料の数値を赤丸で、(対数)空間の deg 次多項式による補間を青線で描く。labels は各点の注記（同じ長さのリスト）。
     3点なら deg=2 で全点を通る（「log R を log T の多項式で表す」ような経験式の形）。戻り値は係数。"""
     xs = np.asarray(xs, dtype=float); ys = np.asarray(ys, dtype=float)
@@ -115,7 +115,7 @@ def data_fit(ax, xs, ys, labels=None, deg=2, logx=True, logy=True, x_range=None,
     return co
 
 
-def range_bars(ax, ranges, log=False, y_step=1.0, fs=12, label_side="above"):
+def range_bars(ax, ranges, log=False, y_step=1.0, fs=14, label_side="above"):
     """名前つきの範囲を横の両矢印で並べる。ranges = [(名前, 下限, 上限, 色), ...]（上から順）。
     片側だけ開いた範囲は下限/上限に None（その向きに矢印を伸ばす）。"""
     xmin, xmax = ax.get_xlim()
@@ -152,7 +152,7 @@ def equal_area_peaks(ax, widths, colors=None, x=None, fill=True, halfwidth_arrow
     return x
 
 
-def polar_pattern(ax, patterns, center=(0.0, 0.0), scale=1.0, axis_len=1.4, axis_label=None, fs=12):
+def polar_pattern(ax, patterns, center=(0.0, 0.0), scale=1.0, axis_len=1.4, axis_label=None, fs=14):
     """角度分布 W(θ)（θ は軸からの角）を極座標の形で描く。patterns = [(W関数, 色, 線種), ...]。
     例: 等方 lambda t: 1+0*t（灰の破線）と異方 lambda t: 1-0.45*P2(cos t)（赤）。axis_label は軸の先の注記。"""
     th = np.linspace(0, 2 * np.pi, 400)
@@ -290,80 +290,80 @@ def _demo(outdir):
     semi = np.exp(60 * (1 / T - 1 / 300)); metal = 0.01 + (T / 300) ** 1.5
     compare(ax, T, semi, metal, ("主役（青実線）", (12, 2e3)), ("比較対象（灰破線）", (1.2, 2e-2)))
     ax.set_xscale("log"); ax.set_yscale("log"); ax.set_ylim(3e-3, 1e6); noticks(ax)
-    ax.set_xlabel("温度 $T$"); ax.set_ylabel("$\\rho$（対数）"); ax.set_title("compare", fontsize=13)
+    ax.set_xlabel("温度 $T$"); ax.set_ylabel("$\\rho$（対数）"); ax.set_title("compare", fontsize=14)
     save(f, f"{outdir}/compare.png")
 
     f, ax = fig(5.0, 3.6)
     p1 = np.full_like(T, 0.01); p2 = (T / 300) ** 3 / (1 + (T / 120) ** 2) * 2
     decompose(ax, T, [(p1, ("成分1（一定）", (1.2, 0.013)), COL.gray), (p2, ("成分2", (40, 1e-3)), COL.lblue)],
               total_label=("和 = 成分1 + 成分2", (5, 0.3)))
-    ax.set_xscale("log"); ax.set_yscale("log"); ax.set_ylim(5e-5, 2); noticks(ax); ax.set_title("decompose", fontsize=13)
+    ax.set_xscale("log"); ax.set_yscale("log"); ax.set_ylim(5e-5, 2); noticks(ax); ax.set_title("decompose", fontsize=14)
     save(f, f"{outdir}/decompose.png")
 
     f, ax = fig(5.0, 3.6)
     x = np.linspace(0, 10, 300); y = 1 / (1 + np.exp(-(x - 5) / 1.3))
     ax.plot(x, y, color=COL.blue)
     tangent(ax, x, y, 5.0, 1.1, label=("接線の傾き＝分解能", (5.8, 0.25)))
-    noticks(ax); ax.set_title("tangent", fontsize=13)
+    noticks(ax); ax.set_title("tangent", fontsize=14)
     save(f, f"{outdir}/tangent.png")
 
     f, ax = fig(5.0, 3.6)
     extrapolate(ax, [(0.04, "A", COL.blue), (0.09, "B", COL.lblue), (-0.05, "C", COL.green)], x_from=0.18,
                 mark_label=("$x\\to0$ で共通", (0.15, 0.86)))
-    ax.set_xlim(0, 1.15); ax.set_ylim(0.8, 1.13); noticks(ax); ax.set_title("extrapolate", fontsize=13)
+    ax.set_xlim(0, 1.15); ax.set_ylim(0.8, 1.13); noticks(ax); ax.set_title("extrapolate", fontsize=14)
     save(f, f"{outdir}/extrapolate.png")
 
     f, ax = fig(5.0, 3.6)
     data_fit(ax, [0.3, 1.0, 4.0], [21e3, 840, 170], labels=["0.3 K：21 kΩ", "1 K：840 Ω", "4 K：170 Ω"],
              x_range=(0.25, 5))
-    ax.minorticks_off(); ax.set_title("data_fit", fontsize=13)
+    ax.minorticks_off(); ax.set_title("data_fit", fontsize=14)
     save(f, f"{outdir}/data_fit.png")
 
     f, ax = fig(5.0, 3.0)
     ax.set_xlim(1e-3, 300)
     range_bars(ax, [("範囲A", 1, 5, COL.blue), ("範囲B", 0.3, 3.3, COL.red), ("範囲C（上は開放）", 3, None, COL.green)], log=True)
-    ax.set_xlabel("温度 (K)"); ax.set_title("range_bars", fontsize=13)
+    ax.set_xlabel("温度 (K)"); ax.set_title("range_bars", fontsize=14)
     save(f, f"{outdir}/range_bars.png")
 
     f, ax = fig(5.0, 3.6)
-    equal_area_peaks(ax, [1.8, 0.45]); ax.set_ylim(0, 1.12); ax.set_title("equal_area_peaks", fontsize=13)
+    equal_area_peaks(ax, [1.8, 0.45]); ax.set_ylim(0, 1.12); ax.set_title("equal_area_peaks", fontsize=14)
     save(f, f"{outdir}/equal_area_peaks.png")
 
     f, ax = fig(5.0, 2.6)
     bars(ax, ["主役", "比較A", "比較B", "比較C"], [56.9, 33.0, 17.9, 9.0], highlight=0, unit="%")
-    ax.set_title("bars", fontsize=13)
+    ax.set_title("bars", fontsize=14)
     save(f, f"{outdir}/bars.png")
 
     f, ax = fig(5.0, 1.6)
     share_bar(ax, [("主役", 27), ("その他", 66), ("小", 7)])
-    ax.set_title("share_bar", fontsize=13)
+    ax.set_title("share_bar", fontsize=14)
     save(f, f"{outdir}/share_bar.png")
 
     f, ax = fig(6.0, 2.4)
     timeline(ax, 1995, 2026, eras=[("第1期", 1997, 2002), ("第2期", 2002, 2013), ("第3期", 2013, None)],
              events=[(1997, "開始"), (2013, "改定"), (2023, "今の版")], highlight=2)
-    ax.set_title("timeline", fontsize=13)
+    ax.set_title("timeline", fontsize=14)
     save(f, f"{outdir}/timeline.png")
 
     f, ax = blank(4.6, 4.0)
     P2 = lambda t: 0.5 * (3 * np.cos(t) ** 2 - 1)
     polar_pattern(ax, [(lambda t: 1 + 0 * t, COL.gray, "--"), (lambda t: 1 - 0.45 * P2(t), COL.red, "-")],
                   center=(2.3, 1.9), scale=1.35, axis_label="対称軸")
-    ax.text(2.3, -0.15, "polar_pattern", ha="center", fontsize=13)
+    ax.text(2.3, -0.15, "polar_pattern", ha="center", fontsize=14)
     save(f, f"{outdir}/polar_pattern.png")
 
     f, ax = blank(3.0, 3.2)
-    precession(ax, origin=(1.2, 0.3)); ax.text(1.5, 0.0, "precession", ha="center", fontsize=13)
+    precession(ax, origin=(1.2, 0.3)); ax.text(1.5, 0.0, "precession", ha="center", fontsize=14)
     save(f, f"{outdir}/precession.png")
 
     f, ax = fig(4.0, 2.6)
-    decay_signal(ax); ax.set_title("decay_signal", fontsize=13)
+    decay_signal(ax); ax.set_title("decay_signal", fontsize=14)
     save(f, f"{outdir}/decay_signal.png")
 
     f, ax = blank(4.2, 3.6)
     box(ax, 0.9, 0.45, 2.75, 2.85, fc=COL.pale, ec="none", r=0.15)
     dipole_lattice(ax)
-    ax.text(2.25, 0.1, "dipole_lattice", ha="center", fontsize=13)
+    ax.text(2.25, 0.1, "dipole_lattice", ha="center", fontsize=14)
     save(f, f"{outdir}/dipole_lattice.png")
 
 

@@ -1170,6 +1170,34 @@ class Slide:
         self.cur_x, self.cur_y = x, y + total + 0.35
         return Box(x, y, cx + child_w - x, total)
 
+    def decision(self, steps: list, last: str, x: float | None = None, y: float | None = None,
+                 q_w: float = 4.8, out_w: float = 3.8, h: float = 0.7, gap: float = 0.5, size: float = 18,
+                 yes: str = "はい", no: str = "いいえ") -> Box:
+        """判定の流れ図：問いを上から順に確かめ、「はい」なら右の結論へ、「いいえ」なら下の次の問いへ。全部「いいえ」なら last。
+        steps = [("享受が目的か？", "許諾が要る"), ("権利者の利益を不当に害するか？", "許諾が要る")]、last = "許諾なしで使える"。
+        要件・例外・場合分けのように、条件で結論が分かれる所に（表に並べるより、どの順に何を確かめるかが見える）。
+        問いは2〜3つまで（4つ以上は縦に入らない。2枚に分けるか、問いをまとめる）。"""
+        if not steps or len(steps) > 3:
+            raise ValueError(f"判定の流れ図の問いは1〜3つ（今は {len(steps)} つ）。多ければ2枚に分ける")
+        x = self.deck.wide[0] if x is None else x
+        y = self.cur_y if y is None else y
+        n = len(steps)
+        total = n * (h + gap) + h
+        if y + total > self.deck.content_bottom + 0.01:
+            raise ValueError(f"判定の流れ図が下にはみ出す（下端 {y + total:.2f} in）。h・gap を小さくするか、問いを減らす")
+        ox = x + q_w + 1.3
+        for k, (q, out) in enumerate(steps):
+            qy = y + k * (h + gap)
+            self.rect(x, qy, q_w, h, fill=C.PALE, text=q, size=size, name="判定の問い")
+            self.arrow(x + q_w + 0.15, qy + h / 2 - 0.2, w=1.0, h=0.4, direction="right")
+            self.text(x + q_w + 0.2, qy + h / 2 - 0.62, yes, size=16, color=C.BAND, bold=True, name="判定の枝")
+            self.rect(ox, qy, out_w, h, fill=C.LIGHT, text=out, size=size, name="判定の結論")
+            self.arrow(x + q_w / 2 - 0.2, qy + h + 0.06, w=0.4, h=gap - 0.12, direction="down")
+            self.text(x + q_w / 2 + 0.3, qy + h + 0.02, no, size=16, color=C.BAND, bold=True, name="判定の枝")
+        self.rect(x, y + n * (h + gap), q_w, h, fill=C.LIGHT, text=last, size=size, name="判定の結論")
+        self.cur_x, self.cur_y = x, y + total + 0.35
+        return Box(x, y, ox + out_w - x, total)
+
     def before_after(self, before: tuple, after: tuple, value: str | None = None, y: float | None = None,
                      h: float | None = None, size: float = 20) -> Box:
         """前後（ビフォーアフター）：左に従来（灰）、右にこの研究・改善（薄い主色）、間に矢印、右の下に差を赤い数値1つで。
