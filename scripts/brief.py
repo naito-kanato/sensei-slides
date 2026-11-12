@@ -12,10 +12,11 @@
     python <skill>/scripts/brief.py 仕上げ役 _work/X講座_01 --over      # 回数の上限を超えて起動する（ユーザーが許したときだけ）
 
 依頼文を出すたびに、その担当の起動を1回と数える（budget.py。上限なら依頼文を出さずに ✘ で止まる）。
-メインが中身を確かめるだけなら --peek（数えない）。担当を起動したあと作業フォルダに何も書かれていなければ、次の起動と同じ1回とみなす。
+メインが中身を確かめるだけなら --peek（数えない）。
+直しの担当の依頼文を出すとき（--peek でないとき）は、直す前の memo.md・outline.md を <work>/memo_直す前.md・outline_直す前.md に写す（もうあれば上書きしない）。担当を起動したあと作業フォルダに何も書かれていなければ、次の起動と同じ1回とみなす。
 
 雛形の書き方：{skill}・{work}・{course}・{plan_name}・{review_name}・{n} を埋める。行の頭が [発表] か [講座] の行は、
-その種類のときだけ残す。全部の担当に共通の頭（ユーザーに質問しない・scripts の中身を読まない・作業フォルダの置き場所）と、
+その種類のときだけ残す。[直す] の行は推論距離を直す回だけ、[測る] の行は「推論距離：測るだけ」の回だけ残す（種類の印のあとに付けてよい）。全部の担当に共通の頭（ユーザーに質問しない・scripts の中身を読まない・作業フォルダの置き場所）と、
 終わりの「10行までで返す」は、このスクリプトが足す。作業フォルダが講座フォルダの中にあるなど、置き場所が違えば ✘ で止める。
 """
 from __future__ import annotations
@@ -73,6 +74,17 @@ def rel(p: Path) -> str:
         return p.as_posix()
 
 
+def keep_before_fix(plan: Path) -> Path | None:
+    """直しの担当を起動する前の設計メモ・構成案を <work>/<memo|outline>_直す前.md に写す（あとで、直す前と後の穴を比べられるように）。
+    もうあれば上書きしない（2回目の起動では、最初の直しの前の版を残す）。"""
+    plan = Path(plan)
+    copy = plan.with_name(f"{plan.stem}_直す前.md")
+    if not plan.exists() or copy.exists():
+        return None
+    copy.write_bytes(plan.read_bytes())
+    return copy
+
+
 def build(role: str, target: str, kind: str | None = None, n: str = "1", note: str = "", part: str = "",
           over: bool = False, count: bool = False) -> str:
     path = BRIEFS / f"{role}.md"
@@ -101,6 +113,11 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
     other = "[発表]" if k == "講座" else "[講座]"
     mine = "[講座]" if k == "講座" else "[発表]"
     k_part, n_part = (int(x) for x in part.split("/")) if part else (1, 1)
+    plan = (Path(target) / plan_name) if role not in NO_WORK else None
+    if role == "直しの担当" and count and plan is not None:
+        keep_before_fix(plan)
+    from slide_profile import measure_only
+    measure = bool(plan and plan.exists() and measure_only(plan.read_text(encoding="utf-8")))
     lines = []
     for line in path.read_text(encoding="utf-8").splitlines():
         if line.startswith(other):
@@ -113,7 +130,12 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
             if n_part != 1:
                 continue
             line = line[4:]
-        lines.append(line[len(mine):] if line.startswith(mine) else line)
+        line = line[len(mine):] if line.startswith(mine) else line
+        if line.startswith("[直す]") or line.startswith("[測る]"):   # 推論距離：直す回と、測るだけの回（inference-distance.md 8節）
+            if line.startswith("[測る]") != measure:
+                continue
+            line = line[4:]
+        lines.append(line)
     cards, part_note = "カード全部", ""
     if role == "制作役" and role not in NO_WORK:
         nums = card_numbers(Path(target))

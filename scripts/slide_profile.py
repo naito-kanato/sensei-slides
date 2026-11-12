@@ -28,6 +28,8 @@ BUNDLED = BUNDLED_DIR / "テンプレート1.pptx"   # 名前を言わないと�
 # 聞き手のテーマへの詳しさ → 丁寧さ（推論距離のつまみ。references/inference-distance.md 1節）
 FAMILIARITY = {"初学者": 0, "多少知っている": 0, "かなり知っている": 1}   # 選択肢は「初学者・多少知っている」と「かなり知っている」の2つ（前の3つの言葉も読める）
 FAMILIARITY_KEY = "聞き手のテーマへの詳しさ"
+# 推論距離を測るだけにする設定（監査して穴を記録するが、手当てはしない。references/inference-distance.md 8節）
+MEASURE_KEY = "推論距離"
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -67,6 +69,11 @@ def read_options(text: str) -> dict:
         for m in re.finditer(r"^-\s*([^:：\n]+?)\s*[:：]\s*(.+?)\s*$", sec.group(1), re.M):
             out.setdefault(m.group(1), m.group(2))
     return out
+
+
+def measure_only(text: str) -> bool:
+    """「推論距離：測るだけ」の回か（構成案の `## オプション` の表か、設計メモの1節の `- 推論距離：測るだけ`）。既定は直す。"""
+    return "測る" in read_options(text or "").get(MEASURE_KEY, "")
 
 
 def find_registry(start=None):
@@ -194,6 +201,7 @@ def template(p, name=None, place_name=None, _resolved=False):
 OPTIONS = [
     (FAMILIARITY_KEY, "", "初学者・多少知っている／かなり知っている（丁寧さがこれで決まる）", True),
     ("丁寧さ", "", "詳しさから（初学者・多少知っている 0・かなり知っている 1）。1枚に許す「あとで使う前提」の穴の数。変えてもよい", False),
+    (MEASURE_KEY, "直す", "直す（監査して、要の穴に手当てする）／測るだけ（監査して穴を記録するが、手当てはしない。手当ての効きを比べるとき用）", False),
     ("資料", "なし", "なし（テーマだけから。事実は出典で確かめる）／フォルダに入れたもの（materials.py が 資料/ に格納）", False),
     ("聞き手のプロフィール", "", "任意：専門・研究テーマ・よく知っていること（書くと言い換えと止まる所の判定がよくなる）", False),
     ("発表者名", "", "表紙に出す名前（任意）", False),

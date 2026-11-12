@@ -69,3 +69,19 @@ def test_presentation_without_data_goes_back_only_before_build(tmp_path, root):
     (w / "build.py").write_text("", encoding="utf-8")
     _, nxt = next_step.steps_for(w)
     assert not nxt.startswith("手順2")
+
+
+def test_final_review_asking_for_fixes_comes_before_check_done(tmp_path):
+    import os
+    import next_step
+    review, pptx = tmp_path / "review.md", tmp_path / "x_スライド.pptx"
+    pptx.write_bytes(b"x")
+    review.write_text("- 判定: 「直してから渡す」\n", encoding="utf-8")
+    t = pptx.stat().st_mtime
+    os.utime(review, (t + 5, t + 5))
+    assert next_step.needs_final_fix(review, pptx)            # レビューのあと作り直していない
+    os.utime(pptx, (t + 10, t + 10))
+    assert not next_step.needs_final_fix(review, pptx)        # 直したあと
+    review.write_text("- 判定: 「このまま渡してよい」\n", encoding="utf-8")
+    os.utime(review, (t + 20, t + 20))
+    assert not next_step.needs_final_fix(review, pptx)

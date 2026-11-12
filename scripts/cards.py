@@ -81,7 +81,7 @@ def targets(kind, per) -> list:
             "- **構成案の数値・不等号（以上・未満・≳・約）・固有名詞と、限定（または・一部・〜とされる）は変えない**（強めない）。資料と違って見えたら、そこは書かずに理由を1行で返す"]
 
 
-DEEP_MAX = 2   # 1枚のカードに渡す「深」の候補の数
+DEEP_MAX = 1   # 1枚のカードに渡す「深」の候補の数（かなり知っている聞き手のときだけ。初学者・多少知っているでは渡さない）
 
 
 def deep_rows(work: Path, kind) -> dict:
@@ -91,6 +91,18 @@ def deep_rows(work: Path, kind) -> dict:
     rv = Path(work) / ("memo_review.md" if kind == "memo" else "outline_review.md")
     if not rv.exists():
         return {}
+    from slide_profile import measure_only
+    plan = Path(work) / ("memo.md" if kind == "memo" else "outline.md")
+    if plan.exists() and measure_only(plan.read_text(encoding="utf-8")):   # 測るだけの回：監査の結果を書き手に渡さない
+        return {}
+    if plan.exists():   # 深は、かなり知っている聞き手（丁寧さ 1 以上）のときだけ（inference-distance.md 5節）
+        from slide_profile import FAMILIARITY
+        text = plan.read_text(encoding="utf-8")
+        lv = co.politeness(text)
+        if lv is None and co.familiarity(text) is not None:
+            lv = FAMILIARITY[co.familiarity(text)]
+        if lv is not None and lv < 1:
+            return {}
     out = {}
     for n, _, _, need, rest in co.HOLE_ANY.findall(rv.read_text(encoding="utf-8")):
         if co.labels(need) != {"深"}:

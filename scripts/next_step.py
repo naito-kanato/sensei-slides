@@ -42,6 +42,15 @@ def _newer(a: Path, b: Path) -> bool:
     return a.exists() and b.exists() and a.stat().st_mtime >= b.stat().st_mtime - 1
 
 
+def needs_final_fix(review: Path, pptx: Path) -> bool:
+    """完成後のレビューの判定が「直してから渡す」なのに、そのあとデッキを作り直していない（pptx が review.md より新しくない）。"""
+    if not (review.exists() and pptx.exists()):
+        return False
+    import re as _re
+    m = _re.search(r"判定\s*[:：]\s*[「『]?([^」』\n]*)", review.read_text(encoding="utf-8"))
+    return bool(m and "直してから" in m.group(1)) and pptx.stat().st_mtime <= review.stat().st_mtime
+
+
 def fixed(work: Path) -> bool:
     """レビューのあとの直しが済んだか：直しの担当を起動した記録があるか、もう骨組み（cards/・build.py）ができている（前の版で作った作業）。"""
     try:
@@ -227,6 +236,9 @@ def steps_for(work: Path):
     review = work / "review.md"
     if add(review.exists(), "完成後のレビュー（review.md）") is False and not nxt:
         nxt = "手順5b：一覧の画像（render/grid-*.jpg）を空の会話の【別のエージェント】に、final-review.md の「指摘の型」とあわせてレビューさせ、review.md に判定・指摘と採否・直した点を書く（references/final-review.md）"
+    if not nxt and needs_final_fix(review, pptx):   # 判定が「直してから渡す」なら、渡す前の確認より先に直す（SKILL.md 9）
+        nxt = (f"手順9：仕上げの直しの担当を新しく起動（`brief.py 仕上げの直しの担当 {work.as_posix()}`）。review.md の採否を決めて直し、"
+               "make_deck と notes_html をやり直す。そのあと手順7（check_done.py）")
     # 6. 原稿のページ
     html = pptx.with_name(pptx.name.replace("_スライド.pptx", "_原稿.html"))
     if add(_newer(html, pptx), "原稿のページ（*_原稿.html）", "" if _newer(html, pptx) else ("無い" if not html.exists() else "pptx より古い")) is False and not nxt:

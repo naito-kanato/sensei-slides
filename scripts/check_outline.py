@@ -14,7 +14,7 @@
     書いてある。無ければ ✘（小さな依頼でも。聞いて書くまで先へ進まない）。丁寧さは、書いていなければ詳しさから（初学者・多少知っている 0、かなり知っている 1）
     （構成案のレビューの推論距離の監査が、これを前提にする。references/inference-distance.md）
   推論距離の手当て：構成案のレビューの結果（outline.md と同じフォルダの outline_review.md）の
-    穴の行（「[番号] 「A ⇒ B」｜種類｜要否｜…」、穴1つに1行。要否は 要1〜要4・深 のうち当たるもの全部）で、要1・要2・要4があるスライドと、要3が丁寧さより多いスライドが、
+    穴の行（「[番号] 「A ⇒ B」｜種類｜要否｜…」、穴1つに1行。要否は 筋・語・あと・像・深 のうち当たるもの全部）で、要1・要2・要4があるスライドと、要3が丁寧さより多いスライドが、
     outline.md の「## 引っかかりへの手当て」に [番号] で全部載っている（採らなかったものも理由つきで載せる）。「深」と、要と深の両方の行（迷い）は数えない（迷いは一覧に出す）。
     載っていなければ ✘。レビューの前（outline_review.md が無い）なら数えない
   照合できるのは、数えた結果と手当てが食い違っていないかまで。穴の数そのものはレビュー担当の判断。
@@ -70,8 +70,8 @@ def body_rows(text: str):
 
 REVIEW = "outline_review.md"
 KINDS = ("用語", "出どころ", "論拠", "比較", "範囲", "根拠")
-HOLE = re.compile(r"^\s*[-*]?\s*\[\s*(\d+)\s*\]\s*「(.+?)」\s*｜\s*(" + "|".join(KINDS) + r")\s*(?:[（(][^）)]*[）)])?\s*｜\s*((?:要[1-4]?|深)(?:\s*[・／/、,]\s*(?:要[1-4]?|深))*)\s*｜", re.M)
-HOLE_FORM = "「[番号] 「A ⇒ B」｜種類｜要否（要1・要2・要3・要4・深 のうち当たるもの全部。例：要1・要4）｜補う前提：…｜使う所：…｜架け方：…」"
+HOLE = re.compile(r"^\s*[-*]?\s*\[\s*(\d+)\s*\]\s*「(.+?)」\s*｜\s*(" + "|".join(KINDS) + r")\s*(?:[（(][^）)]*[）)])?\s*｜\s*((?:要[1-4]?|筋|あと|語|像|深)(?:\s*[・／/、,]\s*(?:要[1-4]?|筋|あと|語|像|深))*)\s*｜", re.M)
+HOLE_FORM = "「[番号] 「A ⇒ B」｜種類｜要否（筋・語・あと・像・深 のうち当たるもの全部。例：筋・像）｜補う前提：…｜使う所：…｜架け方：…」"
 
 
 def knowledge(text: str) -> bool:
@@ -122,11 +122,11 @@ def hole_form(review_text: str):
     bad = [(int(n), kind) for n, _, kind, need, _ in rows if re.sub(r"[（(][^）)]*[）)]$", "", kind).strip() not in KINDS or not labels(need)]
     if bad:
         res.append(("✘", "推論距離の行の形", f"種類か要否が決まりの形でない行が {len(bad)} 行（" + "・".join(f"[{n}] {k}" for n, k in bad[:6])
-                    + ("…" if len(bad) > 6 else "") + "）。この行は数えていない。レビュー担当に推論距離の節だけやり直させる（`brief.py レビュー担当 <work>` に「推論距離の節だけ」と添える。種類は " + "・".join(KINDS) + " から1つ、要否は 要1〜要4・深 のうち当たるもの全部）。メインが書き直さない"))
+                    + ("…" if len(bad) > 6 else "") + "）。この行は数えていない。レビュー担当に推論距離の節だけやり直させる（`brief.py レビュー担当 <work>` に「推論距離の節だけ」と添える。種類は " + "・".join(KINDS) + " から1つ、要否は 筋・語・あと・像・深 のうち当たるもの全部）。メインが書き直さない"))
     y4 = [int(n) for n, _, kind, need, rest in rows if "要4" in labels(need) and not re.search(r"補う前提\s*[：:]\s*像", rest)]
     if y4:
-        res.append(("△", "推論距離の要4", "要4 なのに補う前提が「像：〇〇と思い浮かべる → 実際は△△」の形でない行：" + "・".join(f"[{n}]" for n in y4)
-                    + "（要4 は動作の語の像のずれだけ。当たらないなら 要1〜要3 に付け直す）"))
+        res.append(("△", "推論距離の像", "像 なのに補う前提が「像：〇〇と思い浮かべる → 実際は△△」の形でない行：" + "・".join(f"[{n}]" for n in y4)
+                    + "（像 は動作の語の像のずれだけ。当たらないなら 筋・語・あと に付け直す）"))
     per = {}
     for n, *_ in rows:
         per[int(n)] = per.get(int(n), 0) + 1
@@ -138,7 +138,7 @@ def hole_form(review_text: str):
             names[int(n)] = names.get(int(n), 0) + 1
     many = sorted(n for n, c in names.items() if c > NAMES_MAX)
     if many:
-        res.append(("△", "推論距離の名前の数", "知らない名前（要2）が1枚に3つ以上ある枚：" + "・".join(f"{n}枚目（{names[n]}つ）" for n in many)
+        res.append(("△", "推論距離の名前の数", "知らない名前（語）が1枚に3つ以上ある枚：" + "・".join(f"{n}枚目（{names[n]}つ）" for n in many)
                     + f"。1枚に新しく出る名前は{NAMES_MAX}個まで：枚を分けるか、前の枚で先に出す（どうしても要るなら、手当ての行に理由を書く）"))
     return res
 
@@ -149,9 +149,13 @@ def cared(text: str):
     return {int(x) for x in re.findall(r"\[\s*(\d+)\s*\]", m.group(1))} if m else set()
 
 
+# 要否の名前（inference-distance.md 1・4節）。中では前の名前（要1〜要4）にそろえて数える
+LABEL_OLD = {"筋": "要1", "語": "要2", "あと": "要3", "像": "要4"}
+
+
 def labels(need: str) -> set:
-    """要否の欄（「要1・要4」「要3・深」など、当たるもの全部）を {"要1", "要4"} のような集合に。"""
-    return set(re.findall(r"要[1-4]?|深", need))
+    """要否の欄（「筋・像」「あと・深」など、当たるもの全部。前の名前「要1・要4」も読む）を {"要1", "要4"} のような集合に。"""
+    return {LABEL_OLD.get(x, x) for x in re.findall(r"要[1-4]?|筋|あと|語|像|深", need)}
 
 
 def unsure(need: str) -> bool:
@@ -202,10 +206,15 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
         res.append(("✘", "推論距離の手当て", f"{REVIEW} に推論距離の行が無い（穴1つを1行で、{HOLE_FORM} の形。references/inference-distance.md 4節）"))
         return res
     need = need_care(hs, lv if lv is not None else (default_level if default_level is not None else 1))
+    from slide_profile import measure_only, MEASURE_KEY
+    if measure_only(text):   # 測るだけの回：穴は記録として残し、手当ての節は求めない（inference-distance.md 8節）
+        res.append(("・", "推論距離の手当て", f"測るだけ（{MEASURE_KEY}：測るだけ）：手当ての要る枚 {len(need)} 枚"
+                    f"（{'・'.join(f'[{i}]' for i in need) or 'なし'}）を記録した。手当てはしない"))
+        return res
     missing = [i for i in need if i not in cared(text)]
     if missing:
         res.append(("✘", "推論距離の手当て", "「## 引っかかりへの手当て」に載っていないスライド：" + "・".join(f"[{i}]" for i in missing)
-                    + f"（要1・要2・要4がある、または要3が丁寧さ {lv} より多い。採るなら架け方を、採らないなら理由を書く。「深」は書かなくてよい）"))
+                    + f"（筋・語・像がある、または あと が丁寧さ {lv} より多い。採るなら架け方を、採らないなら理由を書く。「深」は書かなくてよい）"))
     else:
         res.append(("✔", "推論距離の手当て", f"手当ての要る {len(need)} 枚（{'・'.join(f'[{i}]' for i in need) or 'なし'}）が全部載っている"))
     doubt = sorted({i for i, hl in hs.items() if any(unsure(need) for _, _, need in hl)} - set(need) - cared(text))

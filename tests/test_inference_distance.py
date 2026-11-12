@@ -30,3 +30,22 @@ def test_rules_live_in_one_file(capsys):
     assert "要4" in out and "丁寧さ" in out and "D4" in out
     assert guide.main(["final-review", "D. 構成案との突き合わせ"]) == 0
     assert "D4 縮めて開いた穴" in capsys.readouterr().out
+
+
+def test_new_and_old_label_names():
+    # 要否の名前：筋・語・あと・像・深。前の名前（要1〜要4）で書いた行も同じに読む
+    assert co.labels("筋・像") == co.labels("要1・要4") == {"要1", "要4"}
+    assert co.labels("あと・深") == {"要3", "深"} and co.unsure("あと・深")
+    row = "- [3] 「A ⇒ B」｜用語｜語｜補う前提：Aの中身｜使う所：3｜架け方：括弧で一言\n"
+    assert co.holes(row)[3][0][2] == "語"
+
+
+def test_deep_rows_only_for_experts(tmp_path):
+    # 深は、かなり知っている聞き手のときだけ1枚に1つまで。初学者・多少知っているでは書き手に渡さない
+    rows = ROWS + "- [5] 「K ⇒ L」｜論拠｜深｜補う前提：Kの背景｜使う所：なし｜架け方：原稿の ※\n"
+    for fam, want in (("初学者・多少知っている", {}), ("かなり知っている", {5: ["Iの背景"]})):
+        d = tmp_path / fam
+        d.mkdir()
+        (d / "outline_review.md").write_text(rows, encoding="utf-8")
+        (d / "outline.md").write_text(f"聞き手のテーマへの詳しさ：{fam}\n", encoding="utf-8")
+        assert cards.deep_rows(d, "outline") == want

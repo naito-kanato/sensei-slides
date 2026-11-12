@@ -79,7 +79,7 @@ def test_example_reasoning_is_covered(reviewed):
     m = marks(reviewed, require_review=True)
     assert m["前提と丁寧さ"] == "✔" and m["推論距離の手当て"] == "✔"
     hs = co.holes(reviewed.with_name("outline_review.md").read_text(encoding="utf-8"))
-    assert any(kind == "用語" and need == "要2" for _, kind, need in hs[10])
+    assert any(kind == "用語" and need == "語" for _, kind, need in hs[10])
     assert any(need == "深" for hl in hs.values() for _, _, need in hl)          # 深の行もあるが数えない
     assert co.need_care(hs, 1) == [2, 3, 6, 7, 8, 10, 11, 13, 14]
     assert 12 in co.need_care(hs, 0) and 12 not in co.need_care(hs, 1)           # 要3 が1つだけの枚は、丁寧さ 0 でだけ手当て
@@ -119,7 +119,7 @@ def test_hole_form_checks():
                                         (5, "論拠", "要4", "結論のなぜ"), (6, "用語（呼び名の揺れ）", "要3", "同じもの"), (7, "論拠", "要1", "なぜ")])
     m = {item: (mark, d) for mark, item, d in co.hole_form(t)}
     assert m["推論距離の行の形"][0] == "✘" and "[2] 理由" in m["推論距離の行の形"][1] and "[6]" not in m["推論距離の行の形"][1]
-    assert m["推論距離の要4"][0] == "△" and "[3]" in m["推論距離の要4"][1] and "[5]" in m["推論距離の要4"][1] and "[4]" not in m["推論距離の要4"][1]
+    assert m["推論距離の像"][0] == "△" and "[3]" in m["推論距離の像"][1] and "[5]" in m["推論距離の像"][1] and "[4]" not in m["推論距離の像"][1]
     assert m["推論距離の数"][0] == "△"                                              # 6枚が全部1穴
     assert 6 in co.holes(t)                                                         # 「用語（呼び名の揺れ）」も用語として数える
     t2 = t + "[7] 「C ⇒ D」｜比較｜要3｜補う前提：基準｜使う所：9｜架け方：x\n"
