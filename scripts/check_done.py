@@ -142,6 +142,11 @@ def check(pptx: Path, work: Path | None, record: bool = True):
         res.append(("✘" if missing else "✔", "作業フォルダ",
                     f"{work} に {'・'.join(missing)} が無い" if missing else str(work)))
 
+    try:
+        import budget
+        light = bool(work) and budget.light(work)
+    except Exception:
+        light = False
     if work:   # 担当を起動せずにメインが作った（別の目のレビューも、担当ごとの上限も働いていない）
         try:
             import budget
@@ -154,7 +159,7 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     outline = work / "outline.md" if work else None
     if outline and outline.exists() and not (work / "memo.md").exists() and not qa:
         import check_outline  # 関数の中で読む（check_outline → check_memo → check_done の循環を避ける）
-        for mark, item, msg in check_outline.check(outline, require_review=True):
+        for mark, item, msg in check_outline.check(outline, require_review=not light):
             if mark != "・":
                 if item == "データ" and msg.startswith("data_1.md が無い"):
                     mark = "△"   # 渡す前に筋を組み直させない（数字の組を探すのは構成案の段。前の版の構成案にも無い）
@@ -165,7 +170,7 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     memo = work / "memo.md" if work else None
     if memo and memo.exists() and not qa:
         import check_memo
-        for mark, item, msg in check_memo.check(memo, require_review=True):
+        for mark, item, msg in check_memo.check(memo, require_review=not light):
             if item in ("前提と丁寧さ", "推論距離の手当て") and mark != "・":
                 res.append((mark, f"設計メモ：{item}", msg))
 
@@ -241,9 +246,11 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     else:
         res.append(("✔", "原稿のページ", html.name))
 
-    # 5. 完成後のレビュー
+    # 5. 完成後のレビュー（オプション「軽さ：軽量」の回は省く。検査のスクリプトで代える）
     review = work / "review.md" if work else None
-    if not review or not review.exists():
+    if light and (not review or not review.exists()):
+        res.append(("✔", "完成後のレビュー", "軽量の回：別のレビューは省いた（オプション「軽さ：軽量」。検査のスクリプトで代えた）"))
+    elif not review or not review.exists():
         res.append(("✘", "完成後のレビュー", "review.md が無い（手順5b のレビューの判定と直した点を書く）"))
     else:
         t = review.read_text(encoding="utf-8")

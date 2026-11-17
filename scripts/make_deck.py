@@ -149,7 +149,8 @@ def run_budget(work: Path):
     else:
         stage, used = "仕上げ", sum(1 for i, r in enumerate(recs) if not r.get("final") and not build_log.same_as_before(recs, i))
     # 中身が前の回とまったく同じ回（何も直さずにもう一度回した）は数えない。Codex の試しで、仕上げの4回のうち2回がこれだった
-    c = budget.cap(work, budget.MAKE_DECK_CAPS[stage])   # オプション「回数の上限」（標準・多め・なし）
+    base = budget.LIGHT_MAKE_DECK if stage == "仕上げ" and budget.light(work) else budget.MAKE_DECK_CAPS[stage]
+    c = budget.cap(work, base)   # オプション「回数の上限」（標準・多め・なし）
     return stage, used, (10 ** 6 if c is None else c)
 
 
@@ -182,7 +183,7 @@ def main(argv=None):
         return 1
     try:   # 担当を起動せずにメインが組んでいたら止める（仕上げは仕上げ役、レビューのあとは仕上げの直しの担当が走らせる）
         import budget
-        solo = budget.solo_problem(work, "仕上げ役|仕上げの直しの担当")
+        solo = budget.solo_problem(work, "仕上げ役|仕上げの直しの担当|軽量の制作の担当")
     except Exception:
         solo = None
     if solo and "--over" not in argv:

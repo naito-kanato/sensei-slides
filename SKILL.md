@@ -7,7 +7,7 @@ description: 資料やテーマから、スライド（PowerPoint .pptx）・読
 
 ## 必ず守る（どのエージェントでも）
 
-1. **次にやることは `python <skill>/scripts/next_step.py <work> --short` の出力に従う**（覚えている手順より優先。止まったあと・引き継いだときも）
+1. **次にやることは `python <skill>/scripts/next_step.py <work> --short` の出力に従う**（オプション「軽さ：軽量」の回は、担当2人：`軽量の設計の担当` → `軽量の制作の担当` → 渡す前の確認。next_step がそう言う）（覚えている手順より優先。止まったあと・引き継いだときも）
 2. **メインは監視塔**：担当を【別のエージェント】で起動し、依頼は「`python <skill>/scripts/brief.py <担当> <work>` を走らせ、出た依頼のとおりに進める」の1行だけ。
    メインはファイルを書かない・直さない（担当を立てずに作ると、next_step・make_deck・check_done が ✘ で止める）
    担当を待つあいだも、自分で Web・ブラウザ・PDF を調べない（事実が気になったら裏取りの担当に回す。Claude Code では、担当は `subagent_type: "sensei-slides-worker"`（道具を絞った型。無ければ general-purpose。references/agents.md）。待つときは長めの wait を1回。終わりの知らせが届く道具なら、それを待つだけで、sleep・Monitor・ファイルの確認・merge の試しで様子を見ない。どれも呼び出し1回で、メインの会話を全部読み直す）。メインの会話は呼び出しのたびに全部を読み直すので、調べものをすると全体でいちばん重くなる

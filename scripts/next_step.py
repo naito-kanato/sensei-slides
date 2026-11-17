@@ -117,10 +117,61 @@ def usage_line(work: Path):
             + (f"。{'・'.join(over)}の枠が上限を超えた：続ける前にユーザーに【質問】で聞く（続ける・ここで止める）" if over else ""))
 
 
+def light_steps(work: Path, kind: str):
+    """オプション「軽さ：軽量」の回：設計の担当 → 制作の担当 → 渡す前の確認、の3段。"""
+    import budget
+    out = []
+
+    def add(ok, step, msg=""):
+        out.append((ok, step, msg))
+        return ok
+
+    w = work.as_posix()
+    launched = {r.get("role") for r in budget.load(work)}
+    plan = work / ("memo.md" if kind == "memo" else "outline.md")
+    if not plan.exists():
+        add(False, "設計（軽量）", "まだ")
+        if "軽量の設計の担当" in launched:
+            return out, "軽量：設計の担当が書き終えるのを待つ（終わりの知らせを待つ。コマンドで様子を見ない）"
+        return out, (f"軽量（オプション「軽さ：軽量」）：設計の担当1人を起動（`brief.py 軽量の設計の担当 {w}`）。"
+                     "数字・筋・事実の確かめまで1人で、検査の ✘ 0 まで")
+    if kind == "memo":
+        import check_memo
+        import facts
+        bad = _fails(check_memo.check(plan))
+        _, fh, frows = facts.memo_facts(plan.read_text(encoding="utf-8"))
+        i_ok = next((k for k, h in enumerate(fh) if "確認" in h), 3)
+        todo = [r for r in frows if facts.unchecked(r, i_ok)]
+    else:
+        import check_outline
+        bad, todo = _fails(check_outline.check(plan)), []
+    add(not bad and not todo, "設計（軽量）", "；".join(bad[:3]) + (f"（確認がまだの事実 {len(todo)} 行）" if todo else ""))
+    if bad or todo:
+        return out, ("軽量：設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
+                     + (f"。確認がまだの事実 {len(todo)} 行をその場で確かめる" if todo else ""))
+    build = work / "build.py"
+    pptx = find_pptx(work) if build.exists() else None
+    import language
+    html = language.sibling(pptx, "slides", "script") if pptx else None
+    done = bool(pptx) and _newer(pptx, build) and _newer(work / "render" / "shapes.json", pptx) and _newer(html, pptx)
+    add(done, "制作（軽量）", "" if done else "まだ")
+    if not done:
+        if "軽量の制作の担当" in launched:
+            return out, "軽量：制作の担当が書き終えるのを待つ（終わりの知らせを待つ）。担当がもう戻っていて残っているなら、残った所を【続けて頼む】"
+        return out, (f"軽量：制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）。scaffold → 図 → parts → --try → merge → make_deck（3回まで）→ 原稿HTML")
+    return out, f"手順7：python {SKILL}/scripts/check_done.py \"{pptx.as_posix()}\" を走らせる。「渡してよい」が出たらユーザーに渡す（✘ があれば直す）"
+
+
 def steps_for(work: Path):
     """[(済んだか, 手順, 説明)] と 次の手順の文。"""
     work = Path(work)
     kind = "answers" if (work / "answers.md").exists() else "memo" if (work / "memo.md").exists() else "outline"
+    if kind != "answers":
+        import budget
+        if budget.light(work):
+            if kind == "outline" and re.search(r"_\d{2}$", work.name):
+                kind = "memo"   # 講座の回（設計メモはまだ）
+            return light_steps(work, kind)
     out = []
 
     def add(ok, step, msg=""):

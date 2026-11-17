@@ -27,10 +27,31 @@ LOG = "budget_log.jsonl"
 ROLE_CAPS = {   # 1回の講座・1つの発表で、担当を起動してよい回数（標準）
     "数字を探す担当": 2, "図の担当": 2, "設計の担当": 1, "裏取りの担当": 2, "レビュー担当": 2, "直しの担当": 2,
     "制作役": 2, "仕上げ役": 1, "完成後のレビュー担当": 1, "仕上げの直しの担当": 2,
+    "軽量の設計の担当": 1, "軽量の制作の担当": 1,   # オプション「軽さ：軽量」の2人
 }
+LIGHT_MAKE_DECK = 3   # 軽量の回の make_deck の上限（制作の担当が --try で先に直してから組む）
 MAKE_DECK_CAPS = {"仕上げ": 4, "完成後のレビューのあとの直し": 2}
 SAME_WITHIN = 15 * 60   # 同じ担当が依頼文を読み直しただけなら数えない
 DEFAULT_PERCENT = 20
+
+
+def light(work: Path) -> bool:
+    """オプション「軽さ：軽量」の回か（設計メモ・構成案の設定、講座の README の「- 軽さ：軽量」）。
+    軽量の回は担当2人（設計・制作）で作り、別のレビューは省く（検査のスクリプトで代える）。"""
+    import re
+    work = Path(work)
+    v = ""
+    try:
+        import slide_profile
+        v = slide_profile.option(slide_profile.load_profile(work), "軽さ", "") or ""
+        if not v and re.search(r"_\d{2}$", work.name):   # 設計メモの前：講座の README の学習者とゴール
+            readme = work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md"
+            if readme.exists():
+                m = re.search(r"^-\s*軽さ\s*[:：]\s*(.+?)\s*$", readme.read_text(encoding="utf-8"), re.M)
+                v = m.group(1) if m else ""
+    except Exception:
+        v = ""
+    return "軽量" in v
 
 
 def scale(work: Path) -> float | None:
@@ -274,7 +295,7 @@ def token_usage(work: Path, rows: list | None = None) -> dict:
 
 # 役ごとの上限：道具ごとの全体の上限（TOKEN_CAPS）に対する割合。3段（大・中・小）。担当1人（会話1本）ごとに見る。
 # 試しの回の記録から：ふつうの回はどの役も届かず、暴走した担当（Codex の仕上げ役が make_deck を21回）だけが届く大きさ
-ROLE_TIERS = {"大": ("仕上げ役", "制作役"),
+ROLE_TIERS = {"大": ("仕上げ役", "制作役", "軽量の制作の担当", "軽量の設計の担当"),
               "中": ("設計の担当", "裏取りの担当", "数字を探す担当", "図の担当", "レビュー担当", "直しの担当", "仕上げの直しの担当", "完成後のレビュー担当"),
               "小": ("地図の担当",)}
 # Web を読む担当（数字を探す・裏取り）は、読んだページの分だけ重い。道具によって数倍ちがう。
