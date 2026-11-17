@@ -74,7 +74,12 @@ def test_merge_back_and_diff(tmp_path):
         "| 2 | 認定病院の数 | 2,000 |  | 未確認 | 2 |  |",
         "| 2 | 認定病院の数 | 2,188（2026年3月末） | 「報告書」https://e.x/b 2026 | ○ | 2 | 違う：数が古い |\n"
         "| + | 新しい版 | Ver.3.0 | 「一覧」https://e.x/c 2023 | ○ | 3 | 新しく足した |"), encoding="utf-8")
-    diffs = facts.merge(w)
+    before = (w / "memo.md").read_text(encoding="utf-8")
+    import pytest
+    with pytest.raises(SystemExit):   # ほかの行がまだ（裏取りの途中）なら、memo.md を書き換えずに止める
+        facts.merge(w)
+    assert (w / "memo.md").read_text(encoding="utf-8") == before
+    diffs = facts.merge(w, partial=True)
     memo = (w / "memo.md").read_text(encoding="utf-8")
     assert "| 認定病院の数 | 2,188（2026年3月末） | 「報告書」https://e.x/b 2026 | ○ |" in memo
     assert "| 新しい版 | Ver.3.0 |" in memo and memo.index("新しい版") < memo.index("## 4.")

@@ -11,7 +11,7 @@
 | 中立の言葉 | 何をするか | Codex | Claude Code | Antigravity | GitHub Copilot（CLI） |
 |---|---|---|---|---|---|
 | 【質問】 | 選択肢をボタンで示して、ユーザーに1回だけ聞く（**1回に3問・各3択まで**。「その他」の自由記入はどの道具でも付く） | request_user_input（Plan モードだけ。ふつうのモードは request_user_input_async：答えは次のメッセージで届く） | AskUserQuestion | ask_question（1問ずつなら、続けて聞く） | ask_user |
-| 【別のエージェント】 | 構成案・設計メモ・完成品のレビューと、スライドの制作（手順3〜6）を、別のエージェントにさせる。**空の会話から始め**、渡すのはファイルの場所と頼むことだけ | spawn_agent（**`fork_turns: "none"`**。省くと親の会話をまるごと写して始まり、その分ずっと重くなる。モデルを指定できる。終わりは wait_agent で待つ。**`timeout_ms` は長く（600000 など）し、時間切れなら待ち直す**。短い待ちを数回で切り上げて応答を終えない） | Agent ツール（新しい会話で始まる。モデルを指定。レビューはバックグラウンドで） | invoke_subagent（`Model` でモデルを指定。既定は親と同じ） | task（`mode` を background に。結果は read_agent で読む） |
+| 【別のエージェント】 | 構成案・設計メモ・完成品のレビューと、スライドの制作（手順3〜6）を、別のエージェントにさせる。**空の会話から始め**、渡すのはファイルの場所と頼むことだけ | spawn_agent（**`fork_turns: "none"`**。省くと親の会話をまるごと写して始まり、その分ずっと重くなる。モデルを指定できる。終わりは wait_agent で待つ。**`timeout_ms` は長く（600000 など）し、時間切れなら待ち直す**。短い待ちを数回で切り上げて応答を終えない） | Agent ツール（新しい会話で始まる。`subagent_type` は `sensei-slides-worker`、無ければ `general-purpose`（下の「道具を絞った担当」）。レビューはバックグラウンドで） | invoke_subagent（`Model` でモデルを指定。既定は親と同じ） | task（`mode` を background に。結果は read_agent で読む） |
 | 【続けて頼む】 | レビュー担当に再レビューを、続きものの次の回のレビューを頼む | followup_task（起動したときの名前に送る） | SendMessage（起動したときの ID に送る） | send_message | write_agent（起動したときの ID に送る） |
 | 【画像を見る】 | 描画したスライドの PNG・資料のページ画像を目で確かめる | view_image | Read | read_file（PNG も読める） | view（PNG も読める） |
 | 【ファイルを書き換える】 | 改行や `\` を含む文字列を、ファイルの中で正確に置き換える | apply_patch | Edit ツール | edit_file（新しく作るなら write_file） | apply_patch |
@@ -28,6 +28,16 @@
 - 【続けて頼む】：レビューのたびに資料と観点を渡し直す
 - 【画像を見る】：画像を読めないなら、ユーザーに `render/` の画像を見てもらい、気になる所を言ってもらう
 - 【ファイルを書き換える】：ファイルを書き換える道具を使う。シェルのヒアドキュメントで置換しない（改行と日本語が壊れやすい。references/tools.md「コマンドの書き方」）
+
+## 道具を絞った担当（Claude Code）
+
+担当は、呼び出しのたびに会話と道具の説明をまるごと読み直す。道具ぜんぶの担当（`general-purpose`）は、ブラウザ・文書・会話の管理など、
+スライド作りに要らない道具の説明も毎回読む。同梱の `assets/claude/sensei-slides-worker.md` は、道具を Bash・PowerShell・Read・Write・Edit・
+Glob・Grep・WebSearch・WebFetch に絞った担当の型で、1回あたりが軽い（品質の決まりは同じ。依頼文は brief.py が出す）。
+
+- 置き場所：プロジェクトの `.claude/agents/`（スキルを `.claude/skills/` に置いたフォルダ）か、個人の `~/.claude/agents/`。写すのはユーザーの許可を得てから
+- 担当の型は会話の始めに読み込まれるので、写した次の会話から使える。`check_env.py` が、あるかを出す
+- メインは担当を起動するとき `subagent_type: "sensei-slides-worker"` を使う。「見つからない」と出たら `general-purpose` で起動し直す（作業は同じ）
 
 ## モデル
 

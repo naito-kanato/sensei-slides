@@ -384,6 +384,47 @@ def _flat(t: str) -> str:
     return re.sub(r"\{[rubi]:([^{}]*)\}", r"\1", t)
 
 
+def geometry_marks(prs, check_layout):
+    """描かなくても枠の位置で分かること（--try 用）：文の塊の数と、右・下のはみ出し。
+    比べの試しで、仕上げ役の最初の make_deck に、図を右に置きすぎたはみ出しと塊の多さの ERROR が並び、直しの往復が増えた。
+    文字の実際の高さは描かないと分からないので、文字の箱の下のはみ出しは △（枠で測った目安）にする。"""
+    EMU = 12700   # → pt（check_layout と同じ単位）
+    sl = prs.slides[0]
+    W, H = prs.slide_width / EMU, prs.slide_height / EMU
+    items, pn_top = [], None
+    for sh in sl.shapes:
+        size = None
+        if sh.has_text_frame:
+            size = next((r.font.size.pt for p in sh.text_frame.paragraphs for r in p.runs if r.font.size), None)
+        ph = sh.placeholder_format.type if sh.is_placeholder else None
+        d = {"name": sh.name, "type": int(sh.shape_type) if sh.shape_type is not None else None,
+             "left": sh.left / EMU, "top": sh.top / EMU, "width": sh.width / EMU, "height": sh.height / EMU,
+             "ph": int(ph) if ph is not None else None, "text": sh.text_frame.text if sh.has_text_frame else "", "size": size}
+        if (sh.is_placeholder and sh.placeholder_format.idx == 12) or "Slide Number" in sh.name:
+            pn_top = d["top"]
+        items.append(d)
+    out = []
+    n = 0 if check_layout.is_qa_slide(items) or check_layout.is_cover_slide(items) else check_layout.text_units(items)   # 確認問題・解答・表紙は数えない（描画の検査と同じ）
+    if n >= check_layout.UNITS_MAX:
+        out.append(("✘", "文の塊", f"{n} つ（2つまで、多くて3つ）。結論に要る塊だけ残し、ほかは原稿へ"))
+    elif n >= check_layout.UNITS_WARN:
+        out.append(("△", "文の塊", f"{n} つ（目安は2つまで）。3つ目は結論に要るか"))
+    right = W - check_layout.PAGE_MARGIN + 0.2 * 72   # 0.2 in の遊び（描画の検査は図の描いた範囲で測るので、枠だけで少し越えるのは通る）
+    bottom = (pn_top if pn_top is not None else H - 0.48 * 72) + 1
+    shown = [d for d in items if d["ph"] is None and not d["name"].endswith("の地")]   # 区切りの枚の全面の地は除く
+    wide = [d for d in shown if d["left"] + d["width"] > right]
+    if wide:
+        hard = [d for d in wide if d["type"] != 17]   # 文字の箱（17）は、折り返さないと枠が文字より広い
+        out.append(("✘" if hard else "△", "右のはみ出し", "・".join(f"{d['name'][:12]}（右端 {(d['left'] + d['width']) / 72:.2f} in）" for d in wide[:3])
+                    + f" → 右の余白 0.4 in（{(W - check_layout.PAGE_MARGIN) / 72:.2f} in まで）に収める。図は fig_x から描いた幅のまま置く"))
+    low = [d for d in shown if d["top"] + d["height"] > bottom]
+    if low:
+        hard = [d for d in low if not d["text"]]
+        out.append(("✘" if hard else "△", "下のはみ出し", "・".join(f"{d['name'][:12]}（下端 {(d['top'] + d['height']) / 72:.2f} in）" for d in low[:3])
+                    + " → ページ番号より上に" + ("" if hard else "（文字の箱は枠で測った目安。描くと収まることもある）")))
+    return out
+
+
 def try_part(work: Path, n: int) -> int:
     """parts/NN.py の1枚だけを組んで、構成案どおりか（本文の形・図・結論）と字数を短く出す。描かない。
     書き手が部品のソースや検査のスクリプトを読みに行かずに、自分の1枚を確かめるための道具。"""
@@ -437,6 +478,7 @@ def try_part(work: Path, n: int) -> int:
     if roles.get(n) == "本文":
         bad = structures.role_mismatches(prs, {1: "本文"})
         rows_.append(("✘" if bad else "✔", "結論の一文", bad[0][1] if bad else "ある"))
+    rows_ += geometry_marks(prs, check_layout)
     lines = []
     for sh in prs.slides[0].shapes:
         tx = sh.has_text_frame and sh.text_frame.text.strip()

@@ -175,7 +175,7 @@ def steps_for(work: Path):
         elif bad and not nxt:
             nxt = f"references/course.md 手順4：check_memo の ✘ を直す（python {SKILL}/scripts/check_memo.py {plan.as_posix()}）"
         if todo and not nxt and not (work / "build.py").exists():   # 制作に進んだあとは、裏取りに戻さない（直しの担当が足した行など）
-            nxt = (f"references/course.md 手順4②：裏取りの担当（facts_N.md ごとに1人、同時に）の結果を待ち、python {SKILL}/scripts/facts.py merge {work.as_posix()}"
+            nxt = (f"references/course.md 手順4②：裏取りの担当（facts_N.md ごとに1人、同時に）の結果を待ち（終わりの知らせを待つ。コマンドで様子を見ない）、全員が終わってから1回だけ python {SKILL}/scripts/facts.py merge {work.as_posix()}"
                    if split else
                    f"references/course.md 手順4①の終わり：python {SKILL}/scripts/facts.py split {work.as_posix()} --n 2 → 裏取りの担当を2人、同時に起動")
         if not rv.exists() and not nxt:

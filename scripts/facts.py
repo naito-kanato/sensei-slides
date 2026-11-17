@@ -5,6 +5,7 @@
 
     python <skill>/scripts/facts.py split <work> [--n 2]   # まだの行を n 人分に分け、<work>/facts_1.md … を作る
     python <skill>/scripts/facts.py merge <work>           # facts_*.md の行を memo.md の3節に戻し、要点と違った行を facts_diff.md に
+    python <skill>/scripts/facts.py merge <work> --partial # 確認がまだの行が残っていても戻す（裏取りの担当が途中で止まったときだけ）
 
 split：3節「事実と出典」の表で、確認が空か「未確認」の行を、表の順のまま n 個に分ける（表の順＝枚の順に近いので、話題が近い行が同じ人に行く）。
        各ファイルの先頭に裏取りのやり方を書くので、裏取りの担当への依頼は「<work>/facts_N.md の先頭のとおりに」だけでよい。
@@ -159,13 +160,35 @@ def search_problem(cell: str) -> str | None:
     return None
 
 
-def merge(work: Path):
+def pending(files) -> dict:
+    """facts_N.md ごとの、確認がまだ（空・未確認）の行の数。裏取りの担当が書き終える前に merge すると、
+    まだの行で設計メモを上書きし、そのあとの直しも次の merge で戻る（試しで、メインが merge を3回くり返した）。"""
+    out = {}
+    for f in files:
+        h, rs = rows_of(f.read_text(encoding="utf-8"))
+        if h is None:
+            continue
+        k = next((i for i, x in enumerate(h) if x.startswith("確認")), None)
+        if k is None:
+            continue
+        n = sum(1 for r in rs if (r[k].strip() if k < len(r) else "") in ("", "-", "—") or "未確認" in (r[k] if k < len(r) else ""))
+        if n:
+            out[f.name] = n
+    return out
+
+
+def merge(work: Path, partial: bool = False):
     memo_p = work / "memo.md"
     memo = memo_p.read_text(encoding="utf-8")
     m, head, rows = memo_facts(memo)
     files = sorted(p for p in work.glob("facts_*.md") if p.name != "facts_diff.md")
     if not files:
         raise SystemExit("facts_*.md が無い（先に facts.py split）")
+    left = pending(files)
+    if left and not partial:
+        raise SystemExit("✘ 裏取りがまだ終わっていない：" + "・".join(f"{k} に確認がまだの行 {v}" for k, v in left.items())
+                         + "。memo.md は書き換えていない。裏取りの担当の返答（終わりの知らせ）を待ってから、もう一度 merge を1回だけ。"
+                         "待つあいだにコマンドで様子を見ない（sleep・ファイルの確認も呼び出し1回になる）。担当が途中で止まったときだけ --partial")
     width = len(head)
     rows = [(r + [""] * width)[:width] for r in rows]
     diffs, added, replaced, search_bad = [], 0, 0, []
@@ -233,7 +256,7 @@ def main(argv=None):
         n = int(a[a.index("--n") + 1]) if "--n" in a else 2
         split(work, n)
     else:
-        merge(work)
+        merge(work, partial="--partial" in a)
     return 0
 
 

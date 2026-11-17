@@ -6,6 +6,7 @@
   1. Python の版（3.10 以上）と部品（python-pptx・PyMuPDF・Pillow・matplotlib・numpy・lxml）
   2. 描画の検査と原稿のページに使うもの：Windows の PowerPoint、無ければ LibreOffice（どちらか1つあればよい）
   3. 図の日本語フォント（Meiryo・Yu Gothic・ヒラギノ・Noto Sans CJK など）
+  4. Claude Code で使うとき：道具を絞った担当の型（.claude/agents/sensei-slides-worker.md）があるか（無くても作れる。あると軽い）
 足りないものがあれば、入れ方を出す。Python の部品は、エージェントが【質問】で聞いて許可をもらってから、作業フォルダの .venv に入れる。
 PC 全体に入るもの（Python 本体・LibreOffice・フォント）は、入れるのはユーザー（頼まれたときだけ、確認を出してから入れる）。
 終了コード：部品が足りなければ 1（スライドが作れない）。描画のもの・フォントが無いだけなら 0（スライドまでは作れる）。
@@ -86,6 +87,21 @@ def ja_font():
         return None
 
 
+WORKER = "sensei-slides-worker.md"
+
+
+def worker_agent():
+    """Claude Code の置き場所（.claude/skills/<名前>/）にスキルがあるとき、担当の型があるか。(Claude Code か, 型の場所 or None)。
+    担当は呼び出しのたびに道具の説明を読み直すので、道具を絞った型だと1回あたりが軽い（同梱の assets/claude/）。"""
+    skill = Path(__file__).resolve().parents[1]
+    if skill.parent.name != "skills" or skill.parent.parent.name != ".claude":
+        return False, None
+    for d in (skill.parents[2] / ".claude" / "agents", Path.home() / ".claude" / "agents"):
+        if (d / WORKER).exists():
+            return True, d / WORKER
+    return True, None
+
+
 def main():
     rows, todo = [], []
     py_ok = sys.version_info >= (3, 10)
@@ -109,6 +125,13 @@ def main():
                  font or ("調べられない（matplotlib が無い。部品を入れてからもう一度）" if no_mpl else "見つからない（図の日本語が□になる）")))
     if not font and not no_mpl:
         todo.append("日本語フォントを入れる：" + INSTALL_FONT.get(OS, INSTALL_FONT["Linux"]))
+
+    cc, worker = worker_agent()
+    if cc:
+        skill = Path(__file__).resolve().parents[1]
+        rows.append(("✔" if worker else "△", "担当の型（Claude Code）", f"あり（{worker}）" if worker else
+                     f"無い（道具ぜんぶの担当で動き、1回の呼び出しが重い）→ {(skill / 'assets' / 'claude' / WORKER).as_posix()} を "
+                     f"{(skill.parents[2] / '.claude' / 'agents').as_posix()}/ に写すと、次の会話から軽い担当で動く（写すのはユーザーの許可を得てから）"))
 
     for mark, item, msg in rows:
         print(f"{mark} {item}：{msg}")

@@ -345,7 +345,7 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     bad = vague_sources(memo) if memo and memo.exists() else None
     if bad is not None:
         if bad:
-            res.append(("✘", "出典", f"○ なのに資料を特定できない行が {len(bad)} 件（書名・URL・頁などを足すか、確認を × にする）："
+            res.append(("✘", "出典", f"○ なのに資料を特定できない行が {len(bad)} 件（書名・URL・頁などを足すか、確認を × にする。裏取りした行は facts_N.md の同じ行も直す：memo.md だけ直すと facts.py merge で戻る）："
                         + " / ".join(f"「{a[:14]}」→{b[:20]}" for a, b in bad[:4])))
         else:
             res.append(("✔", "出典", "○ の行はすべて資料を特定できる"))

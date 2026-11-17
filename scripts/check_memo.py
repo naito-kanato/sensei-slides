@@ -362,7 +362,7 @@ def check(memo: Path, require_review: bool = False):
     if bad is None:
         res.append(("✘", "出典", "3節「事実と出典」の表が無い"))
     elif bad:
-        res.append(("✘", "出典", f"○ なのに資料を特定できない行が {len(bad)} 件（書名・URL・頁などを足すか、確認を × にする）："
+        res.append(("✘", "出典", f"○ なのに資料を特定できない行が {len(bad)} 件（書名・URL・頁などを足すか、確認を × にする。裏取りした行は facts_N.md の同じ行も直す：memo.md だけ直すと facts.py merge で戻る）："
                     + " / ".join(f"「{a[:14]}」→{b[:20]}" for a, b in bad[:4])))
     else:
         res.append(("✔", "出典", "○ の行はすべて資料を特定できる"))
