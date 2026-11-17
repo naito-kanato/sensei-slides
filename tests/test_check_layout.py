@@ -128,7 +128,12 @@ def test_small_boxes_with_large_margins_are_errors(tmp_path, capsys):
     thin = [box(1, "比較の左", 60, 120, 200, 60, "A\r2行"), box(1, "比較の右", 400, 120, 200, 60, "B\r2行"),
             box(1, "TextBox 9", 60, 300, 800, 120, "Re-ask:\rsame question\rNumbers:\rrecompute")]
     code, out = run(tmp_path, [title(), head] + thin, capsys)
-    assert "箱が小さい" in out
+    assert "箱が小さい" in out and "比較の列が短い" in out
+    # 比較は各列3行なら、文字の枠が細くても「箱が小さい」にしない（面積の目安は各列4行が要り、行数の目安とぶつかった）
+    three = [box(1, "比較の左", 60, 120, 200, 130, "A\r2行\r3行"), box(1, "比較の右", 400, 120, 200, 130, "B\r2行\r3行"),
+             box(1, "TextBox 9", 60, 300, 800, 120, "Re-ask:\rsame question\rNumbers:\rrecompute")]
+    code, out = run(tmp_path, [title(), head] + three, capsys)
+    assert "箱が小さい" not in out
 
 
 def test_many_text_units_are_errors(tmp_path, capsys):

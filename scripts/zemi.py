@@ -1048,7 +1048,9 @@ class Slide:
             self.rect(x, y, col_w, 0.55, fill=C.PALE, text=head, size=20, color=C.BAND, bold=True)
             yy = y + 0.8
             for it in items:
-                b = self.text(x + 0.15, yy, it, size=size, name="比較の" + ("左" if k == 0 else "右"))
+                # 列の幅いっぱいの枠に（列が1つの箱に見える。渡す前の検査は、箱の大きさを各列の行数で見る）
+                b = self.text(x + 0.15, yy, it, size=size, w=max(col_w - 0.3, self._text_w(it, size)),
+                              name="比較の" + ("左" if k == 0 else "右"))
                 yy = b.bottom + 0.2
             bottoms.append(yy)
         self.line(wx0 + col_w + gap / 2, y, wx0 + col_w + gap / 2, max(bottoms), color=C.GRAY, width=1.0)

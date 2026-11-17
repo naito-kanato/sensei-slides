@@ -180,9 +180,16 @@ def main(argv=None):
         print(f"✘ 最後の確かめ（--final）は、{stage}で1回だけ。もう使った。残った所を返答に書いて終える")
         return 1
     if used >= cap and "--over" not in argv and not final:
+        try:
+            import budget
+            light = budget.light(work)
+        except Exception:
+            light = False
         print(f"✘ make_deck の上限：{stage}は {cap} 回まで（もう {used} 回回した）。ここで止める。"
-              "残った ERROR・WARN・✘ を返答に書いて終える（完成後のレビューが、直すかを決める）。"
-              + ("完成後のレビューのあとの直しには、これとは別に回数がある（許可は要らない）。" if stage == "仕上げ" else "")
+              + ("残った ERROR・WARN・✘ を返答に書いて終える（ユーザーが越えてよいと言ったら、メインがあなたに続けて頼む。"
+                 "そのときは --over を付けて、残った所だけ直す）。" if light else
+                 "残った ERROR・WARN・✘ を返答に書いて終える（完成後のレビューが、直すかを決める）。")
+              + ("完成後のレビューのあとの直しには、これとは別に回数がある（許可は要らない）。" if stage == "仕上げ" and not light else "")
               + "上限のあとに直した所があるなら、確かめるだけの1回（--final）は許可なしで回せる。"
               + "続けるのは、ユーザーが許したときだけ（--over を付ける）" + "（依頼に「質問はせず」とあっても、上限は越えない。止まるのは正しい動き。残った所を報告して終える。越えるのは、ユーザーが上限を越えてよいと言ったときだけ）")
         return 1

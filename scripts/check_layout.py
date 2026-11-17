@@ -785,6 +785,7 @@ NOBAND_BOTTOM = 7.5 * PT - 0.45 * PT   # 下の帯の無い構造で、本文・
 BOX_NAMES = ("比較の", "カード_", "カードの値", "前後_", "ツリー", "判定の", "場合分け", "縦の")
 BOX_SOLID = ("比較の", "カード_", "前後_", "ツリー", "判定の")   # 面積を測る箱（場合分け・縦の矢印は文の塊なので測らない）
 BOX_FILL_H, BOX_FILL_W, BOX_AREA_MIN = 0.55, 0.65, 0.12
+COMPARE_MIN_LINES = 3   # 比較の2列は面積でなく各列の行数で見る（3行×2列＋結び1行で、本文の行数の目安 8行に収まる）
 # 箱が多い・広い枚：目線が散る（「箱が多くて目線が散る」とユーザーに言われた）。5個以上か、本文の場所の半分を超えたら WARN。
 # ただし矢印でつながった流れ（段・手順・循環・筋）で、1つ1つが小さい箱は、まとめると順番が読めなくなるので5個まで許す
 BOX_MANY, BOX_MANY_FLOW, BOX_WIDE, BOX_SMALL_EACH = 5, 6, 0.5, 0.15
@@ -1521,16 +1522,25 @@ def main(path, pptx_path=None, template=None, lang=None):
                 bx0, by0, bx1, by1 = min(r[0] for r in rr), min(r[1] for r in rr), max(r[2] for r in rr), max(r[3] for r in rr)
                 aw, ah = W - 0.8 * PT, max(band_top - top_, 1.0)
                 fw, fh = (bx1 - bx0) / aw, (by1 - by0) / ah
-                solid = [shape_rect(s) for s in body_ if (s.get("name") or "").startswith(BOX_SOLID)]
+                # 比較の2列は、箱の面積でなく各列の行数で見る（面積の目安に届かせるには各列4行が要り、
+                # 本文の行数の目安（8行）とぶつかって、どう直しても ERROR か WARN が残った。各列3行と結び1行なら両方に収まる）
+                cols = {side: sum(len([ln for ln in re.split(r"[\r\n\v]", s.get("text") or "") if ln.strip()]) or 1
+                                  for s in body_ if s.get("name") == "比較の" + side) for side in ("左", "右")}
+                compare = any(cols.values())
+                solid = [shape_rect(s) for s in body_ if (s.get("name") or "").startswith(BOX_SOLID)
+                         and not (s.get("name") or "").startswith("比較の")]
                 barea = sum((r[2] - r[0]) * (r[3] - r[1]) for r in solid) / (aw * ah)
-                if fh < BOX_FILL_H or fw < BOX_FILL_W:
+                if compare and min(cols.values()) < COMPARE_MIN_LINES:
+                    msgs.append(("ERROR", f"箱が小さい（比較の列が短い：左 {cols['左']}行・右 {cols['右']}行。各列 {COMPARE_MIN_LINES}行以上）"
+                                          " → 各列3行に（根拠の数値・例・よくある間違い）。4行にすると本文の行数の目安を超えやすい"))
+                elif fh < BOX_FILL_H or fw < BOX_FILL_W:
                     msgs.append(("ERROR", f"箱の図のまわりが空いている（本文の塊が本文の場所の 高さ {fh:.0%}・幅 {fw:.0%}。"
                                           f"目安は高さ {BOX_FILL_H:.0%}・幅 {BOX_FILL_W:.0%} 以上）"
                                           " → 箱を大きく（文字 22pt・h を広げる・カードの3つ目に値）、下に横長の図や例を足す、"
                                           "前後の枚とまとめる。箱だけで言うことが少ないなら、別の型に"))
                 elif solid and barea < BOX_AREA_MIN:
                     msgs.append(("ERROR", f"箱が小さい（箱の面積が本文の場所の {barea:.0%}。目安 {BOX_AREA_MIN:.0%} 以上）"
-                                          " → 箱に中身を足す（比較なら各列3〜4行、根拠の数値・例）か、箱の横・下に図を添える"))
+                                          " → 箱に中身を足す（根拠の数値・例）か、箱の横・下に図を添える"))
         if chars and any(s.get("ph") == PH_TITLE for s in items) and not figs and not designed:
             bottom = max((s["top"] + s["height"] for s in items if s.get("ph") is None), default=0)
             if bottom < EMPTY_BOTTOM:
