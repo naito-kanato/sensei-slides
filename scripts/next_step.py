@@ -128,6 +128,17 @@ def light_steps(work: Path, kind: str):
 
     w = work.as_posix()
     launched = {r.get("role") for r in budget.load(work)}
+    if budget.ultra(work):   # 超軽量：ひとりの担当が設計から完成まで
+        pptx = find_pptx(work) if (work / "build.py").exists() else None
+        import language
+        html = language.sibling(pptx, "slides", "script") if pptx else None
+        done = bool(pptx) and _newer(pptx, work / "build.py") and _newer(html, pptx)
+        add(done, "ひとりの担当（超軽量）", "" if done else "まだ")
+        if done:
+            return out, f"手順7：python {SKILL}/scripts/check_done.py \"{pptx.as_posix()}\" を走らせる。「渡してよい」が出たらユーザーに渡す（✘ があれば直す）"
+        if "ひとりの担当" in launched:
+            return out, "超軽量：ひとりの担当が終えるのを待つ（終わりの知らせを待つ）。もう戻っていて残っているなら、残った所を【続けて頼む】"
+        return out, f"超軽量（オプション「軽さ：超軽量」）：ひとりの担当を起動（`brief.py ひとりの担当 {w}`）。設計から完成（check_done）まで1人で"
     plan = work / ("memo.md" if kind == "memo" else "outline.md")
     if not plan.exists():
         add(False, "設計（軽量）", "まだ")

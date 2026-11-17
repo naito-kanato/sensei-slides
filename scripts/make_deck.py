@@ -183,7 +183,7 @@ def main(argv=None):
         return 1
     try:   # 担当を起動せずにメインが組んでいたら止める（仕上げは仕上げ役、レビューのあとは仕上げの直しの担当が走らせる）
         import budget
-        solo = budget.solo_problem(work, "仕上げ役|仕上げの直しの担当|軽量の制作の担当")
+        solo = budget.solo_problem(work, "仕上げ役|仕上げの直しの担当|軽量の制作の担当|ひとりの担当")
     except Exception:
         solo = None
     if solo and "--over" not in argv:
