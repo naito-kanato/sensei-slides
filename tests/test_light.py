@@ -40,7 +40,7 @@ def test_light_briefs_are_whole(tmp_path, monkeypatch):
     assert "① **数字**" in d and "facts.py split はしない" in d and "split --n" not in d
     assert "4a. 流れと設計メモの中身" in d                     # 設計の担当と同じ節を写す
     m = brief.build("軽量の制作の担当", str(w), count=False)
-    assert "scaffold.py" in m and "--try all" in m and "3回まで" in m and "## 5. 描画して確認する" in m
+    assert "scaffold.py" in m and "--light" in m and "1回の応答で書く" in m and "3回まで" in m and "## 5. 描画して確認する" in m
 
 
 def test_light_make_deck_cap(tmp_path):
@@ -66,3 +66,17 @@ def test_light_memo_stops_on_unchecked_facts(tmp_path):
     sw = _course(tmp_path / "s", light=False)
     (sw / "memo.md").write_text(m, encoding="utf-8")
     assert "事実の確かめ" not in {item for _, item, _ in check_memo.check(sw / "memo.md")}
+
+
+def test_scaffold_builds_more_from_the_memo():
+    """設計メモから、比較・流れ図・判定の流れ図・図の置き方・データの出典を組む（担当が書き直す所を減らす）。"""
+    import scaffold
+    assert scaffold.compare_code("違い：比較：素朴な見方（棚から取り出す）と実際（確率で選ぶ）").startswith('s.compare(("素朴な見方"')
+    assert scaffold.flow_code("流れ：流れ図：確かめ方（出典を開く → 原文と照らす → 自分で計算）").startswith('s.flow(["出典を開く", "原文と照らす", "自分で計算"]')
+    d = scaffold.decision_code("判定：判定の流れ図：出典・数値を含む？→ はい：確かめる／いいえ：新しい事か？→ はい：確かめる／いいえ：下書きに使う")
+    assert d and d.startswith("s.decision([") and "下書きに使う" in d
+    assert scaffold.flow_code("流れ：流れ図：中身の無い案") is None
+    assert scaffold.short_source("Walters, W. H. & Wilder, E. I.「Fabrication」Scientific Reports 13（2023）") == "（Walters ほか 2023）"
+    rows = [{"#": 1, "役割": "表紙"}] + [{"#": n, "役割": "本文", "本文の要点": "a / b / c" if n % 2 else "a", "図で見せるもの": "仕組み：模式図：x"} for n in range(2, 12)]
+    pl = scaffold.placements(rows)
+    assert list(pl.values()).count("beside") <= 5 and "main" in pl.values()   # 左文右図は本文の半分まで

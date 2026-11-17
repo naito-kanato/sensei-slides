@@ -394,6 +394,18 @@ def main(argv=None):
     if not memo.exists():
         print(f"[ERROR] {memo} が無い")
         return 1
+    try:
+        import budget
+        import data as datamod
+        if budget.light(memo.parent) and datamod.files(memo.parent):
+            before = memo.read_text(encoding="utf-8")
+            datamod.merge(memo.parent)
+            if memo.read_text(encoding="utf-8") != before:
+                print("（軽量の回：data_N.md を3b節に入れた。data.py merge を別に走らせなくてよい）")
+    except SystemExit:
+        pass
+    except Exception:
+        pass
     res = check(memo)
     report.show(res, full)
     bad = sum(m == "✘" for m, _, _ in res)
@@ -404,6 +416,15 @@ def main(argv=None):
         print(f"\n△ が {warn} 件。直すか理由を書いてから、レビューに回す（{memo.name}）")
     else:
         print(f"\nレビューに回してよい（{memo.name}）")
+    if not bad:
+        try:   # 軽量の回：次の手順も続けて出す（設計の担当が next_step を別に呼ぶ1回を省く）
+            import budget
+            if budget.light(memo.parent):
+                import next_step
+                _, nxt = next_step.steps_for(memo.parent)
+                print(f"次：{nxt}")
+        except Exception:
+            pass
     return 1 if bad else 0
 
 

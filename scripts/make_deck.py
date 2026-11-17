@@ -116,6 +116,14 @@ def budget_tokens(work: Path, over: bool):
         return None
 
 
+def second_final_ok(work: Path) -> bool:
+    """最後の確かめ（--final）を1回使い、そこで ERROR が1〜2個だけ（原稿と構成案どおりかの ✘ は無し）なら、
+    その ERROR だけを直したあとの確かめをもう1回許す（聞かずに）。試しで、上限まで直して ERROR 1つで止まった。"""
+    import build_log
+    fin = [r for r in build_log.load(work) if r.get("final")]
+    return len(fin) == 1 and 1 <= (fin[0].get("error") or 0) <= 2 and not fin[0].get("x")
+
+
 def final_used(work: Path, stage: str) -> bool:
     """この段階で、最後の確かめ（--final）をもう使ったか。"""
     import build_log
@@ -168,7 +176,7 @@ def main(argv=None):
         print(tok)
         return 1
     final = "--final" in argv
-    if final and final_used(work, stage):
+    if final and final_used(work, stage) and not second_final_ok(work):
         print(f"✘ 最後の確かめ（--final）は、{stage}で1回だけ。もう使った。残った所を返答に書いて終える")
         return 1
     if used >= cap and "--over" not in argv and not final:
@@ -273,6 +281,16 @@ def main(argv=None):
     if last:
         code, text = run([sys.executable, "-X", "utf8", str(HERE / "notes_html.py"), str(pptx)], pptx.parent)
         saved = re.findall(r"saved (.+?\.html)", text)
+        if code == 0 and saved:   # 原稿HTMLができたら、渡す前の確認まで続けて（担当が別に呼ぶ1回を省く）
+            try:
+                import check_done
+                rows = check_done.check(pptx, work, record=True)
+                bad_ = [(mk, item, msg) for mk, item, msg in rows if mk == "✘"]
+                for mk, item, msg in bad_[:6]:
+                    print(f"渡す前の確認 ✘ {item}：{msg[:160]}")
+                print("渡す前の確認：" + ("渡してよい" if not bad_ else f"✘ が {len(bad_)} 件"))
+            except Exception as e:
+                print(f"渡す前の確認：走らせられなかった（{type(e).__name__}）。check_done.py を単独で")
         print(f"原稿HTML：作った（{Path(saved[-1]).name}）" if code == 0 and saved
               else "✘ 原稿HTMLが作れなかった：" + " / ".join(short(text, 3) or text.strip().splitlines()[-3:])
               + f"（python {HERE.as_posix()}/notes_html.py \"{pptx.name}\" を単独で走らせる）")

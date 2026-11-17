@@ -158,7 +158,7 @@ def light_steps(work: Path, kind: str):
     if not done:
         if "軽量の制作の担当" in launched:
             return out, "軽量：制作の担当が書き終えるのを待つ（終わりの知らせを待つ）。担当がもう戻っていて残っているなら、残った所を【続けて頼む】"
-        return out, (f"軽量：制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）。scaffold → 図 → parts → --try → merge → make_deck（3回まで）→ 原稿HTML")
+        return out, (f"軽量：制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）。scaffold（設計メモから組む）→ 図 → 残った TODO と原稿 → --try → make_deck（3回まで）→ 原稿HTML")
     return out, f"手順7：python {SKILL}/scripts/check_done.py \"{pptx.as_posix()}\" を走らせる。「渡してよい」が出たらユーザーに渡す（✘ があれば直す）"
 
 
@@ -187,7 +187,9 @@ def steps_for(work: Path):
         add(bool(found), "数字を探す（data_N.md）", "・".join(f.name for f in found) if found else "まだ")
         add(False, "設計メモ（memo.md）", "まだ")
         one = source_based(work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md")
-        return out, ("references/course.md 手順4⓪：" + (ONE if one else ANY) if not found else
+        return out, ("references/course.md 手順4⓪：" + (ONE if one else ANY)
+                     + "（オプション「軽さ：軽量」の回なら、先に講座の README の学習者とゴールに `- 軽さ：軽量` を書いて、もう一度 next_step。数字は軽量の設計の担当が探す）"
+                     if not found else
                      "references/course.md 手順4①：設計の担当（`brief.py 設計の担当 <work>`）。data_N.md を見てから筋を決め、data.py merge で3b節に入れる")
     if not plan.exists():
         add(False, "構成案", "outline.md が無い")

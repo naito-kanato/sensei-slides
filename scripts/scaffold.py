@@ -35,7 +35,7 @@ EMPTY = ("", "—", "-", "－", "なし")
 
 def q(s: str) -> str:
     """Python の文字列の中身に（" と \\ を逃がす）。"""
-    return (s or "").replace("\\", "\\\\").replace('"', '\\"')
+    return (s or "").replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
 def items_of(cell: str):
@@ -108,11 +108,50 @@ def qs(items):
     return ", ".join('"' + q(p) + '"' for p in items)
 
 
-def form_code(forms: str, pts):
+BREAK_AFTER = set("、。，,・）」』】：:；;")
+PARTICLES = ("では", "には", "とは", "から", "まで", "より", "ので", "のに", "が", "を", "に", "は", "で", "と", "も", "へ", "や", "の")
+
+
+def _vis(t: str) -> str:
+    return re.sub(r"\{[a-z]+:|\}", "", t)
+
+
+def wrap_jp(t: str, lim: float) -> str:
+    """1行が lim（全角に直した字数）を超える文を、句読点・空白・助詞の後ろで改行する（{r:…} の中では切らない）。
+    スクリプトで組む本文が枠からはみ出さないように。lim が 0 なら何もしない。"""
+    import language as LG
+    meas = lambda x: LG.width(_vis(x))   # noqa: E731
+    if not lim or "\n" in t or meas(t) <= lim:
+        return t
+    out, s = [], t
+    while meas(s) > lim and len(out) < 6:
+        best, best_rank, depth = None, -1, 0
+        for i in range(1, len(s)):
+            depth += (s[i - 1] == "{") - (s[i - 1] == "}")
+            if meas(s[:i]) > lim:
+                break
+            if depth > 0:
+                continue
+            prev = s[i - 1]
+            rank = 3 if prev in BREAK_AFTER or s[i] == " " else 2 if any(s[:i].endswith(p) for p in PARTICLES[:-1]) else 1 if s[:i].endswith("の") else 0
+            if rank and (rank > best_rank or meas(s[:i]) >= lim * 0.6):
+                best, best_rank = i, max(rank, best_rank)
+        if best is None or meas(s[:best]) < lim * 0.4:
+            best = next((i for i in range(1, len(s)) if meas(s[:i]) > lim), len(s)) - 1
+            if depth > 0 or best <= 0:
+                break
+        out.append(s[:best].rstrip())
+        s = s[best:].lstrip()
+    out.append(s)
+    return "\n".join(x for x in out if x)
+
+
+def form_code(forms: str, pts, lim: float = 0):
     """本文の形 → 部品の呼び出しの行。要点は、形の入れる所の書き方（structures.SLOTS）から入れる所に割り振る。
     入れる所が空なら TODO（書き手が埋める）。"""
     import structures
     out = []
+    w = lambda t: wrap_jp(t, lim)   # noqa: E731
     keys = [k for k in structures.form_key(forms or "") if isinstance(k, str)]
     for k, ps in structures.assign(keys, list(pts)):
         ps = ps or []
@@ -129,7 +168,7 @@ def form_code(forms: str, pts):
             pre = pre or ["TODO 前提"]
             then = then or "TODO 帰結の一言（赤字になる）"
             if k == "帰結":
-                out.append("s.lead([" + qs(pre[:3]) + f'], "{q(then)}")')
+                out.append("s.lead([" + qs([w(x) for x in pre[:3]]) + f'], "{q(w(then))}")')
             else:
                 out.append(f's.lead_down("{q(chr(10).join(pre[:3]))}", "{q(then)}")')
         elif k == "ラベル":
@@ -137,33 +176,187 @@ def form_code(forms: str, pts):
                 h, _, rest = p.partition("：")   # 半角の「:」は文字の書式 {r:…} に使うので、全角の「：」だけで分ける
                 body, _, then = rest.partition("⇒")
                 then_arg = f', then="{q(then.strip())}"' if then.strip() else ""
-                out.append(f's.block("{q(h.strip())}：", ["{q(body.strip()) or "TODO 説明"}"]{then_arg})')
+                then_arg = f', then="{q(w(then.strip()))}"' if then.strip() else ""
+                out.append(f's.block("{q(h.strip())}：", ["{q(w(body.strip())) or "TODO 説明"}"]{then_arg})')
         elif k == "場合分け":
             pairs = [p.partition("：")[::2] for p in ps] or [("TODO 条件", "TODO 説明")]
-            out.append("s.cases([" + ", ".join(f'("{q(c.strip())}", "{q(d.strip()) or "TODO 説明"}")' for c, d in pairs[:3]) + "])")
+            out.append("s.cases([" + ", ".join(f'("{q(c.strip())}", "{q(w(d.strip())) or "TODO 説明"}")' for c, d in pairs[:3]) + "])")
         elif k == "展開":
             p = ps[0] if ps else "TODO 左 → TODO 右"
             a, _, b = p.partition("→")
-            out.append(f's.develop("{q(a.strip())}", "{q(b.strip()) or "TODO 結果"}")')
+            out.append(f's.develop("{q(w(a.strip()))}", "{q(w(b.strip())) or "TODO 結果"}")')
             out += [f's.p("{q(x)}")   # TODO 展開に入らなかった要点（入れる所を決める）' for x in ps[1:]]
         elif k == "問い":
             for p in (ps or ["TODO 問い？⇒ TODO 確かめた結果"])[:3]:
                 a, _, b = p.partition("⇒")
-                out.append(f's.ask("{q(a.strip())}", "{q(b.strip()) or "TODO 確かめた結果"}")')
+                out.append(f's.ask("{q(w(a.strip()))}", "{q(w(b.strip())) or "TODO 確かめた結果"}")')
         elif k == "手順":
             steps = []
             for p in ps:
                 chunks = re.split(r"(?<![0-9])[0-9０-９][.．](?![0-9])\s*", p)
                 steps += [x.strip() for x in (chunks[1:] if len(chunks) > 1 else chunks) if x.strip()]   # 「1.」の前（見出し）は外す
-            out.append("s.numbered([" + qs((steps or ["TODO 段1", "TODO 段2"])[:5]) + "])")
+            out.append("s.numbered([" + qs([w(x) for x in (steps or ["TODO 段1", "TODO 段2"])[:5]]) + "])")
         elif k == "式の注釈":
             out.append('# TODO 式と項の注釈：s.peq(...) と s.defs(...)（references/structures.md「式の注釈」）'
                        + (f'  要点：{"／".join(ps)[:80]}' if ps else ""))
         elif k == "余り":
             out += [f's.p("{q(p)}")   # TODO 形の入れる所の書き方でない要点（入れる所に移すか、ノートへ）' for p in ps]
         else:
-            out += [f's.p("{q(p)}")' for p in (ps or ["TODO 要点"])[:4]]
+            out += [f's.p("{q(w(p))}")' for p in (ps or ["TODO 要点"])[:4]]
     return out
+
+
+TAG = re.compile(r"\s*〔[^〕]*〕")   # 〔ゴール1〕〔事実3〕などの印（スライドには出さない）
+
+
+def placements(rows) -> dict:
+    """{枚: "beside" | "main"}：画像の図を置く型。左文右図（figure_beside）は本文の枚の半分まで（渡す前の確認と同じ基準）。
+    要点の少ない枚から「図が主役」（figure_main：左に図・右に補足）にする。試しで、全部を左文右図にして10枚中9枚になった。"""
+    import figplan
+    body = [r for r in rows if (col(r, "役割") or "本文") == "本文"]
+    imgs = []
+    for r in body:
+        fig = col(r, "図で見せるもの", "図")
+        if fig not in EMPTY and not figplan.pptx_part(fig):
+            imgs.append((len(items_of(col(r, "本文の要点"))), r["#"]))
+    cap = int(figplan.MAX_SHARE * len(body))
+    imgs.sort(key=lambda x: (-x[0], x[1]))   # 要点の多い枚ほど文を左に（左文右図）
+    return {n: ("beside" if i < cap else "main") for i, (_, n) in enumerate(imgs)}
+
+
+def compare_code(fig: str):
+    """図の案「…：比較：A（a、b）と B（c）…」から s.compare の行。読めなければ None（TODO のまま）。"""
+    body = fig.split("：", 2)[-1]
+    m = re.search(r"([^（）：。、]{1,16})（([^（）]{2,80})）\s*と\s*([^（）：。、]{1,16})（([^（）]{2,80})）", body)
+    if not m:
+        return None
+    side = lambda h, t: '("' + q(h.strip()) + '", [' + qs([x.strip() for x in re.split(r"[、／/]", t) if x.strip()][:4]) + "])"   # noqa: E731
+    return f"s.compare({side(m.group(1), m.group(2))}, {side(m.group(3), m.group(4))}, y=s.cur_y + 0.3)"
+
+
+def _fold(t: str, width: float, size: float = 18) -> str:
+    """箱に入る幅で2行に（zemi.wrap_to）。読めなければそのまま。"""
+    try:
+        import zemi
+        return zemi.wrap_to(t.strip(), width, size)
+    except Exception:
+        return t.strip()
+
+
+def flow_code(fig: str):
+    """図の案「…：流れ図：A → B → C」から、右の列に縦に並べる s.flow の行（比べの build.py の置き方）。読めなければ None。"""
+    body = fig.split("：", 2)[-1]
+    inner = [x for x in re.findall(r"[（(]([^（）()]*)[）)]", body) if re.search(r"→|⇒|->", x)]
+    body = inner[0] if inner else re.sub(r"[（(][^）)]*[）)]\s*$", "", body)   # 「確かめ方（A → B → C）」はかっこの中が流れ
+    body = body.strip()
+    items = [x.strip(" 。") for x in re.split(r"\s*(?:→|⇒|->)\s*", body) if x.strip(" 。")]
+    if not 3 <= len(items) <= 5 or any(len(x) > 24 for x in items):
+        return None
+    its = ", ".join('"' + q(_fold(x, 3.4)) + '"' for x in items)
+    return f's.flow([{its}], x=deck.area["fig_x"] + 0.8, y=deck.area["top"], w=3.6, h=0.75, gap=0.45, size=18)'
+
+
+def decision_code(fig: str):
+    """図の案「…：判定の流れ図：問い1？→ はい：結論1／いいえ：問い2？→ はい：結論2／いいえ：最後」から s.decision の行。読めなければ None。"""
+    body = fig.split("：", 2)[-1]
+    steps = re.findall(r"([^？?：／→（(]{3,40}[？?])\s*→\s*はい\s*[：:]\s*([^／)）]{1,30})", body)
+    last = re.findall(r"いいえ\s*[：:]\s*([^／？?)）]{1,30})(?:[)）]|$|。)", body)
+    if not 1 <= len(steps) <= 3 or not last:
+        return None
+    st = ", ".join('("' + q(_fold(a, 3.0)) + '", "' + q(_fold(b, 2.2)) + '")' for a, b in steps)
+    return f's.decision([{st}], "{q(_fold(last[-1], 2.2))}", x=deck.area["fig_x"] - 1.3, y=deck.area["top"], q_w=3.0, out_w=2.2)'
+
+
+def quiz_slices(text: str, rows):
+    """{枚: [(番号, 文)]}：設計メモ6節の問題と解答を、確認問題・解答の枚に順に割り振る（〔…〕の印は外す）。"""
+    import structures
+    try:
+        qi = structures.quiz_items(text) or {}
+    except Exception:
+        qi = {}
+    if not qi:
+        return {}
+    ids = list(qi)
+    out = {}
+    for role, k in (("確認問題", 0), ("解答", 3)):
+        slides = [r["#"] for r in rows if col(r, "役割") == role]
+        if not slides:
+            continue
+        per = -(-len(ids) // len(slides))
+        for j, n in enumerate(slides):
+            out[n] = [(i, TAG.sub("", qi[i][k]).strip()) for i in ids[j * per:(j + 1) * per]]
+    return out
+
+
+def quiz_wrapped(qz: dict) -> dict:
+    """確認問題・解答のスライド用：1行32字前後で改行（原稿は改行しない quiz_slices のまま）。"""
+    return {n: [(k, wrap_jp(t, 32)) for k, t in items] for n, items in qz.items()}
+
+
+def short_source(src: str) -> str:
+    """出典の欄 → 図の下の短い出典（「Walters ほか 2023」の形）。"""
+    m = re.match(r"\s*([A-Za-z][\w'-]+)", src or "")
+    y = re.search(r"(19|20)\d{2}", src or "")
+    if m:
+        who = m.group(1) + (" ほか" if re.search(r"&|et al|ほか|,\s*[A-Z]\.", src) else "")
+    else:
+        who = re.split(r"[「（(、,]", src or "")[0].strip()[:16]
+    return f"（{who} {y.group(0)}）" if who and y else ""
+
+
+def figs_py(work: Path, rows, text: str) -> str:
+    """軽量の回の figs.py の出発点：データの棒グラフ（2列の表）は描き上げ、ほかの図は TODO の関数（下書きの雛形を埋めて描く）。"""
+    import data as datamod
+    import figplan
+    try:
+        rel = os.path.relpath(SKILL / "scripts", work).replace("\\", "/")
+    except ValueError:
+        rel = (SKILL / "scripts").as_posix()
+    ds = datamod.datasets(text)
+    L = ['"""図。python figs.py [名前 ...]（名前は f_ を除いた部分）。データの棒グラフは scaffold.py が設計メモの3b節から描いた。TODO の図を描く"""',
+         "import sys", "from pathlib import Path", "",
+         "HERE = Path(__file__).resolve().parent",
+         f'sys.path.insert(0, str((HERE / "{rel}").resolve()))',
+         "from figkit import COL, LW, arrow, blank, box, fig, noticks, save  # noqa: E402,F401",
+         "import figlib  # noqa: E402,F401", "",
+         'OUT = HERE / "figs"', "OUT.mkdir(exist_ok=True)", ""]
+    for r in rows:
+        if (col(r, "役割") or "本文") != "本文":
+            continue
+        n, fig = r["#"], col(r, "図で見せるもの", "図")
+        if fig in EMPTY or figplan.pptx_part(fig):
+            continue
+        refs = datamod.refs(fig)
+        d = ds.get(refs[0]) if refs else None
+        vals = None
+        if d and len(d.get("head") or []) == 2:
+            try:
+                vals = [(r_[0], float(str(r_[1]).replace(",", "").replace("％", "").replace("%", ""))) for r_ in d["rows"]]
+            except ValueError:
+                vals = None
+        L.append("")
+        if vals:
+            unit = d["fields"].get("単位", "")
+            unit = "%" if unit in ("％", "%") else ("" if len(unit) > 3 else unit)
+            tail = d["fields"].get("驚き", "").split("実際")[-1]   # 驚きの文で「実際」のあとに先に出る値の棒を強調（ラベルは前半にも出る）
+            pos = sorted((tail.find(f"{v:g}"), i) for i, (_, v) in enumerate(vals) if tail.find(f"{v:g}") >= 0)
+            hi = pos[0][1] if pos else next((i for i, (lab, _) in enumerate(vals) if lab and lab in tail), None)
+            L += [f"def f_s{n:02d}():",
+                  f'    """{q(fig[:80])}（データ{refs[0]}：{q(d["title"][:40])}。scaffold.py が3b節の表から描いた。強調する棒は highlight）"""',
+                  "    f, ax = fig(5.6, 0.7 + 0.55 * " + str(len(vals)) + ")",
+                  "    figlib.bars(ax, [" + qs([v[0] for v in vals]) + "], [" + ", ".join(f"{v[1]:g}" for v in vals) + "]"
+                  + (f", highlight={hi}" if hi is not None else "") + (f', unit="{q(unit)}"' if unit else "") + ")",
+                  f'    save(f, OUT / "s{n:02d}.png")', ""]
+        else:
+            L += [f"def f_s{n:02d}():",
+                  f'    """TODO 図の案：{q(fig[:100])}',
+                  '    （figdraft.py の下書きの雛形を埋めて、ここに書き、描く）"""',
+                  f'    raise NotImplementedError("s{n:02d} の図はまだ（図の案のとおりに描く）")', ""]
+    L += ["", 'if __name__ == "__main__":',
+          '    names = sys.argv[1:] or [n[2:] for n in list(globals()) if n.startswith("f_")]',
+          "    for n in names:",
+          '        globals()["f_" + n]()']
+    return "\n".join(L) + "\n"
 
 
 def misplaced(work: Path, kind) -> str:
@@ -231,6 +424,11 @@ def build_py(work: Path, kind, title, rows) -> str:
               '        s.p("{b:" + k + "}' + ("  " if foreign else "　") + '" + txt, size=size, gap=gap if j < len(items) - 1 else 0.2)',
               ""]
     qa_slices = qa_split(work, kind, rows)
+    place = placements(rows)
+    ptext = plan.read_text(encoding="utf-8") if plan.exists() else ""
+    quiz = quiz_slices(ptext, rows) if kind == "memo" else {}
+    import data as datamod
+    dsets = datamod.datasets(ptext) if ptext else {}
     for r in rows:
         n, role = r["#"], col(r, "役割") or "本文"
         head = col(r, "●見出し")
@@ -285,7 +483,10 @@ def build_py(work: Path, kind, title, rows) -> str:
                 rng = f" ({ids[0]} to {ids[-1]})" if len(ids) >= 2 else f" ({ids[0]})" if ids else ""
                 head = ("Review Questions" if role == "確認問題" else "Answers") + rng
             L.append(f's.heading("{q(head or role)}")')
-            L.append(f'qa(s, [("TODO 番号", "TODO {role}の本文")])   # 設計メモの6節から')
+            if quiz.get(n):   # 設計メモの6節から scaffold.py が入れた（長ければ短く。くわしい説明は原稿へ）
+                L.append("qa(s, [" + ", ".join(f'("{q(k)}", "{q(t)}")' for k, t in quiz_wrapped(quiz)[n]) + "])")
+            else:
+                L.append(f'qa(s, [("TODO 番号", "TODO {role}の本文")])   # 設計メモの6節から')
         elif role != "本文":
             L.append(f's = deck.slide("{q(stitle or head or role)}")   # {role}：結論なし（帯も●も無い枚）')
             L.append('s.p("TODO")')
@@ -295,17 +496,20 @@ def build_py(work: Path, kind, title, rows) -> str:
             L.append(f's = deck.slide({first}, summary="{summ}")')
             if head not in EMPTY:
                 L.append(f's.heading("{q(head)}")')
-            L += form_code(col(r, "本文の形"), pts)
             import figplan
             ppt = figplan.pptx_part(fig) if fig not in EMPTY else None
+            refs = datamod.refs(fig) if fig not in EMPTY else []
+            cap = short_source(dsets[refs[0]]["fields"].get("出典", "")) if refs and refs[0] in dsets else ""
+            cap_arg = f', caption="{q(cap)}"' if cap else ""
+            if place.get(n) == "main":   # 図が主役：図を先に置き、文は右の細い列（1行13字前後。補足は図の読み方と言えること）
+                L.append(f'if (FIG / "s{n:02d}.png").exists(): s.figure_main(FIG / "s{n:02d}.png"{cap_arg})   # 図：{fig[:60]}（図が主役の型。scaffold.py が左文右図を半分までにするため選んだ）')
+            lim = 13 if place.get(n) == "main" else 13 if ppt and ppt.startswith("s.decision") else 16 if ppt and ppt.startswith("s.compare") else 19
+            L += form_code(col(r, "本文の形"), pts, lim)
             if ppt:
-                L.append(f'# TODO {fig[:60]}（画像ではなく {ppt} で組む）')
-            elif fig not in EMPTY:
-                import figplan
-                mn = figplan.parse_fig(fig)[1]
-                part = next((x[2] for x in figplan.FIG_MENU if x[0] == mn), "")
-                hint = f"。{mn}は {part}" if mn else ""
-                L.append(f'# s.figure_beside(FIG / "s{n:02d}.png", caption="（TODO 出典）")   # 図：{fig[:60]}（図は figs/s{n:02d}.png{hint}）')
+                cc = {"s.compare": compare_code, "s.flow": flow_code, "s.decision": decision_code}.get(ppt.split("（")[0].strip(), lambda _f: None)(fig)
+                L.append(cc + "   # 図の案から scaffold.py が組んだ（言い方を確かめる）" if cc else f'# TODO {fig[:60]}（画像ではなく {ppt} で組む）')
+            elif fig not in EMPTY and place.get(n) != "main":
+                L.append(f'if (FIG / "s{n:02d}.png").exists(): s.figure_beside(FIG / "s{n:02d}.png"{cap_arg})   # 図：{fig[:60]}（図は figs/s{n:02d}.png）')
         L.append("")
     L += ['NOTES = load_notes(HERE / "notes.md")',
           "for i, sl in enumerate(deck.slides, 1):",
@@ -327,8 +531,43 @@ def qa_split(work: Path, kind, rows):
     return {n: items[i * k:(i + 1) * k] for i, n in enumerate(slides)}
 
 
-def notes_md(kind, rows, care, minutes=None) -> str:
+def note_sources(text: str, cells: str) -> list:
+    """本文の要点・図の案の〔事実N〕〔データN〕から、3節・3b節の出典の「※ 出典：…」の行（スクリプトが原稿に入れる）。"""
+    out = []
+    try:
+        import facts
+        _, fh, frows = facts.memo_facts(text)
+        i_src = next((k for k, h in enumerate(fh) if "出典" in h), 2)
+    except BaseException:
+        frows, i_src = [], 2
+    import data as datamod
+    ds = datamod.datasets(text)
+    refs = []
+    for tag in re.findall(r"〔([^〕]*)〕", cells):   # 〔事実3・11〕〔データ1〕
+        for kind_, nums in re.findall(r"(事実|データ)\s*([0-9・、,\s]+)", tag):
+            refs += [(kind_, int(x)) for x in re.findall(r"\d+", nums)]
+    for kind_, n in refs:
+        if kind_ == "事実" and 1 <= n <= len(frows) and len(frows[n - 1]) > i_src:
+            src = frows[n - 1][i_src]
+        elif kind_ == "データ" and n in ds:
+            src = ds[n]["fields"].get("出典", "")
+        else:
+            continue
+        line = f"※ 出典：{src.strip()}"
+        if src.strip() and line not in out:
+            out.append(line)
+    return out
+
+
+def notes_md(kind, rows, care, minutes=None, text: str = "") -> str:
+    """原稿の骨組み。確認問題・解答の枚は設計メモの6節から原稿を書き、本文の枚には出典の行（※）を入れる（スクリプトで書ける所は書く）。"""
     body = [r for r in rows if (col(r, "役割") or "本文") == "本文"]
+    quiz = quiz_slices(text, rows) if text and kind == "memo" else {}
+    try:
+        import structures
+        qi = structures.quiz_items(text) if text and kind == "memo" else {}
+    except Exception:
+        qi = {}
     per = f"{minutes * 300 / max(len(body), 1):.0f}字" if minutes else "400字"
     L = []
     for r in rows:
@@ -342,7 +581,19 @@ def notes_md(kind, rows, care, minutes=None) -> str:
             hint.append(f"ノートへ：{note}")
         for c in care.get(n, []):
             hint.append(f"手当て：{c}")
-        L += [f"## {n}", "<!-- " + " ／ ".join(hint).replace("--", "—") + " -->", "", "TODO", ""]
+        if role == "確認問題" and quiz.get(n):
+            text_ = "確認問題です。まず自分で答えを考えてから、次の枚の解答と比べてください。\n\n" + "\n\n".join(f"{k}。{t}" for k, t in quiz[n])
+            L += [f"## {n}", "", text_, ""]
+            continue
+        if role == "解答" and quiz.get(n):
+            parts = []
+            for k, t in quiz[n]:
+                el = [TAG.sub("", e).strip() for e in (qi.get(k, ("", "", "", "", []))[4] or []) if e.strip()]
+                parts.append(f"{k} の解答です。{t}" + (f"\n\n押さえる所は、{'、'.join(el)}です。" if el else ""))
+            L += [f"## {n}", "", "\n\n".join(parts), ""]
+            continue
+        src = note_sources(text, col(r, "本文の要点") + " " + col(r, "図で見せるもの", "図")) if text and role == "本文" else []
+        L += [f"## {n}", "<!-- " + " ／ ".join(hint).replace("--", "—") + " -->", "", "TODO"] + ([""] + src if src else []) + [""]
     return "\n".join(L)
 
 
@@ -433,16 +684,20 @@ def try_part(work: Path, n: int) -> int:
     書き手が部品のソースや検査のスクリプトを読みに行かずに、自分の1枚を確かめるための道具。"""
     import subprocess
     part = work / "parts" / f"{n:02d}.py"
-    if not part.exists():
-        print(f"✘ {part} が無い")
-        return 1
     b = (work / "build.py").read_text(encoding="utf-8")
     bl = blocks(b)
     if not bl:
         print("✘ build.py に枚の印（# ---- N）が無い")
         return 1
+    if not part.exists() and n not in bl:
+        print(f"✘ {part} が無い")
+        return 1
     head = b[:min(a for a, _ in bl.values())]
-    code = MARK.sub("", part.read_text(encoding="utf-8")).strip("\n")
+    if part.exists():
+        code = MARK.sub("", part.read_text(encoding="utf-8")).strip("\n")
+    else:   # parts を使わない回（軽量）：build.py のその枚
+        x0, y0 = bl[n]
+        code = MARK.sub("", b[x0:y0]).strip("\n")
     tmp = work / f"_try_{n:02d}.py"
     out = work / "build" / f"_try_{n:02d}.pptx"
     tmp.write_text(head + "\n" + code + "\n\n(HERE / \"build\").mkdir(exist_ok=True)\n"
@@ -560,13 +815,16 @@ def main(argv=None):
         import contextlib
         import io
         bad = 0
-        for f in sorted((work / "parts").glob("[0-9][0-9].py")):   # 全部の枚：直す所がある枚だけ中身を出す
+        nums = sorted(int(f.stem) for f in (work / "parts").glob("[0-9][0-9].py"))
+        if not nums and (work / "build.py").exists():   # parts を使わない回（軽量）：build.py の本文の枚
+            nums = [k for k in sorted(blocks((work / "build.py").read_text(encoding="utf-8"))) if k > 1]
+        for k in nums:   # 全部の枚：直す所がある枚だけ中身を出す
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
-                code = try_part(work, int(f.stem))
+                code = try_part(work, k)
             rows = [l for l in buf.getvalue().splitlines() if l[:1] in ("✘", "△")]
             bad += code
-            print(f"[{f.stem}] " + ("✔" if not rows else "\n  " + "\n  ".join(rows)))
+            print(f"[{k:02d}] " + ("✔" if not rows else "\n  " + "\n  ".join(rows)))
         import figplan
         body = [t for t, is_body in TRY_TYPES.values() if is_body]
         side = sum(t == "左文右図" for t in body)
@@ -586,6 +844,45 @@ def main(argv=None):
         bad += any(m == "✘" for m, _, _ in fig_rows)
         print(f"\n✘ のある枚：{bad}。✘ と「1行20字」「出どころの断り」「下付き」の △ を直してから渡す（字数の値は参考）")
         return 1 if bad else 0
+    if "--light" in argv:   # 軽量の制作の担当の準備を1回の呼び出しで（呼ぶたびに会話を読み直すので、続けてよいものはまとめる）
+        import subprocess
+        py = [sys.executable, "-X", "utf8"]
+        if not (work / "build.py").exists():
+            code = main([str(work)])
+            if code:
+                return code
+        main([str(work), "--figs"])
+        for title, cmd in (("図の下書きの雛形", py + [str(HERE / "figdraft.py"), str(work)]),
+                           ("設計メモの話の順番・事実と出典・確認問題", py + [str(HERE / "guide.py"), str(work / "memo.md"), "2", "3", "6"])):
+            if title.startswith("設計メモ") and not (work / "memo.md").exists():
+                cmd = py + [str(HERE / "guide.py"), str(work / "outline.md"), "2"]
+            r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            print(f"\n===== {title}\n" + (r.stdout or r.stderr).strip())
+        btxt = (work / "build.py").read_text(encoding="utf-8")
+        b = btxt.splitlines()
+        todo = [f"{i}: {l.strip()[:120]}" for i, l in enumerate(b, 1) if "TODO" in l and not l.startswith('"""')]
+        print("\n===== build.py に残った TODO\n" + ("\n".join(todo) or "なし"))
+        common = work / "cards" / "00_共通.md"
+        if common.exists():
+            print("\n===== 書き方の共通の決まり（cards/00_共通.md）\n" + common.read_text(encoding="utf-8").strip())
+        for k, (x0, y0) in sorted(blocks(btxt).items()):   # TODO の枚だけ、その枚の部品の書き方（カードの節）
+            card = work / "cards" / f"{k:02d}.md"
+            if "TODO" in btxt[x0:y0] and card.exists():
+                m = re.search(r"^## 使う部品の書き方.*?(?=^## |\Z)", card.read_text(encoding="utf-8"), re.S | re.M)
+                if m:
+                    print(f"\n===== {k}枚目の部品の書き方\n" + m.group(0).strip())
+        return 0
+    if "--figs" in argv:   # 軽量の回：figs.py の出発点（データの棒グラフは描き上げ、ほかは TODO）。もうあれば書かない
+        fp = work / "figs.py"
+        if fp.exists():
+            print("figs.py はもうある（書き換えない）")
+            return 0
+        _, _, rows_, _ = plan(work)
+        kind_ = "memo" if (work / "memo.md").exists() else "outline"
+        fp.write_text(figs_py(work, rows_, (work / f"{kind_}.md").read_text(encoding="utf-8")), encoding="utf-8")
+        t = fp.read_text(encoding="utf-8")
+        print(f"figs.py を作った：描き上げた図 {t.count('scaffold.py が3b節の表から描いた')}・TODO の図 {t.count('raise NotImplementedError')}")
+        return 0
     if "--merge" in argv:
         done, refused = merge(work)
         b = (work / "build.py").read_text(encoding="utf-8")
@@ -613,7 +910,7 @@ def main(argv=None):
         (work / "parts").mkdir(exist_ok=True)
         made.append(f"cards/（本文 {len(list(cd.glob('[0-9][0-9].md')))}枚" + (f"、{src.name} の抜き出しつき）" if src else "。資料の抜き出しなし：--source で渡せる）"))
     for name, text in (("build.py", build_py(work, "outline" if kind == "answers" else kind, title, rows) if kind != "answers"
-                         else build_py(work, kind, title, rows)), ("notes.md", notes_md(kind, rows, care, minutes))):
+                         else build_py(work, kind, title, rows)), ("notes.md", notes_md(kind, rows, care, minutes, (work / {"memo": "memo.md", "answers": "answers.md"}.get(kind, "outline.md")).read_text(encoding="utf-8") if (work / {"memo": "memo.md", "answers": "answers.md"}.get(kind, "outline.md")).exists() else ""))):
         p = work / name
         if p.exists() and not force:
             print(f"・{name} はもうある（作らなかった。作り直すなら --force）")
@@ -621,7 +918,7 @@ def main(argv=None):
         p.write_text(text, encoding="utf-8")
         made.append(name)
     if made:
-        print(f"作った：{'・'.join(made)}（{len(rows)}枚）。TODO と、コメントにした図の行を書き換えてから make_deck.py")
+        print(f"作った：{'・'.join(made)}（{len(rows)}枚）。確認問題・解答・図の置き方・比較は設計メモから入れた。残った TODO を書き換えてから make_deck.py")
     return 0
 
 

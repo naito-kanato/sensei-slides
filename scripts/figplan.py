@@ -152,6 +152,8 @@ def planned_kind(desc: str):
     purpose, k = parse_fig(d)
     if purpose is not None and k is not None:
         return k if k in ("大きな数字", "比較", "流れ図", "判定の流れ図", "表") else "図"
+    if k == "判定の流れ図" or "s.decision" in d:   # 「確かめ方の判定の流れ図」：下の FLOW_WORDS で「流れ図」と読むと、s.decision と食い違った
+        return "判定の流れ図"
     if "大きな数字" in d:
         return "大きな数字"
     if re.search(r"並べて比べ|比較", d) and not TABLE_WORDS.search(d):
@@ -205,6 +207,13 @@ def plan_from_text(text: str, kind: str):
     """{スライド番号: 図の案の一文}。kind="memo"（講座の設計メモ）か "outline"（発表の構成案）。表が無ければ None。"""
     from check_memo import table_rows
     rows = table_rows(text, "図の案") if kind == "memo" else table_rows(text, "構成")
+    if not rows and kind == "memo":   # 5節「図の案」を書かない設計メモ（軽量）：2節の表の「図で見せるもの」の列を図の案として読む（同じ案を2回書かない）
+        rows = table_rows(text, "話の順番")
+        if rows:
+            i_f = next((k for k, h in enumerate(rows[0]) if "図で見せる" in h), None)
+            if i_f is None:
+                return None
+            return {int(r[0]): r[i_f] for r in rows[1:] if r and r[0].strip().isdigit() and len(r) > i_f}
     if not rows:
         return None
     head = rows[0]
