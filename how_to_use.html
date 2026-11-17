@@ -415,7 +415,7 @@ main{position:relative}
       <div class="b">足りない方針を答える<small>研究発表のとき</small></div><span class="a">→</span>
       <div class="b">構成案<small>あなたが確認</small></div><span class="a">→</span>
       <div class="b">図とスライド</div><span class="a">→</span>
-      <div class="b">検査とレビュー</div><span class="a">→</span>
+      <div class="b">検査</div><span class="a">→</span>
       <div class="b last">受け取る</div>
     </div>
     <p>あなたが答えるのは、最初の設定の確認と、構成案の確認の2回だけです（最初の確認では、聞き手がテーマにどのくらい詳しいかを聞かれます。発表時間は任意です）。
@@ -482,7 +482,7 @@ main{position:relative}
       <div class="b">Answer what is missing<small>for research talks</small></div><span class="a">→</span>
       <div class="b">Outline<small>you check it</small></div><span class="a">→</span>
       <div class="b">Figures and slides</div><span class="a">→</span>
-      <div class="b">Checks and review</div><span class="a">→</span>
+      <div class="b">Checks</div><span class="a">→</span>
       <div class="b last">Receive</div>
     </div>
     <p>You answer only twice: the settings check at the start and the outline check (the first check asks how familiar the audience is with the topic; the talk length is optional).
@@ -744,7 +744,7 @@ main{position:relative}
     <ol class="steps">
       <li><b>短い質問に答える</b>範囲・あなたの背景・ゴール・回数などを聞かれます。すでにわかっていることは聞かれません。答えなかった項目は既定の値で進み、どの値にしたかを知らせてきます。</li>
       <li><b>全体の地図を確認する</b>回ごとの題と「この回で言えるようになること」の表が出ます。回数や順番を直すならここで言います。</li>
-      <li><b>第1回が届く</b>スライドと原稿のページが届きます。届くまでに、数字と事実の探し・裏取りと、書いた AI とは別の AI（レビュー担当）によるレビュー、そのあとの直しが済んでいます。本文が10〜15枚に収まっているか、出典から資料を特定できるかも、設計の段階でプログラムが確かめています。</li>
+      <li><b>第1回が届く</b>スライドと原稿のページが届きます。届くまでに、数字と事実の探しと確かめ、描画の検査と直しが済んでいます（設定「軽さ：念入り」なら、書いた AI とは別の AI（レビュー担当）によるレビューと、そのあとの直しも）。本文が10〜15枚に収まっているか、出典から資料を特定できるかも、設計の段階でプログラムが確かめています。</li>
       <li><b>読んで、コメントと答えを書く</b>原稿のページで、わからない所にコメントし、確認問題に答えます。</li>
       <li><b>「コメントした」と伝える</b>答えのデッキが届きます。そのあと「次の回を作って」と頼むと、つまずいた所を冒頭で補った次の回が作られます。</li>
     </ol>
@@ -809,7 +809,7 @@ main{position:relative}
     <ol class="steps">
       <li><b>Answer a few short questions</b>You are asked about the scope, your background, your goal, the number of lectures and so on. Things it already knows are not asked. Items you skip use the default values, and it tells you which values it used.</li>
       <li><b>Check the course map</b>A table appears with each lecture's title and "what you will be able to explain after this lecture". If you want to change the number or order of lectures, say so here.</li>
-      <li><b>Lecture 1 arrives</b>You get the slides and the script page. Before that, the search for numbers and facts and their checking, a review by another AI (the reviewer) that did not write it, and the fixes after the review are all done. At the design stage, programs also check that the body fits in 10–15 slides and that each source can be traced to its document.</li>
+      <li><b>Lecture 1 arrives</b>You get the slides and the script page. Before that, the search for numbers and facts and their checking, and the render checks and fixes, are all done (with the lightness setting "careful", also a review by another AI (the reviewer) that did not write it, and the fixes after it). At the design stage, programs also check that the body fits in 10–15 slides and that each source can be traced to its document.</li>
       <li><b>Read, then write comments and answers</b>On the script page, comment where you are unsure and answer the quiz.</li>
       <li><b>Say "I commented"</b>The answer deck arrives. Then ask "Make the next lecture", and you get the next lecture with what you stumbled on covered at the start.</li>
     </ol>
@@ -881,10 +881,10 @@ main{position:relative}
         そのままでよければ「このまま進める」を選びます。</li>
       <li><b>資料が格納される</b>AI が中身を確かめてから、使う資料を発表ごとのフォルダの <code>資料/</code>（図・過去のスライド・その他）に写します。元のファイルはそのまま残ります。
         研究発表で目的・各図で見えること・結論がファイルに無ければ、ここで聞かれます。</li>
-      <li><b>構成案を確かめる</b>全スライドの見出しと「そのスライドの結論の一文」を並べた表が出ます。別の AI（レビュー担当）のレビューを済ませた版です。
+      <li><b>構成案を確かめる</b>全スライドの見出しと「そのスライドの結論の一文」を並べた表が出ます（設定「軽さ：念入り」なら、別の AI（レビュー担当）のレビューを済ませた版）。
         枚数が発表時間に合っているか、聞き手が止まる所に手当てがあるかも、この段階でプログラムが確かめています。直したい所を言うか、OK を出します。</li>
-      <li><b>待つ</b>AI が図を描き、スライドを組み、PowerPoint で描いて検査します。最後に、別の AI（レビュー担当）がスライドの画像をもう一度レビューします。</li>
-      <li><b>受け取る</b>スライドと原稿のページが届きます。描画の検査・原稿・レビューの記録がそろっているかを確かめてから渡されます。どれが AI の描いた図か、資料と照らして確かめてほしい点はどこかも、一緒に知らせてきます。</li>
+      <li><b>待つ</b>AI が図を描き、スライドを組み、PowerPoint で描いて検査します（念入りなら最後に、別の AI（レビュー担当）がスライドの画像をもう一度レビューします）。</li>
+      <li><b>受け取る</b>スライドと原稿のページが届きます。描画の検査・原稿（念入りならレビューの記録も）がそろっているかを確かめてから渡されます。どれが AI の描いた図か、資料と照らして確かめてほしい点はどこかも、一緒に知らせてきます。</li>
     </ol>
   </div>
 
@@ -905,6 +905,7 @@ main{position:relative}
         <tr><td>範囲</td><td><b>全部の結果</b>／主要な結果に絞る</td></tr>
         <tr><td>議論のスライド</td><td><b>入れない</b>／入れる（疑問点・限界・自分の研究との関係を1枚）</td></tr>
         <tr><td>構成案の確認</td><td><b>見せる</b>／任せる（見せずに完成まで進める）</td></tr>
+        <tr><td>軽さ</td><td><b>標準</b>（担当2人：設計と制作。見落としやすい所は検査のスクリプトが見る）／念入り（担当を分け、構成案と完成品を別の AI がレビューして直す。トークンは約3倍。伏せた採点では出来はほぼ同じ）</td></tr>
         <tr><td>トークンの上限</td><td>1回で使ってよいトークン（キャッシュの読みは1/10で数える）。<b>Codex 250万・Antigravity 200万・Claude Code 700万</b>／なし。超えたら止まって、続けてよいかを聞きます</td></tr>
       </tbody>
     </table>
@@ -945,10 +946,10 @@ main{position:relative}
         If they are fine, choose "Go ahead as is".</li>
       <li><b>The materials are filed</b>After checking their content, the AI copies the materials it will use into <code>資料/</code> (figures, earlier slides, other) in the talk's own folder. The original files stay where they are.
         For a research talk, if the aim, what each figure shows, or the conclusion is not in the files, you are asked here.</li>
-      <li><b>Check the outline</b>A table appears with every slide's heading and its one-sentence conclusion. It has already been reviewed by another AI (the reviewer).
+      <li><b>Check the outline</b>A table appears with every slide's heading and its one-sentence conclusion (with "careful", already reviewed by another AI, the reviewer).
         At this stage, programs have also checked that the number of slides fits the talk length and that the places where the audience may get stuck are dealt with. Say what to change, or give the OK.</li>
-      <li><b>Wait</b>The AI draws the figures, builds the slides, and renders them in PowerPoint to check them. Finally, another AI (the reviewer) reviews the slide images once more.</li>
-      <li><b>Receive</b>You get the slides and the script page. They are handed over only after checking that the render check, the script and the review records are all there. It also tells you which figures the AI drew and which points you should check against the material.</li>
+      <li><b>Wait</b>The AI draws the figures, builds the slides, and renders them in PowerPoint to check them (with "careful", another AI, the reviewer, finally reviews the slide images once more).</li>
+      <li><b>Receive</b>You get the slides and the script page. They are handed over only after checking that the render check and the script (with "careful", also the review records) are all there. It also tells you which figures the AI drew and which points you should check against the material.</li>
     </ol>
   </div>
 
@@ -969,6 +970,7 @@ main{position:relative}
         <tr><td>Scope</td><td><b>All results</b> / Main results only</td></tr>
         <tr><td>Discussion slide</td><td><b>None</b> / Add one (one slide on open questions, limits and links to your own research)</td></tr>
         <tr><td>Outline check</td><td><b>Show</b> / Leave it to the AI (go on to the end without showing it)</td></tr>
+        <tr><td>Lightness</td><td><b>Standard</b> (two agents: design and build; scripts check the spots writers often miss) / careful (separate agents; another AI reviews the outline and the finished deck, then fixes follow; about three times the tokens; in a blind comparison the quality was about the same)</td></tr>
         <tr><td>Token limit</td><td>The tokens one run may use (cache reads count as 1/10). <b>Codex 2.5M, Antigravity 2M, Claude Code 7M</b> / none. When it is exceeded, it stops and asks whether to continue</td></tr>
       </tbody>
     </table>
@@ -1338,8 +1340,8 @@ main{position:relative}
       <div class="in"><p>「まとめて作って」と言えば、続けて作ります。ただし前の回のつまずきを次の回に入れられないので、ふだんは1回ずつがおすすめです。</p>
         <p>次の回とコメントへの答えは、<b>新しい会話</b>で頼んでください（「次の回を作って」「コメントした」）。前の回の会話を続けると、その長い会話を毎回読み直すぶん、使用量が増えます。途中の状態は講座フォルダに残っているので、新しい会話でもそこから続きます。</p></div></details>
     <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>トークンをどのくらい使う？</summary>
-      <div class="in"><p>少なくはありません。資料の読み込み・図の描き直し・描画の検査のやり直し・別の AI（レビュー担当）によるレビューを、1デッキごとに行うからです。
-          目安は、レビュー担当1人分で約4万〜12.5万トークン、約50頁の論文をまるごと読ませると約18万トークンです。使いすぎを防ぐため、1回で使ってよいトークンには上限があり（設定の「トークンの上限」）、超えると止まって、続けてよいかを聞きます。</p>
+      <div class="in"><p>少なくはありません。資料の読み込み・事実の確かめ・図の描き直し・描画の検査のやり直しを、1デッキごとに行うからです。設定「軽さ：念入り」にすると、別の AI（レビュー担当）のレビューと直しが加わり、約3倍になります。
+          目安は、レビュー担当1人分（念入りのとき）で約4万〜12.5万トークン、約50頁の論文をまるごと読ませると約18万トークンです。使いすぎを防ぐため、1回で使ってよいトークンには上限があり（設定の「トークンの上限」）、超えると止まって、続けてよいかを聞きます。</p>
         <p>自分の使い方で何本作れるかは、ツールと時期で変わります。1デッキ作ったあとに、ツールの使用量の画面で割合を見て判断してください。</p>
         <p>使用量を減らすコツは4つです。メインのモデルを標準くらいのものにする（別のエージェントもメインと同じモデルで動きます）。1回のデッキを本文10〜15枚に収める。資料は使う章だけ読ませる。講座の次の回やコメントへの答えは、新しい会話で頼む（前の長い会話を読み直さずに済む）。
           上限に近づいて作業を区切っても、作業フォルダに途中の状態が残るので、あとで「続きを作って」と頼めば続けられます。</p></div></details>
@@ -1376,8 +1378,8 @@ main{position:relative}
       <div class="in"><p>Say "Make them all at once" and it makes them one after another. But then what you stumble on cannot feed into the next lecture, so one at a time is usually better.</p>
         <p>Ask for the next lecture and for answers to comments in a <b>new chat</b> ("Make the next lecture", "I commented"). If you continue the previous lecture's chat, the agent rereads that long chat every time, and usage goes up. The state so far is kept in the course folder, so a new chat picks up from there.</p></div></details>
     <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>How many tokens does it use?</summary>
-      <div class="in"><p>Quite a few. For each deck it reads the materials, redraws figures, redoes the render checks, and has another AI (the reviewer) review the work.
-          As a rough guide, one reviewer takes about 40k–125k tokens, and having it read a whole paper of about 50 pages takes about 180k tokens. To prevent overuse, there is a limit on the tokens one run may use (the "Token limit" setting); when it is exceeded, it stops and asks whether to continue.</p>
+      <div class="in"><p>Quite a few. For each deck it reads the materials, redraws figures, redoes the render checks, and checks the facts. With the lightness setting "careful", another AI (the reviewer) also reviews the work and the fixes are redone, which uses about three times as much.
+          As a rough guide, one reviewer (with "careful") takes about 40k–125k tokens, and having it read a whole paper of about 50 pages takes about 180k tokens. To prevent overuse, there is a limit on the tokens one run may use (the "Token limit" setting); when it is exceeded, it stops and asks whether to continue.</p>
         <p>How many decks you can make depends on the tool and the time. After making one deck, look at the share used on your tool's usage screen and decide.</p>
         <p>Four tips to use less: use a standard-level main model (the other agents run on the same model as the main one). Keep each deck to 10–15 body slides. Have it read only the chapters you use. Ask for the next lecture or answers to comments in a new chat (so the long earlier chat is not reread).
           If you stop the work near the limit, the state so far is kept in the work folder, so you can ask "Continue" later to pick it up.</p></div></details>

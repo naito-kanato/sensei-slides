@@ -310,9 +310,20 @@ def main(argv=None):
     bad = sum(m == "✘" for m, _, _ in res)
     warn = sum(m == "△" for m, _, _ in res)
     reviewed = p.with_name(REVIEW).exists()
-    nxt = "中身（図・ビルド）に進んでよい" if reviewed else "レビューに回してよい"
+    try:
+        import budget
+        light = budget.light(p.parent)
+    except Exception:
+        light = False
+    nxt = "中身（図・ビルド）に進んでよい" if reviewed or light else "レビューに回してよい"
     print("\n" + (f"✘ が {bad} 件。直してから先へ" if bad else
                   f"△ が {warn} 件。直すか理由を書いてから先へ" if warn else nxt) + f"（{p.name}）")
+    if not bad and light:
+        try:   # 担当2人の回：次の手順も続けて出す（設計の担当が返答の最後の行に写す。メインが next_step を別に呼ばずに済む）
+            import next_step
+            print(f"次：{next_step.steps_for(p.parent)[1]}")
+        except Exception:
+            pass
     return 1 if bad else 0
 
 

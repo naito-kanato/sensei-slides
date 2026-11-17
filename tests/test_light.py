@@ -95,3 +95,23 @@ def test_design_content_hook_and_repeat():
     assert {m for m, _, _ in check_memo.design_content(weak, False)} == {"△"}
     good = weak.replace("| 2 | 仕組み | — | 文はトークンに分かれる |", "| 2 | 問い | — | AIは調べて答えている？ |").replace("| 5 | 限り | しかし | 検索しても17〜33%残る | 比べる：棒グラフ：データ1 |", "| 5 | 限り | しかし | 検索しても残る | 仕組み：模式図：z |")
     assert [m for m, _, _ in check_memo.design_content(good, True)] == ["✔"]
+
+
+def test_light_presentation_shows_the_outline_first(tmp_path):
+    """発表（担当2人）：構成案の検査が通ったら、組む前にユーザーに見せる（「構成案の確認：任せる」なら見せずに制作へ）。"""
+    import shutil
+    import check_outline
+    root = Path(__file__).resolve().parents[1]
+    w = tmp_path / "_work" / "ゼミ"
+    w.mkdir(parents=True)
+    for f in ("outline.md", "data_1.md"):
+        if (root / "examples" / "zemi" / f).exists():
+            shutil.copy(root / "examples" / "zemi" / f, w / f)
+    p = w / "outline.md"
+    p.write_text(p.read_text(encoding="utf-8").replace("| 軽さ | 念入り |", "| 軽さ | 標準 |"), encoding="utf-8")
+    assert budget.light(w)
+    assert not [r for r in check_outline.check(p) if r[0] == "✘"]
+    _, nxt = next_step.steps_for(w)
+    assert nxt.startswith("構成案をユーザーに見せる") and "軽量の制作の担当" in nxt
+    p.write_text(p.read_text(encoding="utf-8").replace("| 軽さ | 標準 |", "| 軽さ | 標準 |\n| 構成案の確認 | 任せる |"), encoding="utf-8")
+    assert next_step.steps_for(w)[1].startswith("軽量：制作の担当1人を起動")

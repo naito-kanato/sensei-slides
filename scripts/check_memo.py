@@ -473,12 +473,17 @@ def main(argv=None):
     report.show(res, full)
     bad = sum(m == "✘" for m, _, _ in res)
     warn = sum(m == "△" for m, _, _ in res)
+    try:
+        import budget
+        then = "制作に回す" if budget.light(memo.parent) else "レビューに回す"   # 担当2人の回には、別のレビューが無い
+    except Exception:
+        then = "レビューに回す"
     if bad:
-        print(f"\n✘ が {bad} 件。直してからレビューに回す（{memo.name}）")
+        print(f"\n✘ が {bad} 件。直してから{then}（{memo.name}）")
     elif warn:
-        print(f"\n△ が {warn} 件。直すか理由を書いてから、レビューに回す（{memo.name}）")
+        print(f"\n△ が {warn} 件。直すか理由を書いてから、{then}（{memo.name}）")
     else:
-        print(f"\nレビューに回してよい（{memo.name}）")
+        print(f"\n{then.replace('回す', '回してよい')}（{memo.name}）")
     if not bad:
         try:   # 軽量の回：次の手順も続けて出す（設計の担当が next_step を別に呼ぶ1回を省く）
             import budget
