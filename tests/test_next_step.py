@@ -19,6 +19,12 @@ def test_course_folder_points_to_the_first_memo(tmp_path):
     (c / "00_README.md").write_text("# 焼き肉講座\n\n## 全体の地図\n", encoding="utf-8")
     lines, nxt = next_step.course_next(c)
     assert "第1回" in nxt and "_work/焼き肉講座_01/memo.md" in nxt
+    assert "地図に OK" in nxt   # 回数が分からない（全2回以上かもしれない）講座は、地図を見せる
+    one = tmp_path / "一回" / "焼き肉講座"
+    one.mkdir(parents=True)
+    (one / "00_README.md").write_text("# 焼き肉講座（全1回）\n\n## 全体の地図\n\n| 回 | 題 |\n|---|---|\n| 1 | はじめに |\n", encoding="utf-8")
+    _, nxt = next_step.course_next(one)
+    assert "地図はユーザーに見せずに進む" in nxt and "地図に OK" not in nxt   # 全1回の講座は、地図を見せない
 
 
 def test_example_course_reports_each_step(built):

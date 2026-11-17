@@ -322,10 +322,21 @@ def course_next(course: Path):
         w = unfinished[0]
         return lines, f"{w.name} の途中：python {SKILL}/scripts/next_step.py {(root / w.name).as_posix()} で続きを見る"
     n = max(int(m[:2]) for m in made) + 1 if made else 1
-    first = ((ONE if source_based(readme) else ANY).replace("<work>", f"_work/{course.name}_{n:02d}") + " → "
-             f"設計の担当が data_N.md を見て _work/{course.name}_{n:02d}/memo.md を書く（references/course.md 手順4）")
-    return lines, (f"第{n}回：{first}。設計の前に、前の回のコメント・答え（00_README.md のつまずき一覧）を読む" if made else
-                   f"第1回：ユーザーが 00_README.md の地図に OK を出したら、{first}")
+    w = f"_work/{course.name}_{n:02d}"
+    import budget
+    if budget.light(root / f"{course.name}_{n:02d}"):   # 既定（軽さ：標準）：設計の担当が数字も探す
+        first = f"軽量の設計の担当を起動（`brief.py 軽量の設計の担当 {w}`）。数字・筋・事実の確かめまで1人で {w}/memo.md を書く"
+    else:
+        first = ((ONE if source_based(readme) else ANY).replace("<work>", w) + " → "
+                 f"設計の担当が data_N.md を見て {w}/memo.md を書く（references/course.md 手順4）")
+    if made:
+        return lines, f"第{n}回：{first}。設計の前に、前の回のコメント・答え（00_README.md のつまずき一覧）を読む"
+    t = readme.read_text(encoding="utf-8")
+    m = re.search(r"全\s*(\d+)\s*回", t)
+    total = int(m.group(1)) if m else len(re.findall(r"^\|\s*\d+\s*\|", t, re.M))
+    if total == 1:   # 全1回の講座：地図は見せずに進む（1回分の題とゴールは、ヒアリングの答えでもう決まっている）
+        return lines, f"第1回：{first}（全1回の講座なので、地図はユーザーに見せずに進む）"
+    return lines, f"第1回：ユーザーが 00_README.md の地図に OK を出したら、{first}"
 
 
 def overview(top: Path):
