@@ -80,3 +80,18 @@ def test_scaffold_builds_more_from_the_memo():
     rows = [{"#": 1, "役割": "表紙"}] + [{"#": n, "役割": "本文", "本文の要点": "a / b / c" if n % 2 else "a", "図で見せるもの": "仕組み：模式図：x"} for n in range(2, 12)]
     pl = scaffold.placements(rows)
     assert list(pl.values()).count("beside") <= 5 and "main" in pl.values()   # 左文右図は本文の半分まで
+
+
+def test_design_content_hook_and_repeat():
+    """設計の中身：本文の最初の2枚に問いか意外な事実が無い・同じデータを2枚で見せる、を軽量の回は ✘、標準の回は △。"""
+    import check_memo
+    head = "## 2. 話の順番\n\n| # | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 本文の要点 | 役割 |\n|---|---|---|---|---|---|---|\n"
+    weak = head + ("| 1 | 表紙 | — | — | — | — | 表紙 |\n| 2 | 仕組み | — | 文はトークンに分かれる | 仕組み：模式図：x | a | 本文 |\n"
+                   "| 3 | 確率 | そして | 次の語を確率で選ぶ | 仕組み：模式図：y | b | 本文 |\n"
+                   "| 4 | 意外 | しかし | 誤りは17〜33%だった | 比べる：棒グラフ：データ1 | c | 本文 |\n"
+                   "| 5 | 限り | しかし | 検索しても17〜33%残る | 比べる：棒グラフ：データ1 | d | 本文 |\n")
+    marks = {i: m for m, i, _ in check_memo.design_content(weak, True)}
+    assert marks.get("冒頭の問い") == "✘" and marks.get("同じデータのくり返し") == "✘"
+    assert {m for m, _, _ in check_memo.design_content(weak, False)} == {"△"}
+    good = weak.replace("| 2 | 仕組み | — | 文はトークンに分かれる |", "| 2 | 問い | — | AIは調べて答えている？ |").replace("| 5 | 限り | しかし | 検索しても17〜33%残る | 比べる：棒グラフ：データ1 |", "| 5 | 限り | しかし | 検索しても残る | 仕組み：模式図：z |")
+    assert [m for m, _, _ in check_memo.design_content(good, True)] == ["✔"]

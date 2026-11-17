@@ -588,8 +588,14 @@ def notes_md(kind, rows, care, minutes=None, text: str = "") -> str:
         if role == "解答" and quiz.get(n):
             parts = []
             for k, t in quiz[n]:
-                el = [TAG.sub("", e).strip() for e in (qi.get(k, ("", "", "", "", []))[4] or []) if e.strip()]
-                parts.append(f"{k} の解答です。{t}" + (f"\n\n押さえる所は、{'、'.join(el)}です。" if el else ""))
+                it = qi.get(k, ("", "", "", "", []))
+                el = [TAG.sub("", e).strip() for e in (it[4] or []) if e.strip()]
+                basis = (re.findall(r"(\d+)\s*枚", it[2] or "") if isinstance(it[2], str) else [str(it[2])] if isinstance(it[2], int)
+                         else [str(x) for x in (it[2] or [])])
+                back = f"{'・'.join(basis)}枚目で見たことを思い出してください。" if basis else ""
+                need = ("、".join(f"「{e}」" for e in el[:-1]) + f"、それに「{el[-1]}」" if len(el) >= 2 else f"「{el[0]}」" if el else "")
+                parts.append(f"{k} です。{back}答えは、{t.rstrip('。')}。"
+                             + (f"\n\n{need}{'の' + str(len(el)) + 'つ' if len(el) >= 2 else ''}が入っていれば正解です。" if el else ""))
             L += [f"## {n}", "", "\n\n".join(parts), ""]
             continue
         src = note_sources(text, col(r, "本文の要点") + " " + col(r, "図で見せるもの", "図")) if text and role == "本文" else []

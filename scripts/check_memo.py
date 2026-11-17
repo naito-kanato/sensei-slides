@@ -366,6 +366,11 @@ def check(memo: Path, require_review: bool = False):
                     + " / ".join(f"「{a[:14]}」→{b[:20]}" for a, b in bad[:4])))
     else:
         res.append(("✔", "出典", "○ の行はすべて資料を特定できる"))
+    try:
+        import budget as _b
+        res += design_content(text, _b.light(memo.parent))
+    except Exception:
+        pass
     try:   # 軽量の回（裏取りの担当がいない）：確認がまだの事実を残さない（試しで、「一般」にした数値の行が2回とも残り、往復が増えた）
         import budget
         import facts
@@ -382,6 +387,64 @@ def check(memo: Path, require_review: bool = False):
     import check_outline  # 関数の中で読む（check_outline → check_memo の循環を避ける）
     res += check_outline.reasoning(memo, text, require_review, review=MEMO_REVIEW, default_level=0, what="設計メモ")
     return res
+
+
+HOOK_BODY = 2   # 本文の最初の何枚までに、問いか意外な事実を置くか（試しで、仕組みの説明が3枚続いてから問いが出て「引き込みが遅い」と減点された）
+
+
+def _fig_src(text: str, n: int) -> list:
+    """5節「図の案」の表の、その枚の行の全部のセル（値の出どころの列も）。"""
+    rows = table_rows(text, "図の案") or []
+    return [" ".join(r) for r in rows[1:] if r and r[0].strip() == str(n)]
+
+
+def design_content(text: str, light: bool):
+    """[(印, 項目, 説明)]：設計の中身で、外から見た採点で毎回減点された所。軽量の回は ✘（レビュー担当がいない）、標準の回は △。
+    ・冒頭：本文の最初の HOOK_BODY 枚に、問い（？）か意外な事実（しかし・データN・数字の青帯）が無い
+    ・くり返し：同じデータN を、本文の2枚以上の図で見せている（4枚目と9枚目で同じ表、と減点された）"""
+    rows = table_rows(text, "話の順番")
+    if not rows:
+        return []
+    head = rows[0]
+    ix = lambda *names: next((k for k, h in enumerate(head) if any(n in h for n in names)), None)   # noqa: E731
+    i_role, i_fig, i_pts, i_sum, i_link = ix("役割"), ix("図で見せる"), ix("本文の要点"), ix("青帯", "結論"), ix("前の枚から")
+    get = lambda r, i: (r[i] if i is not None and i < len(r) else "")   # noqa: E731
+    body = [r for r in rows[1:] if r and r[0].strip().isdigit() and (get(r, i_role) or "本文").strip() == "本文"]
+    if not body:
+        return []
+    mark = "✘" if light else "△"
+    out = []
+    first = body[:HOOK_BODY]
+    hooked = any("？" in get(r, i_pts) + get(r, i_sum) or "?" in get(r, i_sum)
+                 or re.search(r"データ\s*\d", get(r, i_fig) + get(r, i_pts))
+                 or "しかし" in get(r, i_link) for r in first)
+    try:   # 筋の表の「問い」を最初の枚に置いている（その枚に問いの一文を載せる決まりは別の検査）
+        import story
+        qn = ((story.story_table(text) or {}).get("問い") or ("", None))[1]
+        hooked = hooked or (qn is not None and str(qn) in {r[0].strip() for r in first})
+    except Exception:
+        pass
+    if not hooked:
+        out.append((mark, "冒頭の問い", f"本文の最初の {len(first)} 枚（{'・'.join(r[0] for r in first)}枚目）に、問い（？）も意外な事実（しかし・データN）も無い。"
+                    "1枚目の本文で、学習者の思い込みを問う一文か、驚きのある数字を出す（筋の表の問いを前へ。仕組みの説明はそのあと）。references/story.md 3節"))
+    import figplan
+    cells = {n: " ".join(v) for n, v in figplan.fig_cells(text, "memo").items()}   # 2節の図の列と5節の図の案（値の出どころも）
+    body_no = {r[0].strip() for r in body}
+    seen = {}
+    for n, c in cells.items():
+        if str(n) in body_no:
+            for d in dict.fromkeys(re.findall(r"データ\s*(\d+)", c + " " + " ".join(r for r in _fig_src(text, n)))):
+                seen.setdefault(f"データ{d}", []).append(str(n))
+    for r in body:   # 青帯に同じ数字（2桁以上・%・〜の幅）をくり返す枚（試しで「誤り17〜33%」を4枚目と9枚目の青帯に）
+        for v in dict.fromkeys(re.findall(r"\d{2,}(?:[〜~-]\d+)?\s*[%％]|\d+[〜~-]\d+\s*[%％]", get(r, i_sum))):
+            seen.setdefault(v.replace(" ", ""), []).append(r[0].strip())
+    dup = {n: v for n, v in seen.items() if len(set(v)) >= 2}
+    if dup:
+        out.append((mark, "同じデータのくり返し", "；".join(f"{n} を {'・'.join(dict.fromkeys(v))}枚目で" for n, v in dup.items())
+                    + "。同じ表・数字を2回見せない（あとの枚は、前の枚を指して言葉で振り返るか、別の数字・例にする。まとめの枚での振り返りは数えない）"))
+    if not out:
+        out.append(("✔", "冒頭とくり返し", f"本文の最初の {len(first)} 枚に問いか意外な事実があり、同じデータを2回見せていない"))
+    return out
 
 
 def main(argv=None):
