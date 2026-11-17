@@ -17,6 +17,7 @@ PowerPoint があるのに描けないときは、LibreOffice に代えずに止
   5. 描画の検査（check_layout.py --brief：直す所だけ）と、原稿の確認（check_notes.py：✘・△ だけ）
   6. 最後に1行：ERROR・WARN・原稿の ✘ の数と、次にやること
   7. 組みの記録：枚ごとの指紋を <work>/build_log.jsonl に1行足す（何枚作り直したか。build_log.py）
+  8. 最後の回（ERROR・WARN・✘ が0、回数の上限の回、--final）なら、原稿HTML（notes_html.py）も作る（担当が別に走らせる1回を省く）
 
 直すときは、出た所を全部まとめて直してから、もう一度これだけを走らせる（render_check・check_layout を別々に呼ばない）。
 会話に載る出力を短くして、使用量を抑えるための部品。終了コード：ERROR か原稿の ✘ があれば 1。
@@ -267,6 +268,13 @@ def main(argv=None):
     if runs > 6 and (n_err or n_warn or n_x):
         print(f"△ make_deck は {runs} 回目。出た所を1回で全部直す（直す前に、上の一覧を全部読んでから手を付ける）。"
               "同じ枚が何度も出るなら、本文を削るか図を小さくするなど、形を変える")
+    last = final or not (n_err or n_warn or n_x or "←" in lay) or used + 1 >= cap
+    if last:
+        code, text = run([sys.executable, "-X", "utf8", str(HERE / "notes_html.py"), str(pptx)], pptx.parent)
+        saved = re.findall(r"saved (.+?\.html)", text)
+        print(f"原稿HTML：作った（{Path(saved[-1]).name}）" if code == 0 and saved
+              else "✘ 原稿HTMLが作れなかった：" + " / ".join(short(text, 3) or text.strip().splitlines()[-3:])
+              + f"（python {HERE.as_posix()}/notes_html.py \"{pptx.name}\" を単独で走らせる）")
     nxt = ("上に出た所を**全部**（ERROR・WARN・←・✘、直せる △ も）直してから、もう一度だけ make_deck.py（1か所ずつ回さない）"
            if (n_err or n_warn or n_x or "←" in lay)
            else "完成後のレビュー（手順5b。レビュー担当には render/grid-*.jpg を見せる）")

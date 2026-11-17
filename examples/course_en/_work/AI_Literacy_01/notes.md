@@ -1,131 +1,184 @@
 ## 1
-Welcome to Lecture 1. Today we look at what the chat AI you use every day is actually doing inside.
+<!-- 表紙の枚 ／ ノートへ：この回のゴール3つ -->
 
-By the end, there are three things I'd like you to be able to explain. What generative AI computes. Why plausible-sounding mistakes happen. And how to check AI's answers, how to ask it things, and what you should not put into it.
+Welcome. In this lecture, we look at what a chat AI actually computes when it writes a reply to you.
+
+By the end, you should be able to do three things. First, explain how the model writes: one token at a time, it gives every possible next token a probability and draws one. Second, explain why fluent but wrong answers, such as made-up facts, sources and numbers, are a natural result of that process, not a rare accident. Third, check an answer yourself: open the cited source, re-ask in a new chat, and recompute the numbers.
+
+Our theme today: fluent is not the same as true.
+
+You only need to have used a chat AI before. Let's start with what happens when it reads your question.
 
 ## 2
-A chat AI answers your questions smoothly, in natural sentences. So what is it doing inside, and how far can you trust its answers? This lecture answers those questions.
+You have probably typed a question into a chatbot and got a smooth, confident answer back. So what is actually going on inside?
 
-At the heart of a chat AI is something called a large language model, or LLM. It is given a vast amount of text to read, and from it picks up, as probabilities, which words tend to follow which. This is called training. When it writes a sentence, it follows steps 1 to 3 on the left: it reads the preceding context, then computes how likely each word is to come next.
+Look at the chart on the right. It shows what the model sees after the words "The capital of Australia is". Each bar is one candidate for the next token, and its height is the probability the model gives it. Canberra, in blue, is tall. Sydney, in red, is shorter, but it is clearly there. The numbers on this chart are only an example.
 
-The figure on the right shows example candidates for the word after "Tomorrow's weather is." The probabilities are just an example, but "sunny" is the highest, followed by "rainy" and "cloudy." The model picks one according to these probabilities, appends it, and builds the sentence that way.
+The model does this for every token in its vocabulary. GPT-2, for instance, has 50,257 of them. Then it draws one, weighted by those probabilities, appends it to the text, and does the whole thing again.
 
-A common misconception is that the AI looks up the answer in some database and shows it to you. The model itself does not search anything; it builds the text one word at a time from these probabilities. Services that search while answering are covered on slide 8.
+Think of the next-word suggestions on your phone keyboard, scaled up until it writes the whole reply. And here is a trap: Sydney is Australia's largest city, but it is not the capital, and it still gets a real share of the probability.
 
-These probabilities come from how often words follow each other in a vast amount of text; they do not directly check whether something is true. So the key point is that what it computes is "plausibility," not whether something is a fact.
-
-Now, do you think it always picks the most likely word? We'll answer that on slide 6.
-
-* (Source) Brown et al., NeurIPS 2020 (GPT-3).
+Before we go on, make a guess. When it answered, did it look the answer up somewhere? Keep that guess in mind. First, let's see what a token actually is.
 
 ## 3
-I said "word" just now, but strictly speaking, the unit a model handles is a token: a word or part of a word. The figure on the right splits "Tomorrow's weather is sunny" into five tokens, but the actual split differs from model to model. In some languages, such as Japanese, a single character can even become two or more tokens.
+Let's look more closely at the candidates from the last slide. The unit the model chose from was not a word. It was a token.
 
-How much a model can read at once is also set in tokens. For example, GPT-3, a large language model from 2020, could handle up to 2048 tokens. Today's models can read much more, but there is still a limit.
+Below, the same sentence, "The capital of Australia is", is cut into boxes. Each box is one token. Short, common words often get a box of their own, and longer or rarer words can be split into pieces. The 27 characters of this sentence became 5 tokens. At the bottom, a rare place name, Dubbo, is cut into two pieces. The split shown here is just an example, because each model has its own way of cutting text.
 
-So if you hand it a long document, it may not all fit in at once. One way around this is to give it the document chapter by chapter.
+So how long is a token? OpenAI gives a rule of thumb for English: one token is about 4 characters, or about three quarters of a word. In other words, 100 tokens is roughly 75 words.
 
-* (Source) Brown et al., NeurIPS 2020 (GPT-3's context length of 2048 tokens). How Japanese is split depends on the model; this is a general point.
+Here is where people slip. That ratio is for English. OpenAI notes that other languages have different ratios, so do not carry the 4-character rule over to every language.
+
+Tokens also set the length limit. What the model can read at once is counted in tokens, not in words or pages. For GPT-3 in 2020, that limit was 2,048 tokens.
+
+Next, how does the model learn which token should come next?
 
 ## 4
-Next, how is this model made? Training has two main stages.
+The answer is training.
 
-The first is pretraining. The model reads a vast amount of text and practices predicting the next word. But on its own, this gives a model that "continues text," and it won't necessarily answer questions. Since all it does is predict the next word, after a question it might write a continuation of the question, or another question, instead of an answer.
+Follow the flow chart on the right from the top. Take some real text and hide the next token. The model guesses it. The guess is compared with the real token, and the numbers inside the model are nudged a little toward the right answer. Then it all repeats, again and again.
 
-The second stage is tuning. The model learns from example answers written by people, and is then adjusted with reinforcement learning based on how people ranked its answers. Reinforcement learning is training that nudges the model toward answers that get high ratings. This is the third box in the flow on the right: RLHF, reinforcement learning from human feedback.
+Those numbers are called parameters. They are values inside the model that training sets. GPT-3 has 175 billion of them. During training, GPT-3 read about 300 billion tokens drawn from web pages, books and Wikipedia.
 
-This tuning makes a big difference. In one study, answers from a tuned model with 1.3 billion parameters were preferred over those from GPT-3, an untuned model with 175 billion parameters. A parameter is a number inside the model whose value is set by training. The study also reported more factual answers and fewer harmful outputs. As we'll see on slide 5, more parameters generally means the model can learn more. Yet a tuned model more than 100 times smaller won, which suggests that what mattered was less the amount of knowledge and more the way of answering. One view is that tuning mainly changes how the model answers.
+Be careful with that number. 300 billion is how many tokens it saw during training, not the size of the data itself.
+※ The mix of filtered Common Crawl, WebText2, Books and Wikipedia adds up to about 499 billion tokens. Training sampled from it with weights.
 
-* (Source) Ouyang et al., NeurIPS 2022 (InstructGPT).
-* (Supplement beyond the sources) One view holds that most knowledge comes from pretraining and tuning mainly changes how the model answers (Zhou et al., "LIMA", NeurIPS 2023).
+Now look at what the loop actually checks: only whether the guess matched the real text. So what it learns is how text continues, not a list of facts. Hold on to that; we will need it later.
+
+So what happens when you actually chat with a model like this?
 
 ## 5
-What exactly is "large" about a large language model? It is the number of parameters we met on slide 4, the numbers inside the model.
+Look at the picture on the right. The whole chat is laid out as one long document: the instructions, then your message, its reply, your next message, and finally an empty slot where the reply's next token goes. Every time you send a message, all of this is sent to the model in full. OpenAI's documentation describes each request as independent and stateless. So the model's "memory" of the chat is really just this document, handed over again each turn, and the reply is its likely continuation.
 
-As the numbers on the slide show, GPT-2 in 2019 had 1.5 billion parameters, and GPT-3 in 2020 had 175 billion: more than a 100-fold jump in just over a year.
+But there is a catch. A model that only predicts how text continues will not necessarily continue in the form of an answer to your question. That is why tuning comes in. Plain GPT-3 just continues text. InstructGPT was tuned on example replies written by people, and on people's rankings of its own replies, so that preferred replies became more likely.
 
-There was a reason for making models bigger. It has been reported that as you increase model size, amount of data, and compute, the error in predicting the next word falls steadily, following a power law. A power law here means that every time you make the model 10 times bigger, the error drops by a fixed ratio. Some of these trends held over a range of more than seven orders of magnitude. The better the predictions, the more natural the text. But becoming natural is not the same as becoming correct, and that is the topic of slide 7.
+The result is striking. People preferred answers from the 1.3 billion parameter InstructGPT over the 175 billion parameter GPT-3. That is about one hundredth of the parameters.
 
-* (Source) Radford et al., OpenAI 2019 (GPT-2). Brown et al., NeurIPS 2020 (GPT-3). Kaplan et al., arXiv:2001.08361 (2020) (power law).
+But even a tuned model still draws its tokens, so let's see what that does.
 
 ## 6
-However, making the model bigger does not make its answers the same every time. Here is the answer to the question from slide 2. The model does not always pick the most likely word. It is known that always picking the most likely word tends to produce dull text that repeats the same phrases. So instead, it picks as if drawing lots weighted by probability. This is called sampling.
+But that does not mean the model always says the most likely thing. Each token is a draw.
 
-The setting that controls how much the choice varies is called temperature. The figure on the right takes the probabilities of the four candidates from slide 2, rescales them so they add up to 1, and then changes the temperature. That is why even at temperature 1 the values differ a little from slide 2. At a low temperature, the choice concentrates on "sunny," the most likely word. At a high temperature, unlikely words such as "snowy" become more likely to be picked. The number above each bar is the temperature.
+Look at the chart on the left. It shows the same capital candidates at three temperatures. Temperature is a dial applied just before the draw. At temperature 1 we have the original numbers: Canberra 62%, Sydney 25%, Melbourne 8%, and everything else 5%. Think of a lottery where 62 of 100 tickets say Canberra. At a low temperature, 0.5, the tall bar gets taller: Canberra 84%, Sydney 14%. At a high temperature, 2, the bars flatten out: Canberra 44%, Sydney 28%, Melbourne 16%.
+※ (Lecturer's calculation) The values at 0.5 and 2 are computed from the example probabilities, with "other" counted as one candidate.
 
-So even if you ask the same question, the answer can change. At a low temperature, you get nearly the same answer. You have probably asked the same question again and received a different answer. That is because of this mechanism.
+So why not just always pick the top token? Researchers found that doing that makes text bland and strangely repetitive, so models draw instead.
 
-* (Source) Holtzman et al., ICLR 2020 (always picking the most probable word produces dull, repetitive text). The probabilities in the figure were calculated from the example on slide 2.
+A common mistake is to think you control this dial. ※ (Not from the source) In chat apps, you usually cannot change the temperature; the provider picks the value. That is why the same question in a new chat can get a different answer.
+
+But does what it draws match the facts? Let's look at the evidence.
 
 ## 7
-If answers merely changed each time, that would not be a big problem. But do you think that if a text is natural and coherent, its content must be correct too? In fact, not necessarily. Content that sounds plausible but is false or has no basis is called a hallucination.
+Before I show you the chart, make a guess. When an AI lists references for a paper, what share of them do you think do not exist? Well, the result was 55% for ChatGPT running GPT-3.5.
 
-You might think, "If it reads naturally, surely it's right?" That is the first question on the left. As we saw on slide 2, what the model computes is how likely words are to follow, so natural-sounding text and correct content are two different things. The answer to the second question is the example of citing references that do not exist. The figure on the right shows values from a study that had ChatGPT write short literature reviews; these are from the 2023 versions. Of the references it cited, 55% did not exist for GPT-3.5, and even for GPT-4, 18% did not.
+Look first at the GPT-3.5 bar for made-up references: more than half. The newer GPT-4 did better, at 18%, but that is still about one in five. The same study also found that even among the real references, 43% from GPT-3.5 and 24% from GPT-4 had major errors, such as the wrong authors, year or pages. That part is not on the chart. The study checked 636 references from 84 short papers on 42 topics, in 2023. That is one study and one task. Newer models and tools with search may do better, but, as we will see when we open the source, not perfectly.
 
-So even when it sounds confident, you should not use its answer without checking.
+At the start, you guessed it looked the answer up. It did not. Asking it to check itself does not help either. In Mata v. Avianca in 2023, a lawyer asked ChatGPT whether a case was real. It said yes. The case did not exist, and the lawyers were fined 5,000 dollars.
 
-* (Source) Ji et al., ACM Computing Surveys 55(12), 2023 (definition paraphrased for a general audience). Walters & Wilder, Sci. Rep. 13, 14045 (2023) (values from 42 topics and 636 references).
+This is called hallucination. The survey defines it as text that is nonsensical or unfaithful to the provided source. In this course we also use it for content that does not match the facts.
+
+So here is today's question. If it reads so fluently, why does it make things up so confidently?
 
 ## 8
-Why do such errors happen? Here are three main reasons.
+Another surprise is that newer models are not free of this problem.
 
-First, as we have seen, the model itself only links words by probability; it does not check them against facts. Some services search while answering, but that is a search system added outside the model. Second, topics that are rare or absent in the training data. Even there, the model still produces plausible-sounding text. There are also reports that the fewer times a fact appears in the training data, the more likely the model is to get it wrong. Because the probabilities are set by how likely words are to follow in text, a fact that rarely appears does not get a high probability for the correct continuation, yet some word still gets picked. Rare personal names and detailed numbers are examples.
+Look first at the made-up bars on the right. The older o1 made up answers to 16% of the questions. The newer o3 made up answers to 33%, about twice as many. And o4-mini reached 48%, about three times as many.
 
-Third, the training data has a cutoff. As the figure on the right shows, the model does not know about events after the cutoff. For example, a 2023 report says GPT-4 generally lacks knowledge of events after September 2021. Current versions have later cutoffs, but there is still a cutoff.
+These numbers come from PersonQA, a test that asks about published facts on real people. Each rate is a share of all the PersonQA questions. OpenAI reported them in its system card in April 2025.
 
-So the newer the topic, or the more it involves rare names or detailed numbers, the more careful you need to be.
+Now, here is where it is easy to misread the chart. o3 is not simply worse. Its accuracy also went up, to 59% compared with 47% for o1. It makes more claims overall, so it gets more answers right and also more answers wrong. And this is one company's result on one test, so we should not stretch it further.
 
-* (Source) Ji et al., ACM Computing Surveys 55(12), 2023 (overview of causes). Kandpal et al., ICML 2023 (facts with fewer related documents in the training data are answered less accurately). OpenAI, GPT-4 Technical Report, arXiv:2303.08774 (2023) (September 2021).
+Still, the lesson is clear enough. You cannot skip checking just because a model is newer.
+
+So is there a pattern in when models guess instead of holding back? The next result looks at exactly that.
 
 ## 9
-So how far can you trust AI's answers? The answer to our opening question is: check before you use them. As the flow on the right shows, ask the AI for its sources, then check those sources against primary documents: papers, official documents, or the original texts. If the source is a reference, search for it by title, author, and DOI, a unique ID given to each paper, and open the original. Slide 7 was about references that do not exist, but even when a reference does exist, the content the AI attributes to it may not be in it. A source that cannot be found, or whose content differs, is marked "needs checking," as the arrow on the left shows, and is not used as it is. It also matters not to feel reassured just because you found a different paper with a similar title.
+Another pattern shows up in how often a model is willing to say "I don't know".
 
-Another approach is to give the AI materials and have it answer from them. The method of passing retrieved materials to the model and having it answer is called RAG, and it has been reported to produce more factual text than answering without materials. Since the materials you give it are read as context, it can answer even about events after the cutoff on slide 8, as long as they are in the materials.
+Look first at the right answers on the chart. They are almost the same: 22% for gpt-5-thinking-mini and 24% for o4-mini. Now look at the wrong answers. gpt-5-thinking-mini got 26% wrong, but o4-mini got 75% wrong, nearly three times as many.
 
-* (Source) Lewis et al., NeurIPS 2020 (RAG).
+The difference is in the first number. gpt-5-thinking-mini said "I don't know" to 52% of the questions. o4-mini said it to just 1%. Each figure is a share of all the SimpleQA questions, which are short fact questions. So guessing on almost everything added only a couple of right answers, but a huge number of wrong ones.
+
+A word of caution. This comes from OpenAI's own announcement in September 2025. It compares two models from the same company on one test, and the test only has short fact questions. So we should not read more into it than that.
+
+Here is the part to remember. A confident tone is not a sign that the answer is right. The model that sounded sure about everything was wrong most of the time.
+
+So why do models guess instead of saying "I don't know"? That is the next slide.
 
 ## 10
-How you ask also changes the answer. First, state your goal, conditions, and the form of the answer you want. For example, instead of just "summarize this," saying "for a seminar presentation, in three lines, with explanations for technical terms" gets you an answer closer to what you want. Your request is also part of the preceding context from slide 2, so the more clearly the goal and conditions are written, the more likely a matching continuation is to be picked. If there are materials you want it to use, give it those too.
+So why does it make things up so confidently? The last three charts showed fake references, wrong answers, and a model that almost never said "I don't know." The answer to our question is this: nothing in it checks facts. It draws likely continuations of its training text, so rare facts, facts after its cutoff, and guesses that tests reward all come out fluent but wrong.
 
-The other technique is to have it write out its intermediate reasoning. The figure on the right shows results from math word problems solved after showing the model eight examples. When the examples showed only the answers, accuracy was 17.9%; when they showed the reasoning written out, it rose to 56.9%. Note, however, that this was with a 540-billion-parameter model, larger than the 175-billion GPT-3 on slide 5, and it did not help smaller models. This result alone can't tell us how well it applies to the AI you use today. One explanation for why it works is that the reasoning it writes out also becomes context when it picks the words of the answer.
+The first block on the slide is my own summary: no step checks facts. The next-token probability we started with comes from how text usually continues, not from a list of facts.
 
-There is also a report that simply adding "Let's think step by step" to your request, without showing any examples, raises accuracy.
+First, rare facts. Now look at the chart on the right. I read two points off a figure in Kandpal and colleagues' 2023 paper, so the values are approximate. Each bar is the answers of BLOOM-176B to TriviaQA questions: blue is right, red is not right. On the left is a rare fact, with only about 10 pretraining documents about it. Accuracy is about 25%, so about three answers in four are not right. On the right is a common fact, with about 10,000 documents. Accuracy is over 55%. A fact the model has rarely seen never gets a high probability for the right continuation.
 
-And when you check its answer, having the reasoning written out makes it easier to spot where it went wrong.
+Two more reasons are not on the slide. Second, every model has a cutoff, the date its training text ends. For GPT-4 in 2023, that was September 2021, so later events are simply not in the data.
 
-* (Source) Wei et al., NeurIPS 2022, Table 2 (PaLM 540B, GSM8K; no effect in small models). Kojima et al., NeurIPS 2022 (adding "Let's think step by step" without examples).
+Third, tests usually rate a guess above "I don't know", and training follows the score.
+
+So how should we use it? On the next slide, we open the source ourselves.
 
 ## 11
-Finally, information to check before you put it in. We'll go through the three questions on the left in order. First, is your input used for training? Some services are set up so that what you enter is used to train the model. If it is used for training, there is a risk that it could show up in answers to other people.
+So we use one simple habit: open the source and find the sentence yourself. These three steps are my own recommendation.
 
-The three on the right, personal information, confidential documents, and unpublished research data, are things to stop and think about before entering. Japan's Personal Information Protection Commission has also warned general users that personal information they enter may be used for training and may appear in AI output, and urges them to check the terms of use and privacy policy. Confidential documents and unpublished data are not covered by that advisory, but they call for care for the same reason.
+First, ask the AI for the source. Second, open it yourself. Search by the title, the authors, and the DOI, which is the paper's ID. Third, find the actual sentence that supports the claim.
 
-What you should check are the service's terms of use and settings, and the rules of your university, company, or other organization. If you can't confirm them, the safe choice is not to enter it.
+Now follow the flow chart on the right, from the top. Is a source given? If not, go right and mark the claim "unverified". Can you open it? If not, the same. Does it actually say this claim? Only when all three answers are yes do you reach the bottom and use it. If you cannot find the sentence, write "unverified" and leave the claim out.
 
-* (Source) Personal Information Protection Commission (Japan), "Advisory on the Use of Generative AI Services" (June 2, 2023), item (3), cautions for general users. Confidential and unpublished data are a supplement beyond the source.
+Why go this far? Even legal research AIs that search a database first and then write made things up on 17 to 33% of test questions in a 2024 study. Some of these tools, such as Lexis+ AI, were advertised as hallucination-free. The writing step is still next-token prediction. Even real papers can come with wrong authors or years. And asking the AI "Is this real?" is not a check, as we saw with the Mata case.
+
+Another check is to re-ask, and we turn to that next.
 
 ## 12
-Now for the review questions. There are six, over two slides. How would you answer them? Use the "Answer 1-1" button at the bottom of the script page to write your answers.
+Here is the key idea: answers that disagree flag likely errors. Earlier we saw that each token is a new draw. Here we use that draw as a test.
 
-* Answers are on slide 14.
+Ask the same question again in a new chat. Do not use the same chat, because the whole chat, including the old answer, is sent again as one document, and the model tends to continue what it already wrote.
+
+Now compare the two sides. On the left, two new chats both say Canberra. On the right, one says Canberra and the other says Sydney. The study behind this idea found that when a model knows a fact, sampled answers tend to agree. When it is guessing, they tend to diverge and contradict each other. So disagreement is a warning sign.
+
+But be careful: agreement is not proof. If a wrong token is the most likely one, it can win every draw, and you get the same wrong answer twice.
+
+For numbers, recompute the sums and percentages yourself, and find the original figure. You will try this in question 1-6.
+
+So, back to our question: why does it make things up so confidently? Nothing in it checks facts, so the checking is our job: open the source, re-ask, and recompute. Now let's review with some questions.
 
 ## 13
-Here are the last three. When you've finished writing, press "Export" and tell me "I commented." I'll mark your answers and send them back.
+Let's check what you have learned so far with three questions.
 
-* Answers are on slide 15.
+Question 1-1 asks what a chat AI computes at each step of a reply, and what it does with the result. If you are not sure, look back at the next-token chart.
+
+Question 1-2 asks why two new chats can give two different answers to the same question. Answer it using how each token is chosen. The temperature chart will help.
+
+Question 1-3 is about a friend who thinks the AI must have looked up a paper, because it gave the authors and the journal. What is wrong with that reasoning? The fake-references chart will help.
+
+Take a few minutes and write your answers in your own words before moving on.
 
 ## 14
-Here are the answers. For 1-1, it is the probability of the next token, given the preceding context. It picks tokens one by one according to that probability and joins them into text.
+Here are three more questions, this time about why errors happen and how to check them.
 
-For 1-2, it is because the model picks by probability, that is, it samples, so unlikely words are sometimes chosen. Answers are not always different, though: at a low temperature you get nearly the same answer. The temperature setting changes how much the answers vary.
+Question 1-4 asks which birth year a chat AI is more likely to get wrong: a world-famous scientist's, or a little-known local politician's. Explain your choice. The rare-facts chart will help.
 
-For 1-3, it is because pretraining alone gives a model that just continues text, and tuning makes it answer by following instructions. Also keep in mind that what changes most is mainly the way it answers.
+Question 1-5 gives you a claim backed by "Smith (2021), Journal of Learning". Before you put that claim in a report, what steps do you take? Look back at the open-the-source steps.
+
+Question 1-6 gives you a sentence about students who use the library. Check the number yourself, and name one more check you would do. The re-ask slide will help.
+
+Write down your answers before we go to the answer slides.
 
 ## 15
-For 1-4, it is producing content that sounds plausible but is false or has no basis. An example is citing references or numbers that don't exist. As slide 8 showed, it is also likely with new topics or detailed numbers, so naming one of those is also correct.
+Let's go through the answers.
 
-For 1-5, search by title, author, journal, and DOI, then open the original and check its content. If it can't be found, or the content differs, don't use it and mark it "needs checking." It is also important not to feel reassured just because you found a different paper with a similar title.
+Question 1-1. At each step, the model computes a probability for every possible next token, given all the text so far, which means the whole chat. It then draws one token, appends it, and repeats until the reply is done. A reply is built one token at a time in this loop.
 
-For 1-6, check the terms of use and settings to see whether your input is used for training. Also check your organization's rules, and if you can't confirm, don't enter it.
+Question 1-2. Each token is a weighted random draw from those probabilities, not always the top token. So a less likely token, even a wrong one, is sometimes picked, and the rest of the reply follows from it. How much the answers vary depends on the temperature. Every draw is a new chance, so two chats can split early and end up far apart.
 
-That's all for today. Thank you for your hard work.
+Question 1-3. Authors and a journal name are just likely-looking text. Nothing in the model checks that the paper exists. In a 2023 study, 55% of the references from GPT-3.5 and 18% from GPT-4 did not exist. So open the paper yourself. A reference can look complete and still be made up, because the format is easy to predict.
+
+## 16
+Here are the answers to the last three questions.
+
+Question 1-4. The local politician. A fact like that appears in few training documents, so the right year never gets a high probability, and a plausible wrong year is more likely to be drawn. Accuracy rises with the number of documents about a fact, from about 25% to over 55% in that graph.
+
+Question 1-5. Search for the paper by its title, authors and year, or its DOI, and open the original. Then find the sentence that supports the claim. If you cannot find it, or it says something else, mark the claim "unverified" and do not use it. Asking the AI "is it real?" does not count. Even search-based tools made things up, so only the original text settles it.
+
+Question 1-6. Thirty percent of 1,200 is 0.30 times 1,200, which is 360, not 390. The two numbers do not match, since 390 would be 32.5%, so at least one of them is wrong. One more check is to find the original survey. Re-asking in a new chat is weaker, because agreement is not proof. Recomputing and finding the original figure come first.
+

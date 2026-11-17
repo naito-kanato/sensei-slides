@@ -44,8 +44,8 @@ def test_bounds():
 
 def test_too_few_for_the_time_warns(outline, capsys):
     set_minutes(outline, "40分")                # 40分で本文12枚は、下限 20枚を下回る
-    assert mark(outline) == "△"
-    assert co.main([str(outline)]) == 0          # △ では止めない
+    assert mark(outline) == "✘"   # 枚数の理由が無ければ ✘
+    assert co.main([str(outline)]) == 1          # 枚数の理由が無いので ✘ で止まる
     assert "下限 20枚" in capsys.readouterr().out
 
 
@@ -53,7 +53,7 @@ def test_upper_bound_is_loose(outline):
     set_minutes(outline, "15分")                # 15分で12枚は目安（7〜10枚）を超えるが、ゆるめの上限 12枚の内
     assert mark(outline) == "✔"
     set_minutes(outline, "10分")                # 10分で12枚は上限 8枚を超える
-    assert mark(outline) == "△"
+    assert mark(outline) == "✘"   # 枚数の理由が無ければ ✘
 
 
 def test_reason_and_missing_time(outline):

@@ -1,8 +1,6 @@
-"""Course sample, Lecture 1 "What Does Generative AI Do?" (cover + 10 body + 2 quiz + 2 answer = 15 slides).
-English version of examples/course/_work/AI活用講座_01/build.py (same structure, same slide order).
+"""Lecture 1: What a Chat AI Computes（設計メモ memo.md の表から scaffold.py が作った骨組み。TODO を書き換える）。
 
-    python figs.py      # write the figures to figs/
-    python build.py     # build ../../AI_Literacy/01_What_Generative_AI_Does_slides.pptx (notes from notes.md)
+    python <skill>/scripts/make_deck.py <この作業フォルダ>   # 図→組む→描く→検査を1回で
 """
 import sys
 from pathlib import Path
@@ -12,175 +10,161 @@ SKILL = HERE.parents[3]
 sys.path.insert(0, str(SKILL / "scripts"))
 from set_notes import load_notes  # noqa: E402
 from slide_profile import author, deck_options, load_profile  # noqa: E402
-from zemi import Deck  # noqa: E402
+from zemi import C, Deck, line_height_in  # noqa: E402
 
-T = "Lecture 1: What Does Generative AI Do?"
-SUB = "— Plausible Is Not the Same as Correct"
+T = "Lecture 1: What a Chat AI Computes"
 FIG = HERE / "figs"
-OUT = HERE.parents[1] / "AI_Literacy" / "01_What_Generative_AI_Does_slides.pptx"
+OUT = HERE.parents[1] / "AI_Literacy" / "01_What a Chat AI Computes_slides.pptx"
 
 P = load_profile(HERE)
-AUTHOR = author(P) or "Learner's name"
-deck = Deck(workdir=HERE / "build", **deck_options(P, name="テンプレート2"))   # the course sample uses template 2
+AUTHOR = author(P)   # 表紙の名前（発表は一覧の「発表者名」、無ければ空。講座は「講座名（全N回）」。仮の名前を入れない）
+deck = Deck(workdir=HERE / "build", **deck_options(P))   # テンプレートを選ぶなら deck_options(P, name="テンプレート2") など
 
 
-def qa(s, items, size=20, gap=0.45):
-    """Body of the quiz / answer slides. items = [(number, text)]. Numbers are in the form "1-1"."""
-    s.at(1.0, 2.0)
-    for j, (k, txt) in enumerate(items):
-        s.p("{b:" + k + "}　" + txt, size=size, gap=gap if j < len(items) - 1 else 0.2)
+def qa(s, heading, items, size=20, gap=0.3):
+    """確認問題・解答の枚。見出しは本文の枚の結論の一文と同じ見た目（28pt の主色の太字）で、1問ずつ横いっぱいの薄い灰の箱に。
+    items = [(番号, 本文)]。番号は「1-1」の形（原稿HTMLの「1-1 に答える」ボタンになる。箱の文字が「1-1  問題文」で始まる）。
+    以前は文字だけを左半分に置き、見出しが細い灰色で、右と上が空いていた（外から見た採点の指摘）"""
+    s.heading("{ab:" + heading + "}", size=28)
+    x0, x1 = deck.wide
+    y = deck.area["top"]
+    for k, txt in items:
+        h = max(1.0, (txt.count("\n") + 1) * line_height_in(size) + 0.45)
+        s.rect(x0, y, x1 - x0, h, fill=C.LIGHT, text="{ab:" + k + "}  " + txt, size=size, align="l", name="確認問題の箱")
+        y += h + gap
 
 
-# The conclusion is stated in the line at the top (the conclusion title), so the body does not repeat it as a final
-# red line; it shows the grounds instead (steps, labels, cases, questions, developments). Red marks the key word or
-# number of the grounds. Figures are drawn to fill the white space on the right and placed 0.75 in or more right of the text.
-R = 12.6   # right edge of figures (inside the 0.4 in page margin)
+# ---------------------------------------------------------------- 1 表紙
+deck.title_slide([T], author=AUTHOR)
 
+# ---------------------------------------------------------------- 2 Predicting the next token
+s = deck.slide(T, summary="It gives every possible next token a probability, then draws one")
+s.heading("Predicting the next token")
+s.numbered(["Read all the text so far",
+            "Give every vocabulary token a\nprobability (GPT-2: {r:50,257} tokens)",
+            "Draw one by its probability,\nappend it, repeat"])
+s.block("Your guess:", ["it looked the answer up", "Did it?"])
+s.figure_beside(FIG / "s02.png", caption="Example probabilities (schematic)")
 
-def text_right(s):
-    return max(b.right for kind, b in s.boxes if kind != "image" and b.y > 1.4)
+# ---------------------------------------------------------------- 3 Tokens, not words
+s = deck.slide(T, summary="One English token is about 4 characters of text")
+s.heading("Tokens, not words")
+# 上に文・下に図：2つのラベルを横に並べ、札の図（文と、まれな語が2つに割れる例）を下に横いっぱいに。
+# 「Length limit」は原稿へ（文の塊は2つまで）
+top = deck.area["top"]
+b1 = s.block("Token:", ["a word or a piece of one", "rare words: split into pieces"], x=1.5, y=top, gap=0)
+b2 = s.block("Rule of thumb:", ["1 token ≈ {r:4 characters}", "≈ ¾ of an English word"], x=7.3, y=top, gap=0)
+s.at(1.0, max(b.bottom for b in (b1, b2)))
+s.figure_below(FIG / "s03.png", gap=0.3, caption="Example split; differs by model (schematic)")
 
+# ---------------------------------------------------------------- 4 Learning by guessing
+s = deck.slide(T, summary="Training tunes GPT-3's 175 billion numbers to predict text")
+s.heading("Learning by guessing")
+# 手順は右の流れ図が見せるので、左は規模と学ぶものの2つの塊に（以前は同じ手順を本文の番号でも言い、塊が3つ）
+s.at(1.0, deck.area["top"] + 0.3)
+s.block("Scale:", ["175 billion numbers (parameters)", "about {r:300 billion tokens} read", "from web pages, books, Wikipedia"], gap=0.5)
+s.block("What it learns:", ["how text continues,", "not a list of facts", "(the loop checks only the guess)"], gap=0)
+s.flow(["Text, next token\nhidden", "Model guesses", "Compare with\nthe real token", "Adjust the numbers\n(parameters), repeat"],
+       x=8.6, y=1.5, w=4.0, h=0.85, gap=0.45)
 
-def beside(s, path, y, caption=None):
-    """Place a figure to the right of the body text (at its drawn width). If there is a lot of room, split it evenly
-    between the gap before the figure and the space after it."""
-    from PIL import Image
-    with Image.open(path) as im:
-        w = im.size[0] / im.info["dpi"][0]
-    tr = text_right(s)
-    b = s.image(path, x=min(tr + max(0.75, (R - w - tr) / 2), R - w), y=y)
-    if caption:
-        s.caption(b, caption)
-    return b
+# ---------------------------------------------------------------- 5 A chat is one document
+s = deck.slide(T, summary="The whole chat is resent each turn; the reply continues it")
+s.heading("A chat is one document")
+s.block("Each turn:", ["instructions + your messages", "+ its replies, {r:sent in full}"])
+s.block("Tuning:", ["plain GPT-3 just continues text", "InstructGPT: tuned on human", "example replies and rankings"],
+        then="1.3B InstructGPT preferred\nover 175B GPT-3")
+s.figure_beside(FIG / "s05.png", caption="(schematic)")
 
+# ---------------------------------------------------------------- 6 Why answers vary
+s = deck.slide(T, summary="Each token is a weighted draw, so replies can vary")
+s.heading("Why answers vary")
+# 図が主役：温度ごとの棒そのものを読ませる（Canberra が下がり Sydney が上がる）。読み方を右の列に
+s.figure_main(FIG / "s06.png", caption="The capital example, recomputed (schematic)")
+s.block("Temperature:", ["a dial applied before the draw", "low sharpens, high flattens"], gap=0.3)
+s.cases([("Low (0.5)", "Canberra 84%, Sydney 14%"),
+         ("High (2)", "Canberra 44%, {r:Sydney 28%}")])
 
-def flow_beside(s, items, y, w=4.2, h=0.75, gap=0.5):
-    """Place a flow chart (PowerPoint shapes) to the right of the body text."""
-    tr = text_right(s)
-    x = min(tr + max(0.75, (R - w - tr) / 2), R - w)
-    s.flow(items, x=x, y=y, w=w, h=h, gap=gap)
+# ---------------------------------------------------------------- 7 Plausible is not true
+s = deck.slide(T, summary="55% of the references ChatGPT (GPT-3.5) gave did not exist (2023)")
+s.heading("Plausible is not true")
+# 文の塊は2つ：問い（作り話の割合）と、名前と今日の問い。Mata v. Avianca は原稿へ
+s.at(1.0, deck.area["top"] + 0.3)
+s.ask("Did it look them up?", "Made up: GPT-3.5 {r:55%}, GPT-4 18%\n(636 references in 84 papers, 2023)", gap=0.5)
+s.block("Hallucination:", ["generated text that is nonsensical", "or unfaithful to the source"],
+        then="Fluent and sure, yet wrong: why?", gap=0)
+s.figure_beside(FIG / "s07.png", caption="Walters & Wilder, Sci. Rep. 13, 14045 (2023)")
 
+# ---------------------------------------------------------------- 8 Newer is not error-free
+s = deck.slide(T, summary="o3 made up answers to 33% of PersonQA questions (o1: 16%)")
+s.heading("Newer is not error-free")
+s.at(1.0, deck.area["top"] + 0.3)
+s.develop(("Older o1", ["made up 16%", "right 47%"]), ("Newer o3", ["made up {r:33%}", "right 59%"]), after=0.5)
+s.block("PersonQA (Apr 2025):", ["questions about real people", "o4-mini: made up 48%", "one company, one test"], gap=0)
+s.figure_beside(FIG / "s08.png", caption="OpenAI o3 and o4-mini System Card (Apr 2025)")
 
-# ---------------------------------------------------------------- 1 cover
-deck.title_slide([T], author=AUTHOR, subtitle=SUB)
+# ---------------------------------------------------------------- 9 Guessing beats "I don't know"
+s = deck.slide(T, summary="o4-mini rarely said \"I don't know\" (1%) and got 75% wrong")
+s.heading("Guessing beats \"I don't know\"")
+s.figure_main(FIG / "s09.png", w=7.2, caption="OpenAI, Why language models hallucinate (Sep 2025)")
+s.block("Reading:", ["SimpleQA: short fact", "questions (Sep 2025)", "gray: \"I don't know\""])
+s.block("Compare:", ["right: 22% vs 24%", "wrong: 26% vs 75%"], then="guessing: few more right,\nmany more wrong")
 
-# ---------------------------------------------------------------- 2 predicting the next word
-s = deck.slide(T, summary="A model that learned from vast text how likely each next word is")
-s.heading("Predicting the Next Word")
-s.at(1.0, 2.0)
-s.block("Large language model (LLM):", ["Learns from vast text which words", "tend to follow which"], gap=0.3)
-s.numbered(["Read the preceding context",                                             # body form: steps
-            "Compute each next word's probability\n(how likely it follows, {r:not truth})",
-            "Pick one word by probability, append it"], gap=0.3)
-s.block("Common misconception:", ["It looks up answers and shows them", "In fact it generates word by word"], gap=0)
-beside(s, FIG / "next_token.png", y=1.85, caption="(Simplified; probabilities are examples)")
+# ---------------------------------------------------------------- 10 Why it goes wrong
+s = deck.slide(T, summary="Nothing checks facts, so rare facts come out fluent but wrong")
+s.heading("Why it goes wrong")
+# 文の塊は2つ（確かめる段が無い・まれな事実）。締め切りと試験の採点は主題からずれるので原稿へ（外から見た採点の指摘）
+s.at(1.0, deck.area["top"] + 0.3)
+s.block("No step checks facts:", ["probabilities follow usual text,", "not a fact list"], gap=0.5)
+s.block("Rare facts:", ["few documents → {r:low accuracy}", "≈10 documents: ≈25% right", "≈10,000 documents: >55% right"],
+        then="right continuation stays unlikely", gap=0)
+s.figure_beside(FIG / "s10.png", caption="Read from Kandpal et al., ICML 2023, Fig. 1 (approx.)")
 
-# ---------------------------------------------------------------- 3 splitting into tokens
-s = deck.slide(T, summary="Text is split into words or pieces; length is counted in those")
-s.heading("Splitting into Tokens")
-s.at(1.0, 1.9)
-s.block("Token:", ["A word or part of a word", "Splitting differs by model", "5 in \"Tomorrow's weather is sunny\""], gap=0.3)   # body form: labels
-s.block("Length counts in tokens:", ["A limit on how much it reads at once", "(GPT-3 in 2020: 2048)", "Newer models: longer, still limited",
-                                     "{r:A long document may not fit}", "Fix: split it by chapter"], gap=0)
-beside(s, FIG / "tokens.png", y=2.5, caption="(The split is an example)")
+# ---------------------------------------------------------------- 11 Open the source
+s = deck.slide(T, summary="Open the source and find the sentence yourself")
+s.heading("Open the source")
+# 「If not found」は右の判定の流れ図の unverified が見せるので外す（文の塊は2つ）
+s.at(1.0, deck.area["top"] + 0.3)
+s.numbered(["Ask for the source", "Open it yourself (title,\nauthors, DOI: the paper's ID)", "Find the sentence\nthat supports the claim"], gap=0.5)
+s.block("Why:", ["search-based legal AIs made", "things up on {r:17–33%} of questions (2024)",
+                 "real references: major errors in 24–43%"], gap=0)
+s.decision([("Is a source given?", "unverified"), ("Can you open it?", "unverified"), ("Does it say this claim?", "unverified")], "use it",
+           x=deck.area["fig_x"], y=deck.area["top"], q_w=2.8, out_w=1.38, size=16, yes="No", no="Yes")
 
-# ---------------------------------------------------------------- 4 two stages of training
-s = deck.slide(T, summary="Tuning adds instruction-following on top of continuing text")
-s.heading("Two Stages of Training")
-s.at(1.0, 1.85)
-s.block("Pretraining:", ["Predict the next word in vast text"], gap=0.25)                # body form: labels
-s.block("Tuning:", ["Human examples and ratings teach it", "to follow instructions"], gap=0.25)
-s.block("Comparison:", ["A tuned 1.3-billion-parameter model", "was {r:rated higher} than 175-billion GPT-3"], gap=0.25)
-s.p("Parameter: a number inside the model\nwhose value is set by training", dx=0.35, size=18, gap=0)
-flow_beside(s, ["Vast text", "Pretraining", "Tuning by human feedback (RLHF)", "Chat model"], y=1.75, h=0.7)
+# ---------------------------------------------------------------- 12 Re-ask and recompute
+s = deck.slide(T, summary="Re-asked answers that disagree flag likely errors")
+s.heading("Re-ask and recompute")
+# 比較の2列に3行ずつ（何が出たか・そこから言えること・どうするか）。枚の番号の参照は言葉に言い換えた
+bot = s.compare(("Agree", ["{c:Canberra}, {c:Canberra}", "a known fact wins most draws", "not proof: a wrong token\ncan win every draw"]),
+                ("Disagree", ["{c:Canberra}, {r:Sydney}", "a guess changes from draw to draw", "{r:warning sign}: open the source"]))
+s.block("How:", ["re-ask in a new chat (no old answer resent)", "recompute numbers, find the original"], x=deck.area["x"], y=max(bot) + 0.3, gap=0)
 
-# ---------------------------------------------------------------- 5 bigger models do better
-s = deck.slide(T, summary="As models grew, their prediction error fell in a regular way")
-s.heading("Bigger Models Do Better")
-s.key_message("1.5B → 175B", "Parameters in billions (GPT-2 → GPT-3)\n2019 → 2020: over 100× in about a year\n"
-              "More size, data, and compute\n⇒ error falls by a {r:power law}\n"
-              "Each 10× in size cuts it by a fixed ratio\nThe trend held over 7+ orders of magnitude", y=2.2)   # big-number form
+# ---------------------------------------------------------------- 13 Quiz (1-1 to 1-3)
+s = deck.slide(T)   # summary なし：帯も結論の一文も無い枚になる
+qa(s, "Quiz (1-1 to 1-3)",
+   [("1-1", "When a chat AI writes a reply, what does it compute at each step,\nand what does it do with the result?"),
+    ("1-2", "You ask the same question in two new chats and get two different answers.\nExplain why, using how each token is chosen."),
+    ("1-3", "A friend says: \"The AI gave the authors and the journal of a paper, so it must\nhave looked it up.\" What is wrong with this reasoning?")], gap=0.35)
 
-# ---------------------------------------------------------------- 6 not the same every time
-s = deck.slide(T, summary="Even big models pick by probability, so answers can vary each time")
-s.heading("Not the Same Every Time")
-s.at(1.0, 1.85)
-s.block("Sampling:", ["Picks like a lottery weighted by probability", "Always taking #1 gets repetitive"], gap=0.2)   # body form: labels, cases
-s.block("Temperature:", ["Sets how much the choice varies", "Low: nearly the same answer each time"], gap=0.25)
-s.cases([("Low temperature (0.5)", "Focuses on the likely \"sunny\""), ("High temperature (2)", "{r:Unlikely words like \"snowy\" get a chance}")])
-beside(s, FIG / "temperature.png", y=1.85, caption="(Renormalized over slide 2's 4 candidates)")
+# ---------------------------------------------------------------- 14 Quiz (1-4 to 1-6)
+s = deck.slide(T)
+qa(s, "Quiz (1-4 to 1-6)",
+   [("1-4", "Which is a chat AI more likely to get wrong: the birth year of a world-famous\nscientist, or of a little-known local politician? Explain why."),
+    ("1-5", "An AI answer supports a claim with \"Smith (2021), Journal of Learning\".\nYou want to use the claim in a report. Write the steps you take before using it."),
+    ("1-6", "An AI says: \"30% of the 1,200 students, that is 390 students, use the library.\"\nCheck the number yourself, and name one more check you would do.")], gap=0.35)
 
-# ---------------------------------------------------------------- 7 plausible but wrong
-s = deck.slide(T, summary="Even natural-sounding text can be factually wrong")
-s.heading("Plausible but Wrong")
-s.at(1.0, 1.9)
-s.block("Hallucination:", ["Plausible-sounding content that is", "false or has no basis"])     # body form: label, questions
-s.ask("If it reads naturally, isn't it right?", "It computes likelihood (slide 2)")
-s.ask("If it cites sources, isn't it safe?", "{r:Nonexistent references}: 18% even in GPT-4\n(55% in GPT-3.5; 2023 versions)", gap=0)
-beside(s, FIG / "fabricated.png", y=1.85, caption="(Plotted from values in Walters & Wilder,\nSci. Rep. 13, 14045 (2023))")
+# ---------------------------------------------------------------- 15 Answers (1-1 to 1-3)
+s = deck.slide(T)
+qa(s, "Answers (1-1 to 1-3)",
+   [("1-1", "A probability for every possible next token, given all the text so far (the whole chat).\nIt draws one token, appends it, and repeats."),
+    ("1-2", "Each token is a weighted random draw, not always the top token. A less likely (even\nwrong) token is sometimes picked, and the rest follows from it. The temperature sets how\nmuch answers vary."),
+    ("1-3", "Authors and a journal are likely-looking text; the model does not check them. In 2023,\n55% of GPT-3.5's references and 18% of GPT-4's did not exist. Open the paper yourself.")], size=18, gap=0.3)
 
-# ---------------------------------------------------------------- 8 why errors happen
-s = deck.slide(T, summary="It links words without checking facts, so it errs where it knows little")
-s.heading("Why Errors Happen")
-s.cases([("The model alone", ["No checking against facts", "Search in some services: an add-on"]),   # body form: cases (where errors are likely)
-         ("Rare or missing in training data", ["e.g., {r:rare names, detailed numbers}", "Rarer facts, more wrong answers"]),
-         ("Events after the cutoff", ["Unknown (GPT-4 then: Sep. 2021)", "Current versions still have a cutoff"])], x=1.0, y=1.9)
-beside(s, FIG / "cutoff.png", y=2.6, caption="(Simplified)")
-
-# ---------------------------------------------------------------- 9 check as you use it
-s = deck.slide(T, summary="Trace sources to the originals; don't use what can't be verified")
-s.heading("Check as You Use It")
-s.at(1.0, 1.85)
-s.block("Primary sources:", ["Papers, official documents, originals", "Search by title, author, DOI", "Beware papers with similar titles"], gap=0.3)   # body form: labels, development
-s.develop("Source not found\nor content differs", "Hold as\n{r:\"needs checking\"}", gap=0.25, after=0.3)
-s.block("Give it materials:", ["It answers from given materials (RAG)", "Even post-cutoff topics, if covered"], gap=0)
-flow_beside(s, ["AI's answer", "Ask for sources", "Check primary sources", "Use / needs checking"], y=1.75, h=0.7)
-
-# ---------------------------------------------------------------- 10 how to ask
-s = deck.slide(T, summary="State the goal and conditions, and have it show its reasoning")
-s.heading("How to Ask")
-s.at(1.0, 2.0)
-s.numbered(["State the goal, conditions, answer form\n(e.g., 3 lines for a seminar, define terms)",   # body form: steps (order when asking)
-            "Attach the materials it should use",
-            "Have it write out {r:its reasoning}\n(chain of thought)"], gap=0.3)
-s.p("Accuracy gap: a 540-billion-parameter\nmodel (no effect in small models)", gap=0.3)
-s.p("\"Think step by step\" works even\nwithout examples", gap=0)
-beside(s, FIG / "cot.png", y=1.8, caption="(Plotted from values in Wei et al., NeurIPS 2022, Table 2)")
-
-# ---------------------------------------------------------------- 11 information to check before input
-s = deck.slide(T, summary="Before input, check terms and settings for how it will be used")
-s.heading("Check Before You Input")
-s.at(1.0, 1.85)
-s.ask("Is my input used for training?", "{r:Some services are set to do so}\n(it may appear in answers to others)", gap=0.3)   # body form: questions
-s.ask("Where do I check?", "Terms of use, settings, your org's rules\n(Japan's privacy commission advises it)", gap=0.3)
-s.ask("What if I can't check?", "Hold off (especially the 3 at right)", gap=0)
-beside(s, FIG / "dont_input.png", y=1.8)
-
-# ---------------------------------------------------------------- 12, 13 review questions
-s = deck.slide(T)   # quiz / answers: no summary, so no band and no bullet
-s.heading("Review Questions (1-1 to 1-3)")
-qa(s, [("1-1", "What does a large language model compute when it writes text?"),
-       ("1-2", "Why can the same question get different answers?"),
-       ("1-3", "Why is a model tuned with human examples and ratings after pretraining?")], gap=0.75)
-
-s = deck.slide(T)   # quiz / answers: no summary, so no band and no bullet
-s.heading("Review Questions (1-4 to 1-6)")
-qa(s, [("1-4", "What is hallucination? Give one case where it is likely."),
-       ("1-5", "How would you check that a reference cited by AI really exists?"),
-       ("1-6", "You want AI to summarize unpublished experimental data.\nWhat should you check before entering it?")], gap=0.75)
-
-# ---------------------------------------------------------------- 14, 15 answers
-s = deck.slide(T)   # quiz / answers: no summary, so no band and no bullet
-s.heading("Answers (1-1 to 1-3)")
-qa(s, [("1-1", "The {r:probability of the next token}, given the preceding context.\nIt picks tokens one by one by probability and joins them."),
-       ("1-2", "It {r:picks by probability}, so unlikely words are sometimes chosen.\nThe temperature setting changes how much answers vary."),
-       ("1-3", "With pretraining alone, it only continues text.\nTuning makes it {r:answer by following instructions}.")])
-
-s = deck.slide(T)   # quiz / answers: no summary, so no band and no bullet
-s.heading("Answers (1-4 to 1-6)")
-qa(s, [("1-4", "Producing plausible content that is false or has no basis.\ne.g., nonexistent references or numbers; also new or detailed topics."),
-       ("1-5", "Search by title, author, journal, and DOI; open the original and check it.\nIf not found or the content differs, don't use it: \"{r:needs checking}\"."),
-       ("1-6", "Check the terms and settings: is your input used for training?\nAlso check your organization's rules; {r:if unsure, don't enter it}.")])
+# ---------------------------------------------------------------- 16 Answers (1-4 to 1-6)
+s = deck.slide(T)
+qa(s, "Answers (1-4 to 1-6)",
+   [("1-4", "The local politician. Few training documents mention the fact, so the right year stays\nunlikely and a wrong year can be drawn."),
+    ("1-5", "Search by title, authors and year (or DOI), open the original, and find the supporting\nsentence. If it is not found or says something else, mark it \"unverified\" and do not use it.\nAsking the AI is not a check."),
+    ("1-6", "0.30 × 1,200 = 360, not 390 (390 would be 32.5%). One more check: find the original\nsurvey. Re-asking is weaker, because agreement is not proof.")], size=18, gap=0.3)
 
 NOTES = load_notes(HERE / "notes.md")
 for i, sl in enumerate(deck.slides, 1):

@@ -45,8 +45,8 @@ def test_compare_slide_is_checked_for_thin_text(tmp_path, capsys):
 def test_line_count_alone_does_not_ask_to_cut_a_thin_slide():
     """66字・9行の枚に「目安を超えている」と出て、制作役が削っていた。目安の下端（80字）より少なければ行数だけでは超えにしない。"""
     assert not cl.over_target(66, 11)
-    assert cl.over_target(120, 11) and cl.over_target(190, 5)
-    assert not cl.over_target(150, 9)       # 目安（100〜150字）の中は通す
+    assert cl.over_target(100, 11) and cl.over_target(150, 5)
+    assert not cl.over_target(120, 8)       # 目安（80〜120字）の中は通す
 
 
 def test_deck_median_warns_when_whole_deck_is_thin(tmp_path, capsys):

@@ -63,8 +63,8 @@ def test_table_slide_gets_no_figure_file(work):
 
 def test_points_go_to_the_slots_of_each_form(work):
     c = (work / "cards" / "09.md").read_text(encoding="utf-8")   # ラベル・展開：「→」の要点は展開へ、「見出し：」の要点はラベルへ
-    assert 's.develop("始まり 35 Hz", "{r:250 Hz まで上昇}")' in c
-    assert 's.block("図の読み方："' in c
+    assert 's.develop("始まり 35 Hz", "{r:250 Hz まで' in c   # 見本の構成案の文言は手直しで変わるので、頭だけ見る
+    assert any(line.startswith('s.block("') and "：" in line for line in c.splitlines())
     assert not any("35 Hz" in line for line in c.splitlines() if line.startswith("s.block"))   # 同じ要点を2つの形に入れない
 
 
@@ -145,3 +145,22 @@ def test_producer_split_at_eight_cards(work):
     assert "figs.py" in one                                                     # 1人のときは制作役が図も描く
     assert "--merge" not in a and "--merge" not in b and "--merge" in one
     assert "--merge" in brief.build("仕上げ役", str(work))
+
+
+def test_recap_role_is_built_from_the_story_table(root, tmp_path):
+    """役割「まとめ」の枚は、筋の表の問いと答えを入れた s.recap で組む（まとめの形を決めて縛る）。"""
+    import re as _re
+    import story
+    text = (root / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
+    lines = text.splitlines()
+    i = next(k for k, l in enumerate(lines) if l.startswith("| 14 "))
+    cells = lines[i].split("|")
+    role_col = next(k for k, h in enumerate(next(l for l in lines if l.startswith("| 番号")).split("|")) if h.strip() == "役割")
+    cells[role_col] = " まとめ "
+    lines[i] = "|".join(cells)
+    (tmp_path / "outline.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    shutil.copy2(root / "examples" / "zemi" / "outline_review.md", tmp_path / "outline_review.md")
+    assert scaffold.main([str(tmp_path)]) == 0
+    py = (tmp_path / "build.py").read_text(encoding="utf-8")
+    ans = story.story_table(text)["答え"][0]
+    assert 's.heading("まとめ")' in py and "s.recap(" in py and ans[:10] in py

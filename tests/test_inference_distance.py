@@ -15,7 +15,7 @@ ROWS = """## 推論距離
 def test_many_names_on_one_slide():
     res = {item: (mark, msg) for mark, item, msg in co.hole_form(ROWS)}
     mark, msg = res["推論距離の名前の数"]
-    assert mark == "△" and "3枚目（3つ）" in msg and "4枚目" not in msg
+    assert mark == "✘" and "3枚目（3つ）" in msg and "4枚目" not in msg
 
 
 def test_deep_rows_go_to_cards(tmp_path):

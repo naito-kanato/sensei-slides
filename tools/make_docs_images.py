@@ -3,7 +3,7 @@
 見本を組み直したら（make_deck.py のあと）これを走らせる。
 
     python tools/make_docs_images.py
-    python tools/make_docs_images.py --en   # 英語の README の画像だけ（英語版の見本 examples/zemi_en・course_en の描画から）
+    python tools/make_docs_images.py --en   # 英語の README と使い方のページの画像だけ（英語版の見本 examples/zemi_en・course_en の描画と原稿のページから）
 """
 from __future__ import annotations
 
@@ -22,7 +22,13 @@ ZEMI = ROOT / "examples" / "zemi" / "render"
 STRUCT = ROOT / "examples" / "structures" / "render"
 # 型の見本帳から載せる枚（スライド番号, 名前）
 STRUCT_TILES = [(2, "前提 ⇒ 帰結"), (3, "ラベル＋説明"), (4, "横の矢印で展開"), (5, "条件の場合分け"), (6, "問い → 答え"), (7, "番号の手順"),
-                (8, "縦の矢印で結論へ"), (10, "並列カード"), (11, "段違いの順序"), (12, "循環"), (14, "前後"), (15, "2つ並べた図")]
+                (8, "縦の矢印で結論へ"), (10, "並列カード"), (11, "段違いの順序"), (12, "循環"), (14, "前後"), (15, "2つ並べた図"),
+                (-2, "図が主役"), (-1, "想定質問の図")]   # 負の番号は後ろから（漸進表示の枚数によらず、最後の2枚）
+# 英語版の型の見本帳（examples/structures/build_en.py。同じ番号の枚）。使い方のページの英語版で使う
+EN_STRUCT = ROOT / "examples" / "structures" / "render_en"
+EN_STRUCT_NAMES = ["Premise ⇒ consequence", "Label + explanation", "Side arrows", "Case split", "Question → answer", "Steps",
+                   "Down arrow to the conclusion", "Parallel cards", "Staggered order", "Cycle", "Before and after",
+                   "Two figures side by side", "Figure first", "Expected questions with a figure"]
 PAD, GAP = 15, 14
 JOBS = [  # (出力, 描画のフォルダ, スライド番号, 列の数, 全体の幅)
     ("course-slides-1.jpg", COURSE, range(1, 5), 2, 1648),
@@ -41,14 +47,14 @@ EN_COURSE = ROOT / "examples" / "course_en" / "_work" / "AI_Literacy_01" / "rend
 EN_ZEMI = ROOT / "examples" / "zemi_en" / "render"
 EN_JOBS = [
     ("en-course-slides-1.jpg", EN_COURSE, range(1, 5), 2, 1648),
-    ("en-course-slides-2.jpg", EN_COURSE, range(5, 16), 3, 1654),
+    ("en-course-slides-2.jpg", EN_COURSE, range(5, 17), 3, 1654),
     ("en-zemi-slides-1.jpg", EN_ZEMI, range(1, 5), 2, 1648),
-    ("en-zemi-slides-2.jpg", EN_ZEMI, range(5, 17), 3, 1654),
+    ("en-zemi-slides-2.jpg", EN_ZEMI, range(5, 18), 3, 1654),
 ]
 EN_DEMO = [(EN_COURSE, 1, "Course: an AI-taught series"), (EN_COURSE, 3, "Course: one conclusion line and a figure"),
-           (EN_COURSE, 6, "Course: numbers as charts"), (EN_COURSE, 12, "Course: quiz"), (EN_ZEMI, 1, "Talk: paper review"),
-           (EN_ZEMI, 8, "Talk: the paper's figures and numbers"), (EN_ZEMI, 13, "Talk: result with a red circle"),
-           (EN_ZEMI, 15, "Talk: anticipated questions")]
+           (EN_COURSE, 6, "Course: numbers as charts"), (EN_COURSE, 13, "Course: quiz"), (EN_ZEMI, 1, "Talk: paper review"),
+           (EN_ZEMI, 8, "Talk: the paper's figures and numbers"), (EN_ZEMI, 14, "Talk: result with a red circle"),
+           (EN_ZEMI, 16, "Talk: anticipated questions")]
 
 
 def demo_gif(out: Path, width: int = 800, bar: int = 40, ms: int = 1800, frames_of=None):
@@ -102,7 +108,9 @@ def labeled(folder: Path, tiles, cols: int = 3, width: int = 1654, label_h: int 
         font = ImageFont.truetype("C:/Windows/Fonts/YuGothB.ttc", 30)
     except OSError:
         font = ImageFont.load_default()
+    last = len(list(folder.glob("slide-*.png")))
     for k, (n, name) in enumerate(tiles):
+        n = n if n > 0 else last + 1 + n
         x, y = PAD + (k % cols) * (cw + GAP), PAD + (k // cols) * (cell + GAP)
         d.text((x, y + 2), name, font=font, fill=(30, 30, 30))
         src = Image.open(folder / f"slide-{n:02d}.png").convert("RGB").resize((cw, ch), Image.LANCZOS)
@@ -114,6 +122,9 @@ def labeled(folder: Path, tiles, cols: int = 3, width: int = 1654, label_h: int 
 EDGE = [Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"), Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe")]
 NOTES = [("course-notes.jpg", ROOT / "examples" / "course" / "AI活用講座" / "01_生成AIは何をしているか_原稿.html"),
          ("zemi-notes.jpg", ROOT / "examples" / "zemi" / "重力波の初観測_原稿.html")]
+# 英語版の見本の原稿のページ（notes_html.py で作る。画面の言葉も英語）。使い方のページの英語版で使う
+EN_NOTES = [("en-course-notes.jpg", ROOT / "examples" / "course_en" / "AI_Literacy" / "01_What a Chat AI Computes_script.html"),
+            ("en-zemi-notes.jpg", ROOT / "examples" / "zemi_en" / "Gravitational_Waves_script.html")]
 
 
 def card_spans(im, x: int = 16, head: int = 100):
@@ -130,7 +141,7 @@ def card_spans(im, x: int = 16, head: int = 100):
     return spans
 
 
-def notes_shots():
+def notes_shots(jobs=None):
     """原稿のページを 1360×2800 で写し、上の帯と3枚目のカードをつなぐ。カードの上下は、左の縁の色から探す
     （決め打ちの位置だと、ページの作りが変わったときに前の枚の残りが入り、3枚目の下が切れた）。Edge が無ければ飛ばす。"""
     import subprocess
@@ -152,7 +163,10 @@ def notes_shots():
         return Image.open(shot).convert("RGB") if shot.exists() else None
 
     with tempfile.TemporaryDirectory() as td:
-        for name, html in NOTES:
+        for name, html in jobs or NOTES:
+            if not html.exists():
+                print(f"（{html.name} が無い。先に notes_html.py で作る）")
+                continue
             stem = Path(name).stem          # 1枚ごとに別の名前（同じ名前だと、前の画像を写し違えることがあった）
             im = shoot(html, Path(td) / f"tall_{stem}.png", 2800)
             # 上の帯は 1700 の高さで写す（番号の印は画面のまん中あたりのカードに付く。1700 なら3枚目）
@@ -179,9 +193,14 @@ def english():
         out = ROOT / "docs" / name
         tile(folder, list(nums), cols, width).save(out, quality=88)
         print(out.relative_to(ROOT))
+    if EN_STRUCT.exists():
+        out = ROOT / "docs" / "en-structures.jpg"
+        labeled(EN_STRUCT, [(n, name) for (n, _), name in zip(STRUCT_TILES, EN_STRUCT_NAMES)]).save(out, quality=88)
+        print(out.relative_to(ROOT))
     out = ROOT / "docs" / "demo-en.gif"
     demo_gif(out, frames_of=EN_DEMO)
     print(out.relative_to(ROOT), f"{out.stat().st_size / 1e6:.1f} MB")
+    notes_shots(EN_NOTES)
 
 
 def main():

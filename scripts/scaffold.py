@@ -182,16 +182,25 @@ def build_py(work: Path, kind, title, rows) -> str:
         rel = os.path.relpath(SKILL / "scripts", work).replace("\\", "/")
     except ValueError:      # Windows でドライブが違う（作業フォルダが C:、スキルが D: など）ときは、絶対パスで
         rel = (SKILL / "scripts").as_posix()
+    plan = work / {"memo": "memo.md", "answers": "answers.md"}.get(kind, "outline.md")
+    foreign = False   # 日本語でないデッキか（設定の「言語」）
+    if plan.exists():
+        import language as LG
+        from slide_profile import read_options
+        foreign = not LG.is_japanese(read_options(plan.read_text(encoding="utf-8")).get("言語"))
+        if foreign:
+            title = re.sub(r"^第(\d+)回\s*", r"Lecture \1: ", title)   # 日本語でない講座：スライドの上の題も（英語の試しで「第1回」が残った）
     if kind == "memo":
         course = re.sub(r"_\d{2}$", "", work.name)
         num = re.search(r"_(\d{2})$", work.name)
         nn = num.group(1) if num else "01"
-        short_title = q(re.sub(r"^第\d+回\s*", "", title))
-        out_line = f'OUT = HERE.parents[1] / "{q(course)}" / "{nn}_{short_title}_スライド.pptx"'
+        short_title = q(re.sub(r"^(第\d+回|Lecture \d+:)\s*", "", title))
+        out_line = f'OUT = HERE.parents[1] / "{q(course)}" / "{nn}_{short_title}{"_slides" if foreign else "_スライド"}.pptx"'
     elif kind == "answers":
-        out_line = 'OUT = HERE / "TODO_質問回答_スライド.pptx"   # 元のデッキと同じフォルダ・「<資料名>_質問回答_スライド.pptx」に'
+        out_line = ('OUT = HERE / "TODO_answers_slides.pptx"   # same folder as the original deck: "<name>_answers_slides.pptx".' if foreign else
+                    'OUT = HERE / "TODO_質問回答_スライド.pptx"   # 元のデッキと同じフォルダ・「<資料名>_質問回答_スライド.pptx」に')
     else:
-        out_line = f'OUT = HERE.parents[1] / "{q(work.name)}" / "{q(work.name)}_スライド.pptx"   # 発表フォルダ（資料置き場と同じ）。一覧の「出力先」があれば合わせる'
+        out_line = f'OUT = HERE.parents[1] / "{q(work.name)}" / "{q(work.name)}{"_slides" if foreign else "_スライド"}.pptx"   # 発表フォルダ（資料置き場と同じ）。一覧の「出力先」があれば合わせる'
     L = [f'"""{title}（{kind == "memo" and "設計メモ memo.md" or "構成案 outline.md"} の表から scaffold.py が作った骨組み。TODO を書き換える）。',
          "",
          "    python <skill>/scripts/make_deck.py <この作業フォルダ>   # 図→組む→描く→検査を1回で",
@@ -215,11 +224,11 @@ def build_py(work: Path, kind, title, rows) -> str:
          ""]
     if any(col(r, "役割") in ("確認問題", "解答") for r in rows):
         L += ["",
-              "def qa(s, items, size=20, gap=0.45):",
+              "def qa(s, items, size=22, gap=0.45):",
               '    """確認問題・解答の本文。items = [(番号, 本文)]。番号は「1-1」の形（原稿HTMLの「1-1 に答える」ボタンになる）"""',
               "    s.at(1.0, 2.0)",
               "    for j, (k, txt) in enumerate(items):",
-              '        s.p("{b:" + k + "}　" + txt, size=size, gap=gap if j < len(items) - 1 else 0.2)',
+              '        s.p("{b:" + k + "}' + ("  " if foreign else "　") + '" + txt, size=size, gap=gap if j < len(items) - 1 else 0.2)',
               ""]
     qa_slices = qa_split(work, kind, rows)
     for r in rows:
@@ -240,13 +249,41 @@ def build_py(work: Path, kind, title, rows) -> str:
             L.append(f'deck.section({n}, "{q(head or "TODO 章の名前")}")')
         elif role == "想定質問":
             L.append("s = deck.slide(T)   # summary なし：帯も●も無い枚になる")
-            L.append('s.heading("想定質問")')
+            L.append('s.heading("Expected Questions")' if foreign else 's.heading("想定質問")')
             pairs = [(k, qq, re.sub(r"\s*〔[^〕]*〕", "", a)) for k, qq, a, _ in qa_slices.get(n, [])]   # 〔出どころ〕はスライドに出さない
             L.append("s.at(1.0, 1.9)")
             L.append("s.qa_pairs([" + ", ".join(f'("{q(k)}", "{q(qq)}", "{q(a)}")' for k, qq, a in pairs)
                      + "])   # 1行25字までに \\n を入れて折る（回答は2〜3行）。戻る枚は原稿に")
+        elif role == "まとめ":
+            import story
+            st = story.story_table(plan.read_text(encoding="utf-8")) if plan.exists() else None
+            st = st or {}
+            ans = (st.get("答え") or ("",))[0] or "TODO 筋の表の答えの一文"
+            opn = (st.get("問い") or ("",))[0] or "TODO 最初の本文の枚の前振り（問い・見方・問題）"
+            summ = q(summary) if summary not in EMPTY else q(ans)
+            L.append(f's = deck.slide(T, summary="{summ}")   # まとめ：結論の一文はこの回の答え')
+            L.append('s.heading("Summary")' if foreign else 's.heading("まとめ")')
+            kind_ = story.recap_kind(plan.read_text(encoding="utf-8")) if plan.exists() else "問い→答え"
+            pl = ", ".join(f'"{q(p)}"' for p in pts[:3]) if pts else '"TODO 持ち帰る一言1", "TODO 一言2"'
+            sit = (st.get("状況") or ("",))[0] or "TODO 状況"
+            comp = (st.get("複雑化") or ("",))[0] or "TODO しかし"
+            note = f"   # まとめの形「{kind_}」（話の型から。合わなければ kind を変える。新しい事実は入れない。references/story.md 3節）"
+            if kind_ == "前と後":
+                L.append(f's.recap(kind="前と後", pairs=[("{q(opn)}", "{q(ans)}"), ("TODO 聞く前の見方2", "TODO 今わかったこと2")])' + note)
+            elif kind_ == "筋":
+                L.append(f's.recap(kind="筋", steps=["{q(sit)}", "{q(comp)}", "TODO だから（手段・理由）", "{q(ans)}"], points=[{pl}])' + note)
+            elif kind_ == "次の一歩":
+                L.append(f's.recap(kind="次の一歩", answer="{q(ans)}", actions=[{pl if pts else chr(34) + "TODO 明日からやること1" + chr(34) + ", " + chr(34) + "TODO 2" + chr(34)}])' + note)
+            elif kind_ == "選び方":
+                L.append('s.recap(kind="選び方", pairs=[("TODO こんなとき1", "TODO 選ぶもの1"), ("TODO こんなとき2", "TODO 選ぶもの2")])' + note)
+            else:
+                L.append(f's.recap("{q(opn)}", "{q(ans)}", [{pl}])' + note)
         elif role in ("確認問題", "解答"):
             L.append("s = deck.slide(T)   # summary なし：帯も●も無い枚になる")
+            if foreign and re.search(r"[ぁ-んァ-ヶ一-龥]", head or role):   # 日本語の見出しのままなら、その言語の決まった見出しに
+                ids = re.findall(r"\d+-\d+", head or "")
+                rng = f" ({ids[0]} to {ids[-1]})" if len(ids) >= 2 else f" ({ids[0]})" if ids else ""
+                head = ("Review Questions" if role == "確認問題" else "Answers") + rng
             L.append(f's.heading("{q(head or role)}")')
             L.append(f'qa(s, [("TODO 番号", "TODO {role}の本文")])   # 設計メモの6節から')
         elif role != "本文":
@@ -405,8 +442,12 @@ def try_part(work: Path, n: int) -> int:
         tx = sh.has_text_frame and sh.text_frame.text.strip()
         if tx and not sh.is_placeholder and sh.name != "見出し":   # 上の帯・ページ番号・青帯は数えない
             lines += [l.strip() for l in sh.text_frame.text.splitlines() if l.strip()]
-    chars = sum(len(_flat(l)) for l in lines)
-    long_ = [l for l in lines if len(_flat(l)) > 20]
+    import language as LG
+    from slide_profile import read_options
+    lang = read_options(text).get("言語")
+    size = (lambda l: len(_flat(l))) if LG.is_japanese(lang) else (lambda l: round(LG.measure(_flat(l), lang)))   # 日本語でなければ全角に直した幅
+    chars = sum(size(l) for l in lines)
+    long_ = [l for l in lines if size(l) > 20]
     rows_.append(("△" if long_ else "✔", "1行20字", "超える行：" + "／".join(l[:24] for l in long_[:3]) if long_ else "すべて20字まで"))
     if tm.get("notes"):
         rows_.append(("△", "出どころの断り", "／".join(x[:28] for x in tm["notes"][:3]) + " → スライドから外し、原稿の ※ 行へ"

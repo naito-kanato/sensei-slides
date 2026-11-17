@@ -81,7 +81,7 @@ def vague_sources(memo: Path):
 
 def deck_name(pptx: Path) -> str:
     """「講義メモ_スライド.pptx」→「講義メモ」"""
-    return re.sub(r"_スライド$", "", pptx.stem)
+    return re.sub(r"_(スライド|slides)$", "", pptx.stem)
 
 
 def find_work_root(start: Path):
@@ -94,8 +94,8 @@ def find_work_root(start: Path):
 def find_work(pptx: Path):
     """作業フォルダの候補を順に探す。見つからなければ None。"""
     name = deck_name(pptx)
-    qa = name.endswith(QA)
-    base = name[: -len(QA)] if qa else name
+    qa = name.endswith((QA, "_answers"))   # 英語のデッキの質問回答は _answers_slides.pptx
+    base = name[: -len(QA if name.endswith(QA) else "_answers")] if qa else name
     root = find_work_root(pptx.parent)
     if root is None:
         return None
@@ -118,7 +118,7 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     from pptx import Presentation
     res = []
     name = deck_name(pptx)
-    qa = name.endswith(QA)
+    qa = name.endswith((QA, "_answers"))
 
     # 0. スキルの部品（エージェントが書き換えていないか）
     c = skill_manifest.changes()
@@ -229,7 +229,8 @@ def check(pptx: Path, work: Path | None, record: bool = True):
         res += check_notes.check(work, slide_texts=stexts)
 
     # 4. 原稿のページ
-    html = pptx.with_name(f"{name}_原稿.html")
+    import language
+    html = language.sibling(pptx, "slides", "script")   # 英語のデッキは _script.html
     if not html.exists():
         res.append(("✘", "原稿のページ", f"{html.name} が無い（notes_html.py を走らせる）"))
     elif html.stat().st_mtime < pptx.stat().st_mtime:
@@ -272,11 +273,12 @@ def check(pptx: Path, work: Path | None, record: bool = True):
 
     # 5b. 図の案どおりか
     import figplan
+    import language
     src = (work / "memo.md") if work and (work / "memo.md").exists() else (work / "outline.md") if work and (work / "outline.md").exists() else None
     plan = figplan.plan_from_text(src.read_text(encoding="utf-8"), "memo" if src.name == "memo.md" else "outline") if src and not qa else None
     if plan is not None:
         skip = {1} | {i for i, s in enumerate(prs.slides, 1)
-                     if any(sh.name == "見出し" and sh.has_text_frame and re.search(r"問題|解答|想定質問", sh.text_frame.text) for sh in s.shapes)}
+                     if any(sh.name == "見出し" and sh.has_text_frame and (re.search(r"問題|解答|想定質問", sh.text_frame.text) or language.is_qa_heading(sh.text_frame.text)) for sh in s.shapes)}
         bad_plan = figplan.mismatches(prs, plan, skip)
         res.append(("✘" if bad_plan else "✔", "図の案どおりか",
                     "；".join(f"[{i}] {m}" for i, m in bad_plan[:6]) + "（案どおり描くか、案を直して理由を書く）" if bad_plan
@@ -296,8 +298,17 @@ def check(pptx: Path, work: Path | None, record: bool = True):
             soft = [(i, m) for i, m in bad_form if (i, m) not in hard]
             if hard:
                 res.append(("✘", "本文の形", "；".join(f"[{i}] {m}" for i, m in hard[:6]) + "（案の形の部品で組むか、案を直す。references/structures.md）"))
+            # 図が中身を担う枚の形の違いは、plan_changes.md に理由の行（「6・8｜…｜…｜理由」）があれば通し、無ければ ✘
+            pc = (work / "plan_changes.md") if work else None
+            explained = set()
+            if pc and pc.exists():
+                for line in pc.read_text(encoding="utf-8").splitlines():
+                    head_ = re.split(r"[｜|]", line.strip(), maxsplit=1)[0]
+                    if re.fullmatch(r"[\d・,、\s\[\]]+", head_ or "x"):
+                        explained |= {int(x) for x in re.findall(r"\d+", head_)}
+            soft = [(i, m) for i, m in soft if i not in explained]
             if soft:
-                res.append(("△", "本文の形", "；".join(f"[{i}] {m}" for i, m in soft[:6])
+                res.append(("✘", "本文の形", "；".join(f"[{i}] {m}" for i, m in soft[:6])
                             + "（図が同じ中身を担っているなら、本文で言い直さなくてよい。そのときは案の本文の形を「箇条」（短い要点だけ）に直し、plan_changes.md に1行）"))
             if not bad_form:
                 res.append(("✔", "本文の形", f"{src.name} の本文の形と合っている"))
@@ -309,11 +320,18 @@ def check(pptx: Path, work: Path | None, record: bool = True):
                     "同じ型が続いている：" + "、".join(f"{a}〜{b}枚目が「{t}」" for a, b, t in runs_)
                     + f"（{figplan.MAX_RUN}枚まで。内容に合う別の型にできないか見直す。references/figures.md「スライドの型」）" if runs_
                     else f"同じ型が {figplan.MAX_RUN} 枚を超えて続いていない"))
+        n_side, n_body = figplan.side_share(prs, skip)
+        over = n_body >= 6 and n_side > figplan.MAX_SHARE * n_body
+        res.append(("✘" if over else "✔", "左に文・右に図の数",   # ✘：△ のときは素通りされ、10枚中8枚が左文右図のまま渡された（3本の比べ）
+                    f"本文 {n_body} 枚のうち {n_side} 枚が「左文右図」（半分まで。図そのものを読ませる枚は図が主役・全面の図、並べる中身はカード、"
+                    "比べるなら比較、横長の図は下に図に。references/figures.md「スライドの型」）" if over
+                    else f"本文 {n_body} 枚のうち「左文右図」は {n_side} 枚（半分まで）"))
 
     # 5d. 後始末：同じ回の古い版の pptx と、_work に残った一時ファイル
     m = re.match(r"^(\d{2})_", pptx.name)
     if m:
-        old = [p.name for p in pptx.parent.glob(f"{m.group(1)}_*_スライド.pptx") if p.resolve() != pptx.resolve()]
+        old = [p.name for p in [*pptx.parent.glob(f"{m.group(1)}_*_スライド.pptx"), *pptx.parent.glob(f"{m.group(1)}_*_slides.pptx")]
+               if p.resolve() != pptx.resolve()]
         if old:
             res.append(("△", "古い版のスライド", f"同じ回の別の pptx が残る：{'・'.join(old)}（題名を変える前の版など。この回で作った古い版なら消し、"
                         "迷うならユーザーに伝える）"))
@@ -343,6 +361,14 @@ def main(argv=None):
     ap.add_argument("--all", action="store_true", help="✔ の行も1行ずつ出す（ふだんは ✔ を1行にまとめる）")
     a = ap.parse_args(argv)
     pptx = Path(a.pptx).resolve()
+    if pptx.is_dir():   # 作業フォルダを渡されたら、そこから作ったデッキを探す（前は長いエラーで落ちた）
+        import next_step
+        work0, found = pptx, next_step.find_pptx(pptx)
+        if not found:
+            print(f"[ERROR] {work0} から作ったデッキ（*_スライド.pptx・*_slides.pptx）が見つからない。pptx の場所を渡す")
+            return 1
+        pptx, a.work = found.resolve(), a.work or str(work0)
+        print(f"（作業フォルダ {work0.name} のデッキ：{pptx.name}）")
     if not pptx.exists():
         print(f"[ERROR] {pptx} が無い")
         return 1

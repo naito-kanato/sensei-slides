@@ -136,9 +136,10 @@ def hole_form(review_text: str):
     for n, _, _, need, _ in rows:
         if "要2" in labels(need) and not unsure(need):
             names[int(n)] = names.get(int(n), 0) + 1
-    many = sorted(n for n, c in names.items() if c > NAMES_MAX)
+    many = sorted(n for n, c in names.items() if c > NAMES_MAX
+                  and not re.search(rf"\[{n}\][^\n]*理由[：:]\s*\S", review_text))   # 手当ての行に理由があれば通す
     if many:
-        res.append(("△", "推論距離の名前の数", "知らない名前（語）が1枚に3つ以上ある枚：" + "・".join(f"{n}枚目（{names[n]}つ）" for n in many)
+        res.append(("✘", "推論距離の名前の数", "知らない名前（語）が1枚に3つ以上ある枚：" + "・".join(f"{n}枚目（{names[n]}つ）" for n in many)
                     + f"。1枚に新しく出る名前は{NAMES_MAX}個まで：枚を分けるか、前の枚で先に出す（どうしても要るなら、手当ての行に理由を書く）"))
     return res
 
@@ -263,7 +264,7 @@ def flows(text: str, folder=None):
     roles = structures.check_roles(text, "outline", "構成案")
     if roles is None:
         roles = [("✘", "役割", "構成案の" + f"表に「役割」の列が無い。枚ごとに {'・'.join(structures.ROLES)} から選んで書く（結論の一文を置くのは本文だけ）")]
-    return structures.check_plan(text, "outline", body_no, "構成案", folder) + roles + structures.check_expected_qa(text, "outline") + [(mark or "△", "流れ図の数", msg),
+    return structures.check_plan(text, "outline", body_no, "構成案", folder) + roles + structures.check_expected_qa(text, "outline") + [(mark or "✘", "流れ図の数", msg),
             ("✘" if nf else "✔", "図の無いスライド",
              f"「図で見せるもの」が「なし」・無い本文のスライド：{'・'.join(map(str, nf))}。{figplan.NO_FIGURE_HINT}" if nf
              else "本文のスライドすべてに図で見せるものがある")] + _data(text, folder, body_no)
@@ -291,7 +292,7 @@ def count(text: str, body):
                 "枚数合わせの水増しはしない")
     else:
         hint = f"上限 {hi}枚を超える。範囲を絞るか、まとめられる所をまとめる"
-    return [("△", "本文の枚数", f"{n}枚（発表 {t:g}分。目安 {aim}）。{hint}。どうしても外れるなら outline.md に「枚数の理由：…」を書く")]
+    return [("✘", "本文の枚数", f"{n}枚（発表 {t:g}分。目安 {aim}）。{hint}。どうしても外れるなら outline.md に「枚数の理由：…」を書く")]
 
 
 def main(argv=None):

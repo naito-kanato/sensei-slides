@@ -18,7 +18,7 @@ def _in_head(path):
 
 
 def test_starter_zip_has_everything(tmp_path):
-    if not (_in_head("tools/make_starter.py") and _in_head("assets/starter/準備.bat")):
+    if not (_in_head("tools/make_starter.py") and _in_head("assets/starter/準備.bat") and _in_head("how_to_use.html")):
         pytest.skip("一式の部品がまだコミットされていない")
     import make_starter
     z = zipfile.ZipFile(make_starter.build(tmp_path))
@@ -30,9 +30,9 @@ def test_starter_zip_has_everything(tmp_path):
         assert f"{d}/sensei-slides/scripts/MANIFEST.txt" in names
         assert not any(n.startswith(f"{d}/sensei-slides/tools/") for n in names)   # 配る側の道具は入れない
     assert f".codex/rules/sensei-slides.rules" in names
-    for f in (".setup/準備.bat", ".setup/setup.ps1", ".setup/準備.sh", "スキルの使い方.html"):
+    for f in (".setup/準備.bat", ".setup/setup.ps1", ".setup/準備.sh", "how_to_use.html"):
         assert f in names
-    assert {n.split("/")[0] for n in names} == {".agents", ".claude", ".codex", ".setup", "スキルの使い方.html"}   # 一番上に見えるのは使い方だけ
+    assert {n.split("/")[0] for n in names} == {".agents", ".claude", ".codex", ".setup", "how_to_use.html"}   # 一番上に見えるのは使い方だけ
     bat = z.read(".setup/準備.bat")
     assert b"\r\n" in bat                                           # bat は CRLF
     bat.decode("ascii")                                               # bat は英数字だけ（chcp 65001 のあと、cmd が日本語の行を読み違えて動かなかった）
@@ -45,7 +45,7 @@ def test_starter_zip_has_everything(tmp_path):
         assert p in ps1 and p.replace("\\", "/") in names
     assert (z.getinfo(".setup/準備.sh").external_attr >> 16) & 0o111   # sh は実行できる
     # 一番上の使い方のページは、画像を .agents の中の docs から読む
-    guide = z.read("スキルの使い方.html").decode("utf-8")
+    guide = z.read("how_to_use.html").decode("utf-8")
     assert 'src="docs/' not in guide and 'src=".agents/skills/sensei-slides/docs/course-notes.jpg"' in guide
     assert ".agents/skills/sensei-slides/docs/course-notes.jpg" in names
-    assert "スキルの使い方.html" in ps1                                   # 準備のあとに開く
+    assert "how_to_use.html" in ps1                                   # 準備のあとに開く

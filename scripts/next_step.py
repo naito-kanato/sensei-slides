@@ -43,11 +43,17 @@ def _newer(a: Path, b: Path) -> bool:
 
 
 def needs_final_fix(review: Path, pptx: Path) -> bool:
-    """完成後のレビューの判定が「直してから渡す」なのに、そのあとデッキを作り直していない（pptx が review.md より新しくない）。"""
+    """完成後のレビューの判定が「直してから渡す」なのに、そのあとデッキを作り直していない（pptx が review.md より新しくない）。
+    review.md に「## 採否と直した点」（か「## 直した点」）の中身があれば直し済み：仕上げの直しの担当は組み直したあとに
+    review.md へ採否を書き足すので、時刻だけで見ると review.md が新しくなり、手順9から進まなかった（英語の試しで見つけた）。"""
     if not (review.exists() and pptx.exists()):
         return False
     import re as _re
-    m = _re.search(r"判定\s*[:：]\s*[「『]?([^」』\n]*)", review.read_text(encoding="utf-8"))
+    text = review.read_text(encoding="utf-8")
+    m = _re.search(r"判定\s*[:：]\s*[「『]?([^」』\n]*)", text)
+    done = _re.search(r"^##\s*(?:採否と)?直した点[^\n]*\n(.*?)(?=^##\s|\Z)", text, _re.S | _re.M)
+    if done and _re.search(r"^\s*[-*]\s*\S", done.group(1), _re.M):
+        return False
     return bool(m and "直してから" in m.group(1)) and pptx.stat().st_mtime <= review.stat().st_mtime
 
 
@@ -69,14 +75,14 @@ def _fails(res):
 def find_pptx(work: Path):
     """作業フォルダから作られたデッキ（check_done.find_work で作業フォルダに戻れる *_スライド.pptx）。新しいもの。"""
     import check_done
-    here = sorted(work.glob("*_スライド.pptx"), key=lambda p: p.stat().st_mtime)   # 作業フォルダの中に出したデッキ（見本など）
+    here = sorted([*work.glob("*_スライド.pptx"), *work.glob("*_slides.pptx")], key=lambda p: p.stat().st_mtime)   # 作業フォルダの中に出したデッキ（見本など）
     if here:
         return here[-1]
     root = work.parent.parent if work.parent.name == "_work" else work.parent
     if work.name == "質問回答":
         root = work.parent.parent.parent
     hits = []
-    for p in root.rglob("*_スライド.pptx"):
+    for p in [*root.rglob("*_スライド.pptx"), *root.rglob("*_slides.pptx")]:
         rel = p.relative_to(root).parts if p.is_relative_to(root) else p.parts   # 一式の外の _work（上のフォルダの名前）は見ない
         if "_work" in rel and p.parent.name != "build" and not p.parent.samefile(work):
             continue
@@ -240,7 +246,8 @@ def steps_for(work: Path):
         nxt = (f"手順9：仕上げの直しの担当を新しく起動（`brief.py 仕上げの直しの担当 {work.as_posix()}`）。review.md の採否を決めて直し、"
                "make_deck と notes_html をやり直す。そのあと手順7（check_done.py）")
     # 6. 原稿のページ
-    html = pptx.with_name(pptx.name.replace("_スライド.pptx", "_原稿.html"))
+    import language
+    html = language.sibling(pptx, "slides", "script")
     if add(_newer(html, pptx), "原稿のページ（*_原稿.html）", "" if _newer(html, pptx) else ("無い" if not html.exists() else "pptx より古い")) is False and not nxt:
         nxt = f"手順6：python {SKILL}/scripts/notes_html.py で原稿のページを作る（`guide.py steps 6`）"
     # 7. 渡す前の確認
@@ -251,7 +258,7 @@ def steps_for(work: Path):
 
 def course_next(course: Path):
     """講座フォルダ：作った回と、次に作る回の作業フォルダ。"""
-    made = sorted({p.name[:2] + "_" for p in course.glob("[0-9][0-9]_*_スライド.pptx")})   # 回の番号ごとに1つ（題名を変える前の古い版を数えない）
+    made = sorted({p.name[:2] + "_" for p in [*course.glob("[0-9][0-9]_*_スライド.pptx"), *course.glob("[0-9][0-9]_*_slides.pptx")]})   # 回の番号ごとに1つ（題名を変える前の古い版を数えない）
     readme = course / "00_README.md"
     root = course.parent / "_work"
     works = sorted(root.glob(f"{course.name}_[0-9][0-9]")) if root.is_dir() else []

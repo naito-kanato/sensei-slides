@@ -17,12 +17,16 @@ import base64
 import html
 import io
 import re
+import unicodedata
 import sys
 from pathlib import Path
 
 from PIL import Image
 from pptx import Presentation
 from pptx.enum.shapes import PP_PLACEHOLDER
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import language  # noqa: E402
 
 
 MARKS = "●■◆▶▷►○□◇◎・▪▸•"   # 見出しの印
@@ -48,8 +52,9 @@ def slide_texts(prs):
                     band = band or t
             elif sh.name == "結論の一文" and sh.has_text_frame:   # 左の柱の結論
                 band = band or sh.text_frame.text.strip()
-        if "　／　" in title:   # 結論が上にある構造では、●見出しをタイトルの行の後ろに「／ 見出し」と足してある
-            title, heading = (x.strip() for x in title.split("　／　", 1))
+        sep = "　／　" if "　／　" in title else "  /  " if "  /  " in title else None
+        if sep:   # 結論が上にある構造では、●見出しをタイトルの行の後ろに「／ 見出し」と足してある（日本語でないデッキは「  /  」）
+            title, heading = (x.strip() for x in title.split(sep, 1))
         if not title:  # 表紙・区切り：いちばん大きい文字を題目に
             boxes = [sh for sh in sl.shapes if sh.has_text_frame and sh.text_frame.text.strip()]
             if boxes:
@@ -63,6 +68,16 @@ def slide_texts(prs):
 QID = re.compile(r"^\s*(\d+-\d+)[\s　]+(.*)$", re.S)
 
 
+def join_lines(t: str) -> str:
+    """スライドで折った問題文を1行に戻す。日本語どうしは詰め、英字などをまたぐ所は空白1つ
+    （英語の見本で「Smith(2021)」「usethe claim」のように語がくっついた）。"""
+    def glue(m):
+        a, b = m.string[m.start() - 1:m.start()], m.string[m.end():m.end() + 1]
+        wide = lambda c: bool(c) and unicodedata.east_asian_width(c) in "WF"
+        return "" if (wide(a) and wide(b)) else " "
+    return re.sub(r"\s*\n[\s　]*", glue, t).strip()
+
+
 def slide_questions(prs):
     """確認問題のスライド（●見出しに「問題」があり「解答」がない）から、問題番号と問題文を取り出す。
     問題は「1-1　問題文」の形で1問1つのテキスト枠になっている（build.py の qa()）。戻り値はスライドごとの [(番号, 問題文)]"""
@@ -70,12 +85,12 @@ def slide_questions(prs):
     for sl in prs.slides:
         heading = next((sh.text_frame.text for sh in sl.shapes if sh.name == "見出し" and sh.has_text_frame), "")
         qs = []
-        if "問題" in heading and "解答" not in heading:
+        if language.quiz_kind(heading) == "確認問題" or ("問題" in heading and "解答" not in heading):
             for sh in sl.shapes:
                 if sh.has_text_frame and not sh.is_placeholder:
                     m = QID.match(sh.text_frame.text)
                     if m:
-                        qs.append((m.group(1), re.sub(r"\s*\n[\s　]*", "", m.group(2)).strip()))
+                        qs.append((m.group(1), join_lines(m.group(2))))
         out.append(qs)
     return out
 
@@ -403,7 +418,7 @@ function asText(){const d=exportData();let s=`# コメント：${d.deck}（${d.c
 /* 書き出すファイル名：README の講座IDを頭に付ける（01_生成AIは何をしているか → AI01_生成AIは何をしているか_コメント.json） */
 function exportName(){const b=fileBase(),id=document.body.dataset.courseId||'';
   return (id?(/^\d/.test(b)?id+b:id+'_'+b):b)+'_コメント.json'}
-function fileBase(){const f=decodeURIComponent(location.pathname.split('/').pop()||'');return f.replace(/_原稿\.html$/,'').replace(/\.html$/,'')||document.title.replace(/ 原稿$/,'')}
+function fileBase(){const f=decodeURIComponent(location.pathname.split('/').pop()||'');return f.replace(/_(原稿|script)\.html$/,'').replace(/\.html$/,'')||document.title.replace(/ 原稿$/,'')}
 /* 書き出し：保存先は資料フォルダの README（00_README.md の「書き出しの保存先」）で決まり、JSON に save_dir として入る。
    ブラウザはページから任意のフォルダへ書けないので、ふだんは何も聞かずにダウンロードフォルダへ保存し、
    AI が comments_read.py --find で読むときに save_dir へ移す（ユーザーにフォルダを選ばせない）。
@@ -514,10 +529,95 @@ def course_id(pptx):
     return ""
 
 
-def build_html(deck_title, items, imgs, qs=None, save=None, cid=""):
+# 日本語でないデッキの原稿のページの画面の言葉（日本語 → 英語）。日本語以外の言語は英語の画面にする。
+# 長いものから順に置き換える。ファイルの名前の決まり（_原稿.html・_コメント.json）は comments_read.py が探すので変えない
+UI_EN = [
+    ("ブラウザに保存できませんでした。「書き出し」でファイルに残してください。", "Could not save in this browser. Use Export to keep a file."),
+    ("まだコメントはありません。「コメント」ボタン（C キー）でコメントモードにして、原稿の文章を選ぶか、スライドをドラッグで囲んでください。",
+     "No comments yet. Press Comment (C key) for comment mode, then select text in the script or drag a box on a slide."),
+    ("原稿が変わって、選んだ文章が見つかりません", "The script changed; the selected text was not found"),
+    ("このブラウザでは登録できません。書き出しはダウンロードフォルダに保存されます", "This browser cannot register a folder. Exports go to your Downloads folder"),
+    # JS の '…' の中に入る文。英語の側に ' を書かない（README's のような ' で JS が壊れ、英語のページでコメントが書けなかった）
+    ("'「'+h.name+'」が選ばれました。README の保存先は「'", "'\"'+h.name+'\" was chosen. The save folder in the README is \"'"),
+    ("」です。\\nこのフォルダを登録しますか？", "\".\\nRegister this folder?"),
+    ("'「'+h.name+'」を保存先に登録しました（同じ保存先のデッキ全部で使います）'", "'\"'+h.name+'\" is now the save folder (used for every deck with the same folder)'"),
+    ("登録できませんでした: ", "Could not register: "),
+    ("コメントがありません", "No comments"),
+    ("'件）。AI に「コメントした」と伝えてください。'", "' comments). Tell the AI \"I commented\".'"),
+    ("'件、ダウンロードフォルダ）。AI に「コメントした」と伝えれば、'", "' comments, Downloads folder). Tell the AI \"I commented\"; '"),
+    ("'README の保存先「'+SAVE_NAME+'」へ移してから読みます。'", "'it moves the file to the README folder \"'+SAVE_NAME+'\" and reads it.'"),
+    ("'そこから読みます。'", "'it reads it from there.'"),
+    ("'「'+d.name+'」に '+name+' を保存しました（'", "'Saved '+name+' in \"'+d.name+'\" ('"),
+    ("'「'+name+'」を保存しました（'", "'Saved \"'+name+'\" ('"),
+    ("コメントを文章でコピーしました（チャットに貼り付けられます）。", "Copied the comments as text (you can paste them into the chat)."),
+    ("件を読み込みました。", " comments loaded."),
+    ("読み込めませんでした: ", "Could not load: "),
+    ("'このページのコメント '+C.length+' 件を全部消します。先に「書き出し」で保存しましたか？'",
+     "'Delete all '+C.length+' comments on this page? Did you Export them first?'"),
+    ("このコメントを消しますか？", "Delete this comment?"),
+    ("label:r.dataset.q+' への答え（スライド '+(i+1)+'）'", "label:'Answer '+r.dataset.q+' (slide '+(i+1)+')'"),
+    ("'スライド '+(i+1)+'・原稿へのコメント'", "'Slide '+(i+1)+' · comment on the script'"),
+    ("'スライド '+(i+1)+'・スライドの範囲へのコメント'", "'Slide '+(i+1)+' · comment on a slide area'"),
+    ("'　スライド '+c.slide+'・'+kindLabel(c)", "'  Slide '+c.slide+' · '+kindLabel(c)"),
+    ("</b>　スライド ${c.slide}・${kindLabel(c)}", "</b>  Slide ${c.slide} · ${kindLabel(c)}"),
+    ("c.kind==='text'?'原稿':c.kind==='answer'?c.q+' への答え':'スライドの範囲'", "c.kind==='text'?'Script':c.kind==='answer'?'Answer '+c.q:'Slide area'"),
+    ("r.dataset.q+' の答えを直す':r.dataset.q+' に答える'", "'Edit answer '+r.dataset.q:'Answer '+r.dataset.q"),
+    ("`# コメント：${d.deck}（${d.comments.length}件）\\n`", "`# Comments: ${d.deck} (${d.comments.length})\\n`"),
+    ("`\\n## スライド ${c.slide}\\n`", "`\\n## Slide ${c.slide}\\n`"),
+    ("${c.q} への答え（問題：${c.quote}）", "Answer ${c.q} (question: ${c.quote})"),
+    ("- #${c.n} 原稿「${c.quote}」", "- #${c.n} Script \"${c.quote}\""),
+    ("スライドの範囲（左${Math.round(c.rect[0]*100)}%・上${Math.round(c.rect[1]*100)}%・幅${Math.round(c.rect[2]*100)}%・高さ${Math.round(c.rect[3]*100)}%）",
+     "Slide area (left ${Math.round(c.rect[0]*100)}%, top ${Math.round(c.rect[1]*100)}%, width ${Math.round(c.rect[2]*100)}%, height ${Math.round(c.rect[3]*100)}%)"),
+    ("<div class=\"q\">「${esc(c.quote.length>60?c.quote.slice(0,60)+'…':c.quote)}」</div>",
+     "<div class=\"q\">\"${esc(c.quote.length>60?c.quote.slice(0,60)+'…':c.quote)}\"</div>"),
+    ("/ 原稿$/", "/ Script$/"),
+    ("+'_コメント.json'}", "+'_comments.json'}"),   # 書き出すファイルの名前の終わりも英語に（comments_read はどちらも探す）
+    ("← → / j k で移動、C でコメント、印刷でPDF", "← → / j k to move, C to comment, print for PDF"),
+    ("title=\"コメントモードの切り替え（C キー）\">コメント<kbd>", "title=\"Toggle comment mode (C key)\">Comment<kbd>"),
+    ("title=\"コメントと答えをファイルに書き出す", "title=\"Export comments and answers to a file"),
+    # 書き出しボタンの title の「（保存先：…）」は build_html が言語に合わせて作る
+    (">書き出し</button>", ">Export</button>"),
+    ("title=\"コメント一覧・書き出し（L キー）\">一覧 ", "title=\"Comment list and export (L key)\">List "),
+    ("コメントモード：原稿の文章を選ぶとその部分に、スライドはドラッグで範囲を囲むとそこにコメントできます（C か Esc で終了）",
+     "Comment mode: select text in the script, or drag a box on a slide, to comment there (C or Esc to exit)"),
+    ("placeholder=\"疑問点・コメント\"", "placeholder=\"Question or comment\""),
+    ("<button class=\"del\">削除</button><span class=\"hint\">Ctrl+Enter で保存</span><button class=\"cancel\">取消</button><button class=\"ok\">保存</button>",
+     "<button class=\"del\">Delete</button><span class=\"hint\">Ctrl+Enter to save</span><button class=\"cancel\">Cancel</button><button class=\"ok\">Save</button>"),
+    ("class=\"x\">閉じる</button><b>コメント一覧</b>", "class=\"x\">Close</button><b>Comments</b>"),
+    ("title=\"JSON ファイルに書き出す（AI に渡す用）\"", "title=\"Export to a JSON file (to give to the AI)\""),
+    ("title=\"任意：一度フォルダを許可すると、以後はダウンロードを通さず直接そこへ保存する\">保存先フォルダを登録",
+     "title=\"Optional: allow a folder once, and later exports are saved there directly\">Register save folder"),
+    (">文章でコピー</button>", ">Copy as text</button>"),
+    # 英字の字体を先に（日本語の字体のままだと、" が全角の ” のように見えた）
+    ('font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",system-ui,sans-serif', 'font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,"Yu Gothic UI","Meiryo",sans-serif'),
+    ('font-family:"BIZ UDPGothic","Yu Gothic UI","Meiryo",sans-serif', 'font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,"Yu Gothic UI","Meiryo",sans-serif'),
+    (">読み込み</button>", ">Import</button>"),
+    (">全部消す</button>", ">Delete all</button>"),
+    ("コメントはこのブラウザに自動で保存されます。全部書いたら「書き出し」で AI に渡します。",
+     "Comments are saved in this browser automatically. When you are done, Export them for the AI."),
+    ("あなたの答え（書き出すと、まとめて添削します）", "Your answers (export them, and they are marked together)"),
+    # 「1-1 に答える」ボタンは localize の中で「Answer 1-1」に（語順が変わるので置き換えでは書けない）
+    ("<span class=tag>補足</span>", "<span class=tag>Note</span>"),
+    ("（原稿なし）", "(no script)"),
+    ("alt=\"スライド ", "alt=\"Slide "),
+    ("<div class=\"meta\">スライド ", "<div class=\"meta\">Slide "),
+]
+
+
+def localize(page: str, lang=None) -> str:
+    """日本語でないデッキなら、原稿のページの画面の言葉を英語にする。"""
+    if language.is_japanese(lang):
+        return page
+    for ja, en in sorted(UI_EN, key=lambda x: -len(x[0])):
+        page = page.replace(ja, en)
+    return re.sub(r'(<button class="qa-btn">)([^<]+?) に答える</button>', r"\1Answer \2</button>", page)
+
+
+def build_html(deck_title, items, imgs, qs=None, save=None, cid="", lang=None):
     n = len(items)
+    ja = language.is_japanese(lang)
     save_name, save_path = save or ("", "")
-    save_title = f"（保存先：{save_name}）" if save_name else ""
+    save_title = (f"（保存先：{save_name}）" if ja else f" (save folder: {save_name})") if save_name else ""
     qs = qs or [[] for _ in items]
     nav = "".join(f'<a href="#s{i+1}">{i+1}</a>' for i in range(n))
     secs = []
@@ -527,10 +627,10 @@ def build_html(deck_title, items, imgs, qs=None, save=None, cid=""):
 <div class="img"><div class="shot"><img src="data:image/jpeg;base64,{img}" alt="スライド {i+1}" draggable="false"><div class="cm-layer"></div></div></div>
 <div><div class="meta">スライド {i+1} / {n}</div><div class="notes">{format_notes(notes)}</div>{qa_block(qs[i] if i < len(qs) else [])}</div>
 </section>""")
-    return f"""<!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="sensei-slides notes_html.py">
-<title>{html.escape(deck_title)} 原稿</title><style>{CSS}</style></head>
-<body data-save-name="{html.escape(save_name)}" data-save-path="{html.escape(save_path)}" data-course-id="{html.escape(cid)}"><header><div style="display:flex;align-items:baseline"><h1>{html.escape(deck_title)}<span class="sub">原稿（発表者ノート）・全{n}枚</span></h1>
+    return localize(f"""<!doctype html>
+<html lang="{language.lang_code(lang).split('-')[0]}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="sensei-slides notes_html.py">
+<title>{html.escape(deck_title)} {"原稿" if ja else "Script"}</title><style>{CSS}</style></head>
+<body data-save-name="{html.escape(save_name)}" data-save-path="{html.escape(save_path)}" data-course-id="{html.escape(cid)}"><header><div style="display:flex;align-items:baseline"><h1>{html.escape(deck_title)}<span class="sub">{f"原稿（発表者ノート）・全{n}枚" if ja else f"Script (speaker notes), {n} slides"}</span></h1>
 <span class="help">← → / j k で移動、C でコメント、印刷でPDF</span></div>
 <div class="navrow"><nav>{nav}</nav><div class="tools">
 <button id="cm-mode" title="コメントモードの切り替え（C キー）">コメント<kbd>C</kbd></button>
@@ -546,7 +646,7 @@ def build_html(deck_title, items, imgs, qs=None, save=None, cid=""):
 <p class="note" id="cm-msg" style="margin:6px 0 0">コメントはこのブラウザに自動で保存されます。全部書いたら「書き出し」で AI に渡します。</p></div>
 <div class="list" id="cm-list"></div></aside>
 <div id="cm-toast" class="cm-toast"></div>
-<script>{JS}</script></body></html>"""
+<script>{JS}</script></body></html>""", lang)
 
 
 def export_temp_pdf(pptx, tmpdir):
@@ -583,9 +683,10 @@ def main():
     ap.add_argument("-o", "--out", help="出力HTML（省略時は <資料名>_原稿.html）")
     a = ap.parse_args()
     pptx = Path(a.pptx)
-    stem = pptx.stem[:-len("_スライド")] if pptx.stem.endswith("_スライド") else pptx.stem
-    out = Path(a.out) if a.out else pptx.with_name(f"{stem}_原稿.html")
     prs = Presentation(str(pptx))
+    lang0 = language.name_of_code(prs.core_properties.language)
+    stem = language.strip_suffix(pptx.stem, "slides")
+    out = Path(a.out) if a.out else pptx.with_name(stem + language.suffix("script", lang0) + ".html")   # 英語なら _script.html
     items = slide_texts(prs)
     if a.pdf:
         imgs = slide_images(Path(a.pdf))
@@ -596,7 +697,8 @@ def main():
         print(f"注意: スライド {len(items)} 枚に対し画像 {len(imgs)} 枚。--pdf で渡した PDF が古い可能性あり")
     deck_title = prs.core_properties.title or items[0][0] or stem
     save, cid = save_setting(pptx), course_id(pptx)
-    out.write_text(build_html(deck_title, items, imgs, slide_questions(prs), save, cid), encoding="utf-8")
+    lang = language.name_of_code(prs.core_properties.language)   # zemi.Deck が書いた言語の印（無ければ日本語）
+    out.write_text(build_html(deck_title, items, imgs, slide_questions(prs), save, cid, lang=lang), encoding="utf-8")
     if save:
         print(f"コメントの保存先（README の指定）: {save[1]}" + (f"　講座ID: {cid}" if cid else ""))
     print(f"saved {out} ({len(items)} slides, {out.stat().st_size // 1024} KB)")

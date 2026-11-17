@@ -54,6 +54,7 @@ import hashlib
 import json
 import os
 import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -371,6 +372,7 @@ def line_height_in(size: float) -> float:
 
 
 INSET_X, INSET_Y = 0.1, 0.05
+BODY_PT = 22   # 本文の字の大きさ（2026-11-13 に 20 → 22。本文の目安を 80〜120字に狭めたのに合わせ、少し大きく）
 
 
 @dataclass
@@ -452,6 +454,19 @@ class Slide:
         self.cur_y = deck.area["top"] if hasattr(deck, "area") else 1.9
         self.boxes: list[tuple[str, Box]] = []
 
+    def _forms(self, items, what: str, steps: bool = False):
+        """並べる項目の形がそろっているか（英語だけ。style-guide 7節）。組んだ pptx では折り返しと次の項目が区別できないので、ここで見る。"""
+        if not isinstance(items, (list, tuple)):
+            return
+        import language
+        bad = language.mixed_forms(items, self.deck.lang, steps)
+        if bad:
+            main, odd = bad
+            n = self.deck.prs.slides.index(self.slide) + 1
+            print(f"[WARN] {n}枚目の{what}：並べる項目の形がそろっていない（多いのは{main}）："
+                  + " / ".join(f"「{t[:30]}」（{f}）" for f, t in odd[:3])
+                  + f" → 全部を{main}にそろえる（名詞句・命令形・-ing・文を混ぜない。style-guide 7節）")
+
     # -- 低レベル: テキストボックス
     def _add_runs(self, paragraph, runs: list[Run], size: float, color: str | None, bold: bool):
         for r in runs:
@@ -470,12 +485,12 @@ class Slide:
                 f.italic = True
                 f.name = "Times New Roman"
             rPr = run._r.get_or_add_rPr()
-            rPr.set("lang", "ja-JP")
-            rPr.set("altLang", "en-US")
+            rPr.set("lang", self.deck.lang_code)
+            rPr.set("altLang", self.deck.alt_code)
             if r.baseline:
                 rPr.set("baseline", str(r.baseline))
 
-    def text(self, x: float, y: float, text: str, size: float = 20, color: str | None = None,
+    def text(self, x: float, y: float, text: str, size: float = BODY_PT, color: str | None = None,
              align: str = "l", bold: bool = False, w: float | None = None, name: str | None = None) -> Box:
         """本文テキストを置く。折り返しなし（改行は \\n で明示）。戻り値は推定の外枠。"""
         lines = split_lines(parse_markup(text))
@@ -510,7 +525,7 @@ class Slide:
         if getattr(self, "_message", False) and x is None and y is None:
             for ph in self.slide.placeholders:
                 if ph.placeholder_format.type == PP_PLACEHOLDER.TITLE:
-                    add = "　／　" + text
+                    add = ("　／　" if self.deck.lang == "日本語" else "  /  ") + text
                     d = self.deck
                     # タイトルの大きい構造（細い左帯と副題は 32pt）では、足した見出しでタイトルの枠を越えて折り返し、
                     # 下の副題の行に重なっていた（check_layout の構造の検査で見つけた）。入らなければ足す部分だけ小さく（14pt まで）。
@@ -545,7 +560,7 @@ class Slide:
         return box
 
     # -- 数式
-    def eq(self, latex: str, x: float, y: float, size: float = 20, color: str | None = None,
+    def eq(self, latex: str, x: float, y: float, size: float = BODY_PT, color: str | None = None,
            h: float | None = None, center_y: float | None = None) -> Box:
         """LaTeX(mathtext)の数式をPNGにして置く。size は本文のpt（自動で少し拡大）。
         center_y を与えると数式の上下中心をそこに合わせる。"""
@@ -560,7 +575,7 @@ class Slide:
         self.boxes.append(("eq", box))
         return box
 
-    def row(self, x: float, y: float, parts: list, size: float = 20, gap: float = 0.07) -> Box:
+    def row(self, x: float, y: float, parts: list, size: float = BODY_PT, gap: float = 0.07) -> Box:
         """文章と数式を1行に並べる: s.row(1, 3, ["巨視的波動関数から", Eq(r"v_s=\\frac{\\hbar}{m}\\nabla S"), "を用いて"])"""
         line_h = line_height_in(size) + 2 * INSET_Y
         eq_items = []
@@ -793,11 +808,12 @@ class Slide:
             tail.set("len", "med")
         return ln
 
-    def defs(self, x: float, y: float, items: list, size: float = 18, sep: str = "：") -> Box:
+    def defs(self, x: float, y: float, items: list, size: float = 18, sep: str | None = None) -> Box:
         """数式の右に変数の定義を縦に並べる（過去の輪読のデッキの「γ：表面張力」「ρ：液体の密度」）。
         items = [("γ", "表面張力"), ("ρ", "液体の密度")]。記号は自動でイタリック（{i:}）、全角「：」で区切る。
         記号に上下付きを含めてよい（("m_{4}", "^{4}Heの質量")）。元デッキは20pt。18pt は「定義の補足」として許される下限。
         置き方: e = s.peq(...) のあと s.defs(e.right + 0.4, e.y, [...]) のように数式の右・同じ高さに。"""
+        sep = sep if sep is not None else "：" if self.deck.lang == "日本語" else ": "   # 日本語でないデッキは半角の「: 」
         text = "\n".join(f"{{i:{sym}}}{sep}{desc}" for sym, desc in items)
         return self.text(x, y, text, size=size, name="定義")
 
@@ -829,6 +845,177 @@ class Slide:
             self.cur_y = b.bottom
         return b
 
+    RECAP_KINDS = ("問い→答え", "前と後", "筋", "次の一歩", "選び方")
+
+    def recap(self, opening: str | None = None, answer: str = "", points=(), kind: str = "問い→答え", pairs=None,
+              steps=None, actions=None, labels=None, size: float = 22, big: float = 26, panel: bool = False) -> Box:
+        """まとめの枚（役割「まとめ」）。kind で5つの形（references/story.md 3節。話の型から既定が決まる）：
+          問い→答え：左「最初の問い」（灰の箱）→ 右「答え」（薄い主色の箱）、下に持ち帰ること（余白をあけて、白い地の文字）
+          前と後　　：pairs=[(聞く前の見方, 今わかったこと), …]（2〜3組）。左の列は灰、右の列は薄い主色の地1つずつ。行は白い線で区切る
+          筋　　　　：steps=[状況, しかし, だから, 答え]（3〜4個）を1段ずつ小さな箱（灰、答えだけ薄い主色）にして細い矢印でつなぐ。答えは赤の太字。
+                    panel=True で流れ全体を1つの地にまとめる。下に持ち帰ること
+          次の一歩　：上に答え（薄い主色の箱）、下に actions=[明日からやること, …]（余白をあけて文字、□の印）
+          選び方　　：pairs=[(こんなとき, 選ぶもの), …]（2〜3組）。前と後と同じ並べ方
+        決まり：箱（地）は1枚に2つまで。同じ段の中は作りをそろえる（左右とも箱か、全部文字）。箱の外の文字は、箱の中の文字と左端・高さをそろえる。
+        どの形も、新しい事実は入れない（前の枚の言い直しだけ）。要の語は {r:…} で赤に。1行は日本語12〜14字・英語25字ほどまでに \n を入れる。"""
+        if kind not in self.RECAP_KINDS:
+            raise ValueError(f"まとめの形は {'・'.join(self.RECAP_KINDS)} から（今は {kind}）")
+        ja = self.deck.lang == "日本語"
+        a = self.deck.area
+        x0, x1 = self.deck.wide
+        W = x1 - x0
+        y = max(self.cur_y, a["top"])
+        lh = line_height_in
+        n0 = len(self.slide.shapes)
+        PAD = 0.12          # 箱の中の文字の余白（rect の margin）。箱の外の文字も、これに合わせて置く
+        DX = PAD - INSET_X  # 文字の箱（text）の余白との差
+
+        def nlines(t):
+            return len(split_lines(parse_markup(t)))
+
+        def label(x, yy, t, sz=size):
+            return self.text(x + DX, yy, "{b:" + t + "}", size=sz, color=C.BAND, name="まとめの見出し")
+
+        def words(x, yy, t, sz, name):
+            return self.text(x + DX, yy, t, size=sz, name=name)
+
+        def take_home(yy, items, head=None, mark="・"):
+            items = [p for p in list(items)[:3] if p]
+            if not items:
+                return yy
+            head = head or ("持ち帰ること" if ja else "Take home")   # 線も箱も無い、白い地の文字の塊（区切りは余白）
+            hb = label(x0, yy + 0.15, head)
+            b = words(x0, hb.bottom + 0.02, "\n".join(mark + wrap_to(p, W - 1.0, size) for p in items), size, "まとめの要点")
+            return b.bottom
+
+        def two_boxes(lt, rt, sz, names):
+            gap = 0.9
+            bw = (W - gap) / 2
+            bh = max(1.8, max(nlines(lt), nlines(rt)) * lh(sz) + 0.55)
+            for k, (t, fill) in enumerate(((lt, C.LIGHT), (rt, C.PALE))):
+                self.rect(x0 + k * (bw + gap), y, bw, bh, fill=fill, text=t, size=sz, color=C.TEXT, align="l", anchor="t", name=names[k])
+            self.thin_arrow(x0 + bw + 0.12, y + bh / 2, x0 + bw + gap - 0.12, y + bh / 2)
+            return y + bh
+
+        def paired(rows, la, lb):
+            gap = 0.9
+            bw = (W - gap) / 2
+            rx = x0 + bw + gap
+            label(x0, y, la)
+            label(rx, y, lb)
+            top = y + lh(size) + 0.25
+            cells, yy = [], top
+            for left, right in list(rows)[:3]:
+                lt, rt = wrap_to(left, bw - 0.4, size), wrap_to(right, bw - 0.4, size)
+                h = max(1.0, max(nlines(lt), nlines(rt)) * lh(size) + 0.45)
+                cells.append((yy, h, lt, rt))
+                yy += h
+            self.rect(x0, top, bw, yy - top, fill=C.LIGHT, name="まとめの地")   # 左右とも1つの地（作りをそろえる。箱は2つ）
+            self.rect(rx, top, bw, yy - top, fill=C.PALE, name="まとめの地")
+            for k, (cy, h, lt, rt) in enumerate(cells):
+                if k:
+                    for xx in (x0, rx):
+                        self.line(xx + 0.15, cy, xx + bw - 0.15, cy, color="FFFFFF", width=1.5)
+                mid = cy + h / 2
+                words(x0 + 0.13, mid - nlines(lt) * lh(size) / 2 - INSET_Y, lt, size, "まとめの前")
+                words(rx + 0.13, mid - nlines(rt) * lh(size) / 2 - INSET_Y, rt, size, "まとめの後")
+                self.thin_arrow(x0 + bw + 0.12, mid, rx - 0.12, mid)
+            return yy
+
+        if kind == "問い→答え":
+            la, lb = labels or (("最初の問い", "答え") if ja else ("We asked", "Answer"))
+            bw = (W - 0.9) / 2
+            bottom = two_boxes("{ab:" + la + "}\n" + wrap_to(opening or "", bw - 0.4, big),
+                               "{ab:" + lb + "}\n" + wrap_to(answer, bw - 0.4, big), big, ("まとめの問い", "まとめの答え"))
+            if points:
+                bottom = take_home(bottom + 0.55, points)
+        elif kind in ("前と後", "選び方"):
+            if not pairs:
+                raise ValueError(f"まとめ（{kind}）は pairs=[(左, 右), …] を2〜3組")
+            la, lb = labels or ({"前と後": ("聞く前", "今わかったこと"), "選び方": ("こんなとき", "選ぶもの")}[kind] if ja else
+                                {"前と後": ("Before", "Now we know"), "選び方": ("When", "Choose")}[kind])
+            bottom = paired(pairs, la, lb)
+            if points:
+                bottom = take_home(bottom + 0.55, points)
+        elif kind == "筋":
+            st = list(steps or [])[:4]
+            if len(st) < 3:
+                raise ValueError("まとめ（筋）は steps に3〜4個（状況・しかし・だから・答え）")
+            heads = labels or ((("状況", "しかし", "答え") if ja else ("Setting", "But", "Answer")) if len(st) == 3
+                               else (("状況", "しかし", "だから", "答え") if ja else ("Setting", "But", "So", "Answer")))
+            fs = size
+            pad = 0.35                       # 流れ全体を1つの地にまとめる（1つの流れとして見える。箱は1つだけ）
+            gap = 0.6 if panel else 0.85   # 箱を分けるときは、箱と箱の間に矢印が入る幅を
+            px = pad if panel else 0.15    # 文字の左右の余白（地の内側。箱を分けるときは箱の内側）
+            bw = (W - 2 * px - gap * (len(st) - 1)) / len(st)
+            texts = ["\n".join(wrap_to(ln, bw + 0.15, fs) for ln in t.split("\n")) for t in st]   # 行ごとに箱の幅で折る（英語は1行が長く、矢印にかかった）
+            last = texts[-1]
+            texts[-1] = "{b:" + last + "}" if "{r:" in last else "{r:{b:" + last + "}}"   # 答えは赤の太字
+            hh = lh(fs)
+            th = max(nlines(t) for t in texts) * lh(fs)
+            ph = hh + 0.05 + th + pad + pad * 1.4   # 下の余白を少し広めに（文字の下が詰まって見えた）
+            if panel:   # 流れ全体を1つの地に
+                self.rect(x0, y, W, ph, fill=C.PALE, name="まとめの地")
+            ty = y + pad
+            for k, (h, t) in enumerate(zip(heads, texts)):
+                xx = x0 + px + k * (bw + gap)
+                if not panel:   # 1段ずつ小さな箱（答えだけ薄い主色）。矢印でつながった小さな段は5個まで
+                    self.rect(xx - px, y, bw + 2 * px, ph, fill=C.PALE if k == len(texts) - 1 else C.LIGHT, name="まとめの地")
+                label(xx, ty, h, fs)
+                words(xx, ty + hh + 0.05, t, fs, "まとめの答え" if k == len(texts) - 1 else "まとめの筋")
+                if k < len(texts) - 1:
+                    ax0 = xx + bw + (px if not panel else -0.1)
+                    ax1 = xx + bw + gap - (px if not panel else 0.15)
+                    self.thin_arrow(ax0 + 0.05, ty + hh + 0.05 + th / 2, ax1 - 0.05, ty + hh + 0.05 + th / 2)
+            bottom = y + ph
+            if points:
+                bottom = take_home(bottom + 0.55, points)
+        else:   # 次の一歩
+            t = wrap_to(answer, W - 0.8, big)
+            bh = max(1.4, nlines(t) * lh(big) + 0.55)
+            self.rect(x0, y, W, bh, fill=C.PALE, text=t, size=big, color=C.TEXT, align="l", anchor="m", name="まとめの答え")
+            bottom = take_home(y + bh + 0.55, actions or points, head=(labels[0] if labels else ("明日からやること" if ja else "Next steps")),
+                               mark="□ " if ja else "☐ ")
+        # まとめの塊を、本文の場所の上下の真ん中へ（上寄せの構造で、下が大きく空いた）
+        dy = (self.deck.content_bottom - bottom - (y - a["top"])) / 2
+        if dy > 0.15:
+            for sh in list(self.slide.shapes)[n0:]:
+                sh.top = sh.top + Emu(int(dy * 914400))
+            y, bottom = y + dy, bottom + dy
+        self.cur_x, self.cur_y = x0, bottom + 0.35
+        return Box(x0, y, W, bottom - y)
+
+    def figure_main(self, path, caption: str | None = None, w: float | None = None, gap: float = 0.5,
+                    name: str = "左の図") -> Box:
+        """図が主役の型：左に図を大きく、右の細い列（幅 4 in 前後）に補足の文。図そのものを読ませたい枚に
+        （結果のグラフ・装置の写真・構造の図）。呼んだあと、s.block・s.lead・s.ask などは右の列に置かれる。
+        右の列は1行が短い（20pt で全角13字・英語で28字前後）。補足は図の説明として2〜3塊・6〜8行（日本語で60〜100字、英語で35〜50語）：
+        何の図か（軸・何と何）、どこを見るか、そこから言えること（赤字1か所）。短すぎると図の読み方が伝わらない。言うことの残りは原稿へ。
+        w を省けば、図の描いた幅（8 in まで）。右の列が 4.2 in より狭くなるなら縮める。
+        柱のある構造（本文が左の柱）では、図を右の白い所いっぱいに置き、文は柱のまま。"""
+        with Image.open(path) as im:
+            pw, ph_ = im.size
+            dpi = (im.info.get("dpi") or (0, 0))[0]
+        a = self.deck.area
+        top = a["top"]
+        if "text_right" in a:                       # 柱のある構造：図は右の白い所に、文は柱に
+            fx = a["fig_x"]
+            fw = a["right"] - fx
+        else:
+            fx = a["x"]
+            fw = w or (pw / dpi if dpi and dpi >= 100 else 7.6)
+            fw = min(fw, 8.0, a["right"] - fx - gap - 4.2)
+        room = self.deck.content_bottom - top - (0.4 if caption else 0)
+        fh = fw * ph_ / pw
+        if fh > room:                                # 縦に入らなければ高さに合わせる
+            fw, fh = room * pw / ph_, room
+        b = self.image(path, fx, top, w=fw, h=fh, name=name)
+        if caption:
+            self.caption(b, caption, right=False)
+        if "text_right" not in a:
+            self.cur_x, self.cur_y = b.right + gap, top
+        return b
+
     def figure_beside(self, path, y: float | None = None, caption: str | None = None, gap: float = 0.75,
                       name: str = "右の図") -> Box:
         """左に文・右に図の型。図は描いた幅のまま、本文の右に置く（本文の右端から gap 以上空け、空きが大きければ
@@ -849,7 +1036,7 @@ class Slide:
             self.caption(b, caption)
         return b
 
-    def compare(self, left: tuple, right: tuple, y: float | None = None, size: float = 20, gap: float = 0.6) -> list:
+    def compare(self, left: tuple, right: tuple, y: float | None = None, size: float = BODY_PT, gap: float = 0.6) -> list:
         """2つを並べて比べる型（手法の比較・前と後・長所と短所）。left/right = ("小見出し", ["要点", ...])。
         左右同じ幅で、上に小見出しの帯、間に縦の区切り線。戻り値は左右の下端。"""
         y = self.deck.area["top"] + 0.1 if y is None else y
@@ -935,10 +1122,11 @@ class Slide:
         return self.arrow(x, y, w=w, h=h, direction=direction)
 
     def block(self, head: str | None, lines=(), then: str | None = None, x: float | None = None, y: float | None = None,
-              size: float = 20, indent: float = 0.35, gap: float = 0.35, name: str | None = None) -> Box:
+              size: float = BODY_PT, indent: float = 0.35, gap: float = 0.35, name: str | None = None) -> Box:
         """ラベル＋説明の塊：小見出し（下線）の下に、説明を字下げして1〜3行。then で最後に「⇒ 赤字の帰結」。
         head=None なら字下げせずに説明だけ（= s.lead）。"""
         x, y = self._xy(x, y)
+        self._forms(lines, "塊" + (f"「{head}」" if head else ""))
         parts, yy = [], y
         dx = indent if head else 0.0
         if head:
@@ -959,7 +1147,7 @@ class Slide:
         return self.block(None, lines, then=then, **kw)
 
     def ask(self, question: str, answer: str, x: float | None = None, y: float | None = None,
-            size: float = 20, indent: float = 0.35, gap: float = 0.35) -> Box:
+            size: float = BODY_PT, indent: float = 0.35, gap: float = 0.35) -> Box:
         """問い → 答え：「〜ではないのか？」（ラベルと同じ太字）の下に「⇒ 確かめた結果」。別の説明を1つずつ確かめる検証の筋に。"""
         x, y = self._xy(x, y)
         q = self.text(x, y, self._label(question), size=size, name="問い")
@@ -967,27 +1155,51 @@ class Slide:
         self.cur_x, self.cur_y = x, a.bottom + gap
         return Box(x, y, max(q.right, a.right) - x, a.bottom - y)
 
-    def qa_pairs(self, pairs, x: float | None = None, y: float | None = None, size: float = 20,
+    def qa_pairs(self, pairs, x: float | None = None, y: float | None = None, size: float = BODY_PT,
                  indent: float = 0.35, gap: float = 0.7) -> Box:
         """想定質問の枚：1枚に質問と回答を2組。pairs = [(番号, 質問, 回答), …]（2組まで。改行は文字列の中の \\n）。
         質問は太字のラベル（「Q1　…」）、回答はその下に字下げして「⇒ …」。2組の間は gap（in）あけて細い線を引く（帯なしの枚は、全体を上下の中ほどに寄せる）。
-        戻るとよい枚はスライドに書かず、原稿に書く。"""
+        答えが前の枚の図につながる組は、4つ目に図を添える：(番号, 質問, 回答, (図のパス, 注記))。図は話す所だけを切り出したもの
+        （pdf_pages.py crop・PIL の crop。描き足さない）。質問と回答は左の列に、図はその組の高さから右に置き、注記の頭に番号が付く
+        （「Q1: Slide 9, Fig. 1 …」。どの質問の図か・何枚目の図かが分かる）。図の無い組は文字だけ。
+        戻るとよい枚はスライドに書かず、原稿に書く（図を添えた組は、注記に枚の番号を書く）。"""
         x, y = self._xy(x, y)
-        top, bottom = y, y
-        for j, (k, q, a) in enumerate(list(pairs)[:2]):
+        pairs = list(pairs)[:2]
+        sep = "：" if self.deck.lang == "日本語" else ": "
+        top, bottom, rows = y, y, []
+        for j, pr in enumerate(pairs):
+            k, q, a = pr[:3]
             yy = top if j == 0 else bottom + gap
-            if j:
-                self.line(x, yy - gap / 2, SLIDE_W - x, yy - gap / 2, color="BFBFBF", width=0.75)
-            qb = self.text(x, yy, self._label(f"{k}　{q}"), size=size, name="想定質問")
+            qb = self.text(x, yy, self._label(f"{k}{self.deck.sp}{q}"), size=size, name="想定質問")
             head, *rest = a.split("\n")
             head = re.sub(r"^\s*[⇒→]+\s*", "", head)
-            ab = self.text(x + indent, qb.bottom + 0.05, "⇒ " + head + "".join("\n　 " + t for t in rest),
+            ab = self.text(x + indent, qb.bottom + 0.05, "⇒ " + head + "".join("\n" + self.deck.sp + " " + t for t in rest),
                            size=size, name="回答")   # 2行目からは矢印の後ろにそろえる
+            rows.append((k, yy, max(qb.right, ab.right), pr[3] if len(pr) > 3 else None))
             bottom = ab.bottom
+        figs = [r for r in rows if r[3]]
+        a_ = self.deck.area
+        fx = max(r[2] for r in rows) + 0.5 if figs else None   # 図の左端：一番長い文の右から 0.5 in（本文との間隔 0.4 in 以上）
+        line_r = (fx - 0.3) if figs else SLIDE_W - x
+        if len(rows) > 1:
+            self.line(x, rows[1][1] - gap / 2, line_r, rows[1][1] - gap / 2, color="BFBFBF", width=0.75)
+        low = 0.0   # 前の図の下端（2つの組の両方に図があれば、2つ目は1つ目の下から）
+        for k, yy, _, fig in figs:
+            path, cap = fig if isinstance(fig, tuple) else (fig, None)
+            fw = a_["right"] - fx
+            with Image.open(path) as im:
+                ratio = im.height / im.width
+            fy = max(yy + 0.05, low + 0.2)
+            room = self.deck.content_bottom - fy - (0.4 if cap else 0)
+            if fw * ratio > room:            # 縦に入らなければ高さに合わせる（文字が小さくなるので WARN が出る）
+                fw = room / ratio
+            b = self.image(path, fx, fy, w=fw, name="想定質問の図")
+            c = self.caption(b, f"{k}{sep}{cap}" if cap else k)
+            low = max(low, c.bottom)
         self.cur_x, self.cur_y = x, bottom + 0.35
-        return Box(x, top, SLIDE_W - 2 * x, bottom - top)
+        return Box(x, top, SLIDE_W - 2 * x, max(bottom, low) - top)
 
-    def develop(self, left, right, x: float | None = None, y: float | None = None, size: float = 20,
+    def develop(self, left, right, x: float | None = None, y: float | None = None, size: float = BODY_PT,
                 gap: float = 0.35, arrow_w: float = 0.6, after: float = 0.35) -> Box:
         """横の矢印で展開：左に条件・前の状態、右に結果・次の状態。left/right は文字列か (ラベル, [行])。
         右を赤字にするなら "{r:…}" で。左右の塊の高さの中ほどに矢印を置く。"""
@@ -1025,7 +1237,7 @@ class Slide:
         return b
 
     def lead_down(self, premise, conclusion: str, boxed: bool = True, x: float | None = None, y: float | None = None,
-                  w: float | None = None, size: float = 20, gap: float = 0.2) -> Box:
+                  w: float | None = None, size: float = BODY_PT, gap: float = 0.2) -> Box:
         """縦の矢印で結論へ：前提の段（中央ぞろえ）↓ 結論（線だけの囲み。boxed=False なら赤字）。
         囲みは塗らない（塗りの囲みは結論の囲みの構造でスライドの結論の置き場なので、それと見分けるため）。
         学会発表の導入（背景 → 目的）やまとめに。w は中央ぞろえにする幅（既定は x からスライドの右の余白まで）。"""
@@ -1047,16 +1259,17 @@ class Slide:
         return Box(x, y, w, c.bottom - y)
 
     def cases(self, items: list, x: float | None = None, y: float | None = None, w: float | None = None,
-              size: float = 20, boxed: bool = True) -> Box:
+              size: float = BODY_PT, boxed: bool = True) -> Box:
         """条件の場合分け：items = [("T > T_λ", "純粋液体の ^{4}He と同様"), ...]。条件は太字、説明は字下げ。
         boxed=True で全体を薄い灰の囲みに（灰色の角丸箱。過去の輪読のデッキの形）。"""
         x, y = self._xy(x, y)
+        self._forms([c for c, _ in items], "場合分けの条件")
         rows = []
         for k, (cond, desc) in enumerate(items):
             if k:
                 rows.append("")
             rows.append("{b:" + cond + "}")
-            rows += ["　" + l for l in self._lines(desc).split("\n")]
+            rows += [self.deck.sp + l for l in self._lines(desc).split("\n")]
         text = "\n".join(rows)
         w = w or (self._text_w(text, size) + 0.4)
         h = len(rows) * line_height_in(size) + 0.35
@@ -1067,34 +1280,43 @@ class Slide:
         self.cur_x, self.cur_y = x, b.bottom + 0.35
         return b
 
-    def numbered(self, items: list, x: float | None = None, y: float | None = None, size: float = 20,
+    def numbered(self, items: list, x: float | None = None, y: float | None = None, size: float = BODY_PT,
                  gap: float = 0.35) -> Box:
         """番号の手順：1. 2. 3.（項目の2行目は字下げ）。解析・試料作成・測定の手順に。"""
         x, y = self._xy(x, y)
+        self._forms(items, "手順", steps=True)
         rows = []
         for k, it in enumerate(items, 1):
             first, *rest = self._lines(it).split("\n")
             rows.append(f"{k}. {first}")
-            rows += ["　 " + r for r in rest]
+            rows += [self.deck.sp + " " + r for r in rest]
         b = self.text(x, y, "\n".join(rows), size=size, name="手順")
         self.cur_x, self.cur_y = x, b.bottom + gap
         return b
 
     # -- 図解の型（references/structures.md）。カードは薄い灰の塗りだけ（線なし）、見出しは主色の太字
+    VALUE_SIZE = 28   # カードの値（3つ目）の文字の大きさ
+
     def _card_h(self, items, size, pad=0.45):
-        """カードの中身（見出し1行＋説明の行数）の一番多いものに合わせた高さ。"""
-        n = max(1 + (len(self._lines(it[1]).split("\n")) if isinstance(it, tuple) and it[1] else 0) for it in items)
-        return n * line_height_in(size) + pad
+        """カードの中身（見出し1行＋説明の行数、値があればその1行）の一番多いものに合わせた高さ。"""
+        n = max(1 + (len(self._lines(it[1]).split("\n")) if isinstance(it, tuple) and len(it) > 1 and it[1] else 0) for it in items)
+        val = any(isinstance(it, tuple) and len(it) > 2 and it[2] for it in items)
+        return n * line_height_in(size) + pad + (line_height_in(self.VALUE_SIZE) + 0.1 if val else 0)
 
     def _card(self, x, y, w, h, item, kind, size):
-        head, body = item if isinstance(item, tuple) else (item, "")   # 説明は全角1字下げ（見出しとの階層の差。場合分けの部品と同じ）
-        text = "{ab:" + head + "}" + ("\n" + "\n".join("　" + l for l in self._lines(body).split("\n")) if body else "")
-        return self.rect(x, y, w, h, fill=C.LIGHT, text=text, size=size, color=C.TEXT, align="l", anchor="t",
-                         name=f"カード_{kind}")
+        item = item if isinstance(item, tuple) else (item,)
+        head, body, value = (tuple(item) + ("", ""))[:3]   # 説明は全角1字下げ（見出しとの階層の差。場合分けの部品と同じ）
+        text = "{ab:" + head + "}" + ("\n" + "\n".join(self.deck.sp + l for l in self._lines(body).split("\n")) if body else "")
+        b = self.rect(x, y, w, h, fill=C.LIGHT, text=text, size=size, color=C.TEXT, align="l", anchor="t", name=f"カード_{kind}")
+        if value:   # 値（大きな赤い数字）はカードの下に。並べるだけの箱が小さく寂しく見えるのを、言いたい値で埋める
+            vh = line_height_in(self.VALUE_SIZE) + 0.1
+            self.text(x + 0.12, y + h - vh - 0.08, "{r:" + value + "}", size=self.VALUE_SIZE, bold=True, name=f"カードの値_{kind}")
+        return b
 
     def cards(self, items: list, layout: str = "row", x: float | None = None, y: float | None = None,
-              w: float | None = None, h: float | None = None, size: float = 18, gap: float = 0.3) -> Box:
-        """カードの図解。items = [("見出し", "説明1行\\n説明2行"), ...]。layout:
+              w: float | None = None, h: float | None = None, size: float = BODY_PT, gap: float = 0.3) -> Box:
+        """カードの図解。items = [("見出し", "説明1行\\n説明2行"), ...]。3つ目に値を書くと、カードの下に大きな赤い数字で
+        （("質量", "合体の前と後", "36+29 → 62")。並べるだけでは箱が小さく寂しいときに、言いたい値で埋める）。layout:
         row＝横に並べる並列（2〜4枚）、grid＝2列の格子（4〜6枚）、steps＝段違いの順序（3〜4枚、細い矢印）、
         cycle＝循環（4枚を2×2に、時計回りの細い矢印）。"""
         kind = {"row": "並列", "grid": "格子", "steps": "段違い", "cycle": "循環"}[layout]
@@ -1164,7 +1386,7 @@ class Slide:
         self.line(jx, y + h / 2, jx, y + total - h / 2, color=C.GRAY, width=1.5)
         for k, ch in enumerate(children):
             cy = y + k * (h + gap)
-            text = ch if isinstance(ch, str) else "{b:" + ch[0] + "}　" + ch[1]
+            text = ch if isinstance(ch, str) else "{b:" + ch[0] + "}" + self.deck.sp + ch[1]
             self.rect(cx, cy, child_w, h, fill=C.LIGHT, text=text, size=size, color=C.TEXT, align="l", name="ツリー")
             self.line(jx, cy + h / 2, cx, cy + h / 2, color=C.GRAY, width=1.5)
         self.cur_x, self.cur_y = x, y + total + 0.35
@@ -1172,11 +1394,15 @@ class Slide:
 
     def decision(self, steps: list, last: str, x: float | None = None, y: float | None = None,
                  q_w: float = 4.8, out_w: float = 3.8, h: float = 0.7, gap: float = 0.5, size: float = 18,
-                 yes: str = "はい", no: str = "いいえ") -> Box:
+                 yes: str | None = None, no: str | None = None) -> Box:
         """判定の流れ図：問いを上から順に確かめ、「はい」なら右の結論へ、「いいえ」なら下の次の問いへ。全部「いいえ」なら last。
         steps = [("享受が目的か？", "許諾が要る"), ("権利者の利益を不当に害するか？", "許諾が要る")]、last = "許諾なしで使える"。
         要件・例外・場合分けのように、条件で結論が分かれる所に（表に並べるより、どの順に何を確かめるかが見える）。
-        問いは2〜3つまで（4つ以上は縦に入らない。2枚に分けるか、問いをまとめる）。"""
+        問いは2〜3つまで（4つ以上は縦に入らない。2枚に分けるか、問いをまとめる）。
+        yes・no を省くと、デッキの言語の「はい／いいえ」（英語は Yes／No。language.YES_NO）。"""
+        import language
+        dy, dn = language.YES_NO.get(self.deck.lang, ("Yes", "No"))
+        yes, no = yes or dy, no or dn
         if not steps or len(steps) > 3:
             raise ValueError(f"判定の流れ図の問いは1〜3つ（今は {len(steps)} つ）。多ければ2枚に分ける")
         x = self.deck.wide[0] if x is None else x
@@ -1199,7 +1425,7 @@ class Slide:
         return Box(x, y, ox + out_w - x, total)
 
     def before_after(self, before: tuple, after: tuple, value: str | None = None, y: float | None = None,
-                     h: float | None = None, size: float = 20) -> Box:
+                     h: float | None = None, size: float = BODY_PT) -> Box:
         """前後（ビフォーアフター）：左に従来（灰）、右にこの研究・改善（薄い主色）、間に矢印、右の下に差を赤い数値1つで。
         before/after = ("見出し", ["要点", ...])。"""
         y = self.cur_y if y is None else y
@@ -1280,18 +1506,18 @@ class Slide:
         self.cur_y += dy
         return self
 
-    def p(self, text: str, dx: float = 0.0, gap: float = 0.3, size: float = 20, **kw) -> Box:
+    def p(self, text: str, dx: float = 0.0, gap: float = 0.3, size: float = BODY_PT, **kw) -> Box:
         """カーソル位置にテキストを置き、下へ進める。dx はカーソルxからの字下げ。"""
         b = self.text(self.cur_x + dx, self.cur_y, text, size=size, **kw)
         self.cur_y = b.bottom + gap
         return b
 
-    def peq(self, latex: str, dx: float = 0.4, gap: float = 0.3, size: float = 20, color: str | None = None) -> Box:
+    def peq(self, latex: str, dx: float = 0.4, gap: float = 0.3, size: float = BODY_PT, color: str | None = None) -> Box:
         b = self.eq(latex, self.cur_x + dx + INSET_X, self.cur_y + 0.03, size=size, color=color)
         self.cur_y = b.bottom + gap
         return b
 
-    def prow(self, parts: list, dx: float = 0.0, gap: float = 0.3, size: float = 20) -> Box:
+    def prow(self, parts: list, dx: float = 0.0, gap: float = 0.3, size: float = BODY_PT) -> Box:
         b = self.row(self.cur_x + dx, self.cur_y, parts, size=size)
         self.cur_y = b.bottom + gap
         return b
@@ -1352,9 +1578,16 @@ def pick_layouts(prs, content=None, title=None):
 class Deck:
     def __init__(self, template: str | Path = TEMPLATE, workdir: str | Path = "build",
                  content_layout: str | None = None, title_layout: str | None = None, color: str | None = None,
-                 sections: list | None = None, valign: str | None = None):
+                 sections: list | None = None, valign: str | None = None, lang: str | None = None):
         """template：構造（テンプレート1〜8 か追加したもの）。color：配色の名前（assets/templates/配色.json。省けば構造の標準の色）。
-        sections：章のナビの構造で上に並べる章の名前（省けば、本文の枚のタイトルを出てきた順に）。"""
+        sections：章のナビの構造で上に並べる章の名前（省けば、本文の枚のタイトルを出てきた順に）。
+        lang：スライドの言語（設定の「言語」。省けば日本語）。文字の言語の印と pptx の言語の印に書き、検査がそれで目安を変える。"""
+        import language
+        self.lang = language.lang_name(lang)
+        self.lang_code = language.lang_code(self.lang)
+        self.alt_code = "en-US" if self.lang_code.startswith("ja") else "ja-JP"
+        # 部品が入れる字下げ・区切りの空白。日本語は全角の空白、ほかの言語は半角2つ（英語の試しで、全角の空白が英字の間に残った）
+        self.sp = "　" if self.lang == "日本語" else "  "
         self.prs = Presentation(str(template))
         self.workdir = Path(workdir)
         self.workdir.mkdir(parents=True, exist_ok=True)
@@ -1431,7 +1664,7 @@ class Deck:
                 for child in list(p):
                     p.remove(child)
                 fld = p.makeelement(qn("a:fld"), {"id": "{189DD758-679A-0341-A1B9-815B1BDB6AE1}", "type": "slidenum"})
-                rpr = fld.makeelement(qn("a:rPr"), {"lang": "ja-JP", "altLang": "en-US"})
+                rpr = fld.makeelement(qn("a:rPr"), {"lang": self.lang_code, "altLang": self.alt_code})
                 t = fld.makeelement(qn("a:t"), {})
                 t.text = str(len(self.prs.slides))
                 fld.append(rpr); fld.append(t); p.append(fld)
@@ -1450,7 +1683,7 @@ class Deck:
                 if size:
                     run.font.size = Pt(size)
                 rPr = run._r.get_or_add_rPr()
-                rPr.set("lang", "ja-JP"); rPr.set("altLang", "en-US")
+                rPr.set("lang", self.lang_code); rPr.set("altLang", self.alt_code)
                 if r.baseline:
                     rPr.set("baseline", str(r.baseline))
                 if r.color:
@@ -1592,7 +1825,7 @@ class Deck:
         style = bg._element.find(qn("p:style"))
         if style is not None:
             bg._element.remove(style)
-        s.text(1.6, 2.9, f"{number}　{title}", size=40, bold=True, color="FFFFFF", name="区切り")
+        s.text(1.6, 2.9, f"{number}{self.sp}{title}", size=40, bold=True, color="FFFFFF", name="区切り")
         if lead:
             s.text(1.6, 3.85, lead, size=22, color="FFFFFF", name="区切り")
         self.slides.append(s)
@@ -1651,6 +1884,7 @@ class Deck:
             self.prs.core_properties.title = title
         if author:
             self.prs.core_properties.author = author
+        self.prs.core_properties.language = self.lang_code   # check_layout・notes_html がこれで言語を知る
         self.prs.save(str(path))
         print(f"saved {path} ({len(self.prs.slides)} slides)")
 
@@ -1660,6 +1894,10 @@ def wrap_to(text: str, width: float, size: float) -> str:
     if "\n" in text or text_width_pt(parse_markup(text), size) / 72.0 + 2 * INSET_X <= width:
         return text
     mid = len(text) / 2
+    if " " in text.strip() and not any(unicodedata.east_asian_width(c) in "WF" for c in text):   # 空白で語を区切る言語：真ん中に近い空白で
+        cands = [i for i, ch in enumerate(text) if ch == " " and 0 < i < len(text) - 1]
+        k = min(cands, key=lambda i: abs(i - mid))
+        return text[:k].rstrip() + "\n" + text[k:].lstrip()
     cands = [i + 1 for i, ch in enumerate(text[:-1]) if ch in "、，,・" or text[i:i + 1] in "でとがはをにの"]
     k = min(cands, key=lambda i: abs(i - mid)) if cands else int(mid)
     return text[:k] + "\n" + text[k:]

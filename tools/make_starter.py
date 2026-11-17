@@ -11,7 +11,7 @@ zip の中身（フォルダで包まずに一番上に置く。Windows の「�
     .codex/rules/sensei-slides.rules   Codex で PowerPoint を使う3つのスクリプトだけを外で動かす決まり
     .setup/準備.bat・.setup/準備.sh     assets/starter/ から（自分で準備するときのスクリプト。足りない部品は AI も聞いてから入れるので、
                                        一番上に出さず隠しフォルダに置く。スクリプトは一つ上のフォルダに移ってから動く）
-    スキルの使い方.html                 使い方のページ（画像の場所を .agents/skills/sensei-slides/docs/ に書き換えた写し。隠しフォルダの奥まで探さずに開ける）
+    how_to_use.html                 使い方のページ（画像の場所を .agents/skills/sensei-slides/docs/ に書き換えた写し。隠しフォルダの奥まで探さずに開ける）
 
 スキルの中身は git archive HEAD（コミット済みのもの）。まだコミットしていない変更は入らないので、残っていれば知らせる。
 tools/（このスクリプトなど、配る側の道具）は入れない。
@@ -31,7 +31,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parents[1]
 NAME = "sensei-slides"
-GUIDE = "スキルの使い方.html"
+GUIDE = "how_to_use.html"
 SKILL_DIRS = (".agents/skills", ".claude/skills")
 LEAVE_OUT = ("tools/",)
 RULES = "assets/codex/sensei-slides.rules"

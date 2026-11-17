@@ -94,9 +94,9 @@ if (-not $done) {
 Write-Host ""
 & $venvPy -X utf8 ".agents\skills\sensei-slides\scripts\check_env.py"
 Write-Host ""
-Write-Host "準備ができました。使い方のページ（スキルの使い方.html）をブラウザで開きます。"
-if (-not $quiet) { Start-Process "スキルの使い方.html" }
+Write-Host "準備ができました。使い方のページ（how_to_use.html）をブラウザで開きます。"
+if (-not $quiet) { Start-Process "how_to_use.html" }
 Write-Host "このフォルダを Codex・Claude Code・Antigravity・VS Code などで開いて、"
-Write-Host "「〇〇の講座を作って」「〇〇.pdf のスライドを作って」と頼みます（くわしくは スキルの使い方.html）。"
+Write-Host "「〇〇の講座を作って」「〇〇.pdf のスライドを作って」と頼みます（くわしくは how_to_use.html）。"
 Write-Host ""
 Finish 0

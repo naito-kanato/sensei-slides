@@ -216,7 +216,7 @@ def merge(work: Path):
     print(f"違った行・足した行：{len(diffs)} 件" + ("（facts_diff.md。直しの担当に渡す）" if diffs else ""))
     if search_bad:   # 検索の決まり（2回目からは理由、5回まで）を守っていない行
         over = [x for x in search_bad if "回を超えた" in x]
-        print(("✘ " if over else "△ ") + "検索の決まりを守っていない行：" + "；".join(search_bad[:6])
+        print("✘ " + "検索の決まりを守っていない行：" + "；".join(search_bad[:6])
               + "（1行の検索は、2回目からは理由を書いてから、5回まで。超えた行は確かめ方を見直す）")
     return diffs
 

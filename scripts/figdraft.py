@@ -1,7 +1,7 @@
 """図の下書き：自分で描く図（模式図・グラフ）を、コードを書く前に短い文で決め、描いたあと1回だけ見て肉付けする。
 
     python <skill>/scripts/figdraft.py <work>            # 描く図ごとの下書きの雛形（グラフはデータの「驚き」入り）を出す
-    python <skill>/scripts/figdraft.py <work> --check    # figs.py の図の関数に下書きがあるか、模式図が箱と矢印だけでないか
+    python <skill>/scripts/figdraft.py <work> --check    # figs.py の図の関数に下書きがあるか、模式図が箱と矢印だけでないか、資料の図を切り出したか
     （図の担当が2人のときは、どちらにも --part 1/2・--part 2/2 を付ける。自分の分の枚だけを出し・確かめる。図は figs_1.py・figs_2.py に描く）
 
 図の関数（figs.py の def f_…）の説明（docstring）の頭に、次の行を書いてから描く：
@@ -11,6 +11,13 @@
             配置：<左右で比べる・前後・断面・斜めから など>
             ラベル：<名詞だけ、3つまで>
     グラフ：気づく：<目立たせる差（データの「驚き」）。その棒・点を強調の色にし、引き出し線で一言>
+
+資料の図（教科書・論文の図をそのまま見せる枚）は、図の担当が資料の頁の画像（<work>/src/pNN.png）から切り出す：
+    python <skill>/scripts/pdf_pages.py crop <work>/src/p05.png <work>/figs/s07.png --box x0 y0 x1 y1
+話すパネル・部分だけを切り出す（図全体を小さく置くと、図の中の文字が読めない）。出典は figs/sources.md に1枚1行。
+注目点の赤い輪・矢印は画像に描き込まず、制作役がスライドで重ねる（s.oval・s.pointer・s.note）。
+英語の論文紹介の見本で、図を切り出す担当がおらず、仕上げ役が組む段で画像が無くて止まった。また、論文の Fig. 3 を全体のまま
+元の大きさで置き、図の中の文字が約 8pt で読めなかった（check_layout が画像から測る。12pt 未満で WARN）。
 
 弱いモデルの模式図が箱と矢印と名札だけになるのは、何に気づかせる図かを決めずにコードから書き始めるため。
 描いたら figgrid.py の一覧を1回だけ見て、下書きと比べて足りない所（比べの相手・強調の色・引き出し線）を直す（見るのは1回まで）。
@@ -69,6 +76,68 @@ def drawn(cells: dict) -> dict:
         if k == "模式図" or k in GRAPH_KINDS:
             out[n] = (k, " ／ ".join(x.strip() for x in parts))
     return out
+
+
+SOURCES = "sources.md"   # 切り出した資料の図の出典（figs/sources.md。1枚1行「sNN.png ← 資料名 p.N Fig.M（切り出しのほかの変更）」）
+BESIDE_W = 5.5           # 横に置く図の幅の目安（in）。切り出した図の文字の大きさをこの幅で見積もる
+FONT_MIN = 12.0          # check_layout.RASTER_FONT_MIN と同じ
+
+
+def sourced(cells: dict) -> dict:
+    """資料の図の枚：{番号: 図の案}（「目的：資料の図：中身」か、論文 Fig・教科書の図などと書いた枚）。"""
+    import figplan
+    out = {}
+    for n, c in sorted(cells.items()):
+        parts = [x for x in c.split(SEP) if x.strip()]
+        if any(figplan.parse_fig(x)[1] == "資料の図" for x in parts):
+            out[n] = " ／ ".join(x.strip() for x in parts)
+    return out
+
+
+def crop_lines(work, src: dict) -> str:
+    """切り出す図の指示（図の担当への出力）。"""
+    if not src:
+        return ""
+    w = Path(work).as_posix()
+    L = ["切り出す図（資料の図の枚。図の担当が2人なら1人目が切り出す）：",
+         f"`{w}/src/` の頁の画像（無ければ `pdf_pages.py extract <資料.pdf> {w}/src`）で図の場所を見て、話すパネル・部分だけを切り出す。"
+         "**軸・目盛りの数字・軸の名前・凡例は残す**（グラフの途中で切ると、何の量か・どれくらいかが読めない）。"
+         f"横に置くなら幅 {BESIDE_W:g} in で図の中の文字が {FONT_MIN:g}pt 以上になる大きさまで（--check が見積もる）。"
+         "要らない凡例・別のパネル・図の番号は入れない。注目点の赤い輪・矢印は画像に描き込まない（制作役がスライドで s.oval・s.pointer で重ねる）。"]
+    for n, cell in src.items():
+        L.append(f"- {n}枚目：{cell}\n  → `python <skill>/scripts/pdf_pages.py crop {w}/src/pNN.png {w}/figs/s{n:02d}.png --box x0 y0 x1 y1`"
+                 f"（カラーの図は --no-clean）。`{w}/figs/{SOURCES}` に「s{n:02d}.png ← 資料名 p.N Fig.M（切り出しのほかの変更）」を1行")
+    return "\n".join(L)
+
+
+def check_sources(work, src: dict) -> list:
+    """資料の図を切り出したか・出典を書いたか・文字が読める大きさか。"""
+    res = []
+    work = Path(work)
+    srcs = (work / "figs" / SOURCES).read_text(encoding="utf-8") if (work / "figs" / SOURCES).exists() else ""
+    for n in src:
+        png = work / "figs" / f"s{n:02d}.png"
+        if not png.exists():
+            res.append(("✘", "資料の図", f"{n}枚目：figs/s{n:02d}.png がまだ無い（資料の頁の画像から pdf_pages.py crop で、話すパネルだけを切り出す）"))
+            continue
+        if f"s{n:02d}.png" not in srcs:
+            res.append(("✘", "資料の図", f"{n}枚目：figs/{SOURCES} に s{n:02d}.png の出典の行が無い（資料名・頁・図の番号・切り出しのほかの変更）"))
+            continue
+        try:
+            import check_layout
+            from PIL import Image
+            with Image.open(png) as im:
+                w, h = im.size
+            pt = check_layout.glyph_pt(png.read_bytes(), BESIDE_W * h / w)
+        except Exception:
+            pt = None
+        if pt is not None and pt < FONT_MIN:
+            need = BESIDE_W * FONT_MIN / pt
+            res.append(("△", "資料の図", f"{n}枚目：幅 {BESIDE_W:g} in に置くと図の中の文字が約 {pt:.0f}pt（{FONT_MIN:g}pt には幅 {need:.1f} in 要る）"
+                        "→ 話すパネル・部分だけに切り出し直す。広くて大きくできないなら、その部分を figkit で描き直す"))
+            continue
+        res.append(("✔", "資料の図", f"{n}枚目：切り出しと出典あり" + (f"（幅 {BESIDE_W:g} in で文字 約 {pt:.0f}pt）" if pt else "")))
+    return res
 
 
 def template(n: int, kind: str, cell: str, text: str) -> str:
@@ -179,6 +248,11 @@ def ensure_runner(work: Path) -> None:
 def check(work: Path, part: str = "") -> list:
     work = Path(work)
     _, cells, _ = plan_cells(work)
+    src = sourced(cells) if not part or part.startswith("1/") else {}   # 切り出しは1人目
+    return check_sources(work, src) + check_drawn(work, cells, part)
+
+
+def check_drawn(work: Path, cells: dict, part: str = "") -> list:
     want = drawn(cells)
     if part:
         mine = set(part_of(want, part))
@@ -238,6 +312,9 @@ def main(argv=None):
     if part:
         mine = set(part_of(want, part))
         want = {n: v for n, v in want.items() if n in mine}
+    crops = crop_lines(work, sourced(cells) if not part or part.startswith("1/") else {})
+    if crops:
+        print(crops + "\n")
     if not want:
         print("自分で描く模式図・グラフの枚は、図の案に無い")
         return 0

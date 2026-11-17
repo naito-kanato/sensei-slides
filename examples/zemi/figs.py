@@ -22,13 +22,14 @@ FS = 14  # 図中ラベル
 
 
 def f_strain():
-    """重力波が通ると、輪に並んだ粒子が縦横交互に伸び縮みする（+ 偏光の模式図）。伸びる向きを細い両矢印で"""
-    f, ax = blank(6.0, 3.3)
+    """重力波が通ると、輪に並んだ粒子が縦横交互に伸び縮みする（+ 偏光の模式図）。伸びる向きを細い両矢印で。
+    置く幅（2枚目の本文の右、約 5.7 in）で描き、描いた幅のまま置く（以前は 6 in で描いて 5.85 in に縮め、文字が 13.4pt になった）"""
+    f, ax = blank(5.6, 3.2)
     th = np.linspace(0, 2 * np.pi, 13)[:-1]
     ring = np.linspace(0, 2 * np.pi, 100)
-    r, cy = 0.72, 1.9
+    r, cy = 0.7, 1.9
     for k, (sx, sy, name) in enumerate([(1, 1, "波の前"), (1.25, 0.8, "1/4 周期後"), (0.8, 1.25, "3/4 周期後")]):
-        cx = 1.0 + k * 2.0
+        cx = 0.95 + k * 1.85
         ax.plot(cx + r * np.cos(ring), cy + r * np.sin(ring), color=COL.gray, lw=1.0, ls="--")
         ax.scatter(cx + r * sx * np.cos(th), cy + r * sy * np.sin(th), s=55, color=COL.blue, zorder=3)
         ax.text(cx, 0.3, name, ha="center", fontsize=FS)
@@ -36,7 +37,7 @@ def f_strain():
             arrow(ax, (cx - 0.55, cy), (cx + 0.55, cy), color=COL.gray, style="<|-|>", lw=1.0, ms=12)
         elif sy > 1:    # 縦に伸びる
             arrow(ax, (cx, cy - 0.55), (cx, cy + 0.55), color=COL.gray, style="<|-|>", lw=1.0, ms=12)
-    ax.set_xlim(0, 6.0); ax.set_ylim(0, 3.3)
+    ax.set_xlim(0, 5.6); ax.set_ylim(0, 3.2)
     save(f, OUT / "strain.png")
 
 
@@ -97,18 +98,30 @@ def f_power():
 
 
 def f_scale():
-    """連星の大きさと間隔（縮尺どおり、等質量の例）：半径 105 km の円2つ（半径の和 210 km ＝ 1つの直径）、中心の間隔 350 km"""
-    k = 0.01  # in/km
+    """連星の大きさと間隔（縮尺どおり、等質量の例）：半径 105 km の円2つ（半径の和 210 km ＝ 1つの直径）、中心の間隔 350 km。
+    公転の向き（軌道の上下の弧）を添え、円は小さめに（大きな無地の円2つだけでは、言うことが少なく見えた）"""
+    from matplotlib.patches import FancyArrowPatch
+    k = 0.0075  # in/km
     f, ax = blank(5.8, 3.9)
-    x0, y0 = 1.12, 2.0
+    mx, y0 = 2.9, 1.85
     d, R = 350 * k, 105 * k
-    mx = x0 + d / 2
+    x0 = mx - d / 2
+    for a0, a1 in ((65, 115), (245, 295)):            # 公転の向き（2つが回る軌道の上下に、反時計回りの弧）
+        t0, t1 = np.radians(a0), np.radians(a1)
+        ax.add_patch(FancyArrowPatch((mx + d / 2 * np.cos(t0), y0 + d / 2 * np.sin(t0)),
+                                     (mx + d / 2 * np.cos(t1), y0 + d / 2 * np.sin(t1)),
+                                     connectionstyle="arc3,rad=0.12", arrowstyle="-|>", mutation_scale=16,
+                                     color=COL.lblue, lw=2.0))
+    ax.text(mx, y0 + d / 2 + 0.14, "公転 75 Hz", ha="center", va="bottom", fontsize=FS)
     for x in (x0, x0 + d):
         ax.add_patch(plt.Circle((x, y0), R, fc=COL.blue, ec="none"))
-    arrow(ax, (x0 - R, y0 + 1.35), (x0 + R, y0 + 1.35), color=COL.ink, style="<|-|>", lw=1.2)
-    ax.text(x0, y0 + 1.5, "直径 ≳210 km", ha="center", va="bottom", fontsize=FS)
-    arrow(ax, (x0, y0 - 1.45), (x0 + d, y0 - 1.45), color=COL.red, style="<|-|>", lw=1.6)
-    ax.text(mx, y0 - 1.7, "中心の間隔 ≃350 km", ha="center", va="top", fontsize=FS)
+    arrow(ax, (x0 - R, y0 + R + 0.14), (x0 + R, y0 + R + 0.14), color=COL.ink, style="<|-|>", lw=1.0, ms=12)
+    ax.text(x0, y0 + R + 0.24, "直径 ≳210 km", ha="center", va="bottom", fontsize=FS)
+    yb = y0 - d / 2 - 0.1
+    ax.plot([x0, x0], [yb - 0.08, y0 - R - 0.06], color=COL.gray, lw=0.8, ls=":")
+    ax.plot([x0 + d, x0 + d], [yb - 0.08, y0 - R - 0.06], color=COL.gray, lw=0.8, ls=":")
+    arrow(ax, (x0, yb), (x0 + d, yb), color=COL.red, style="<|-|>", lw=1.4, ms=12)
+    ax.text(mx, yb - 0.12, "中心の間隔 ≃350 km", ha="center", va="top", fontsize=FS)
     ax.set_xlim(0, 5.8); ax.set_ylim(0, 3.9)
     save(f, OUT / "scale.png")
 

@@ -43,11 +43,11 @@ def test_example_memo_is_ready(memo):
 
 
 def test_short_memo_warns_before_building(memo, capsys):
-    """本文が既定（10〜15枚）より少ないと △。✘ ではないのでレビューには進めるが、足すか理由を書くよう促す"""
+    """本文が既定（10〜15枚）より少ないと ✘（理由を書けば通る。△ のときは素通りされたので、理由が無ければ止める）"""
     keep_body_rows(memo, 5)
-    assert marks(cm.check(memo))["本文の枚数"] == "△"
-    assert cm.main([str(memo)]) == 0
-    assert "△ 本文の枚数" in capsys.readouterr().out
+    assert marks(cm.check(memo))["本文の枚数"] == "✘"   # 理由を書けば通る検査は、理由が無ければ ✘
+    assert cm.main([str(memo)]) == 1   # 枚数の理由が無いので ✘ で止まる
+    assert "✘ 本文の枚数" in capsys.readouterr().out
 
 
 def test_reason_clears_the_warning(memo):

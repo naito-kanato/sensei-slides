@@ -49,7 +49,7 @@ def api_lines(forms: str, figure: bool, table: bool, extra=()):
     names = []
     for k in [f.strip() for f in re.split(r"[・、,＋+]", forms or "") if f.strip()] or ["箇条"]:
         names += FORM_METHODS.get(k, [])
-    names += (["figure_beside"] if figure else []) + (["table"] if table else []) + list(extra)
+    names += (["figure_beside", "figure_main"] if figure else []) + (["table"] if table else []) + list(extra)
     out = ["- 文字の書式：{r:赤字} {u:下線} {b:太字} {i:変数}。改行は文字列の中の \\n（1行20字まで）"]
     for n in dict.fromkeys(names):
         f = getattr(zemi.Slide, n, None)
@@ -67,7 +67,7 @@ COMMON_HOW = ("このカードと、下の「資料」の所だけを見て、�
 def targets(kind, per) -> list:
     """本文と原稿の目安（カードの共通の紙か、質問回答のカードに入れる）。"""
     return [("- 本文：80〜100字（質問の行が上にあるので、ふつうの枚より短く）・体言止め。赤字は答えの要の語・数値に1〜2か所（短い一文なら全角20字まで・1か所）" if kind == "answers"
-             else "- 本文：100〜150字（表は数えない）・体言止め。赤字は根拠の要の語・数値に1〜2か所（決め手の短い一文なら全角20字まで・1か所。場合分け・2つ並べた・展開（前 → 後）の枚は、塊ごとに1文で2か所まで）。青字は図の色との対応と対になる側だけ"),
+             else "- 本文：80〜120字（表は数えない）・体言止め。赤字は根拠の要の語・数値に1〜2か所（決め手の短い一文なら全角20字まで・1か所。場合分け・2つ並べた・展開（前 → 後）の枚は、塊ごとに1文で2か所まで）。青字は図の色との対応と対になる側だけ"),
             "- **1行は20字まで**：長い項目は、文字列の中に \\n を入れて意味の切れ目で折る（例：\"片方の時刻を 10 ms より\\n大きくずらした組合せ\"）。"
             "1項目は2行まで。それより長いなら原稿へ回す。図の横の本文は特に短く",
             "- 本文に入れるもの：要点ごとに、数値か具体例を1つ（〔…〕の所から引く）。言い換えや中身の無い行で字数を埋めない",
@@ -79,6 +79,31 @@ def targets(kind, per) -> list:
             + ("⑤元の枚に戻ってどう読めばよいか（1文）" if kind == "answers" else "⑤次の枚へのつなぎ（1文）")
             + "。資料に無いことは「※（資料外の補足）」",
             "- **構成案の数値・不等号（以上・未満・≳・約）・固有名詞と、限定（または・一部・〜とされる）は変えない**（強めない）。資料と違って見えたら、そこは書かずに理由を1行で返す"]
+
+
+def language_rules(lang, per) -> list:
+    """日本語でないデッキの書き方（カードの共通の紙の「## 言語」の節）。上の目安の日本語向けの所を、この節で読み替える。"""
+    import language as LG
+    L = LG.lang_name(lang)
+    if LG.is_japanese(L):
+        return []
+    words = LG.spaced(L)
+    note = (f"{round(int(re.sub(r'[^0-9]', '', per) or 380) * 0.5, -1):.0f}語" if words else per)
+    yes, no = LG.YES_NO.get(L, ("Yes", "No"))
+    return [f"## 言語：{L}（この節が上の目安より先）",
+            f"- スライドの文字（タイトル・●見出し・本文・図の文字）と原稿は**{L}**で書く。カードの説明・事実の行が日本語なら、意味を変えずに{L}にする"
+            "（数値・不等号・固有名詞・限定（may・some・is considered など）は強めない）。返答は日本語",
+            "- 字数の目安は「全角に直した幅」で数える：半角の字（ラテン文字・数字・空白）は0.5。"
+            + ("1行20 → 半角40字前後（英語で6〜8語）、本文80〜120 → 英語で約28〜40語" if words else "目安の数はそのまま"),
+            "- 体言止めの代わりに**短い句**：本文の行を文末の記号（. 。 !）で終えない。冠詞・be動詞を省いてよい"
+            "（\"The model cannot see the source.\" → \"No access to the source\"）",
+            "- 並べる項目の形をそろえる（英語）：1つのリストの項目は全部を名詞句に、手順なら全部を命令形に。名詞句と文・命令形と名詞句・-ing と名詞句を混ぜない"
+            "（\"a word or a piece of a word\" と \"each model has its own split\" → \"a different split per model\"）。build.py を走らせると WARN が出る",
+            f"- 原稿：{note}前後。話し言葉の{L}（聞き手に語りかける自然な文。1文は40語まで）。順番（①〜⑤）は上のとおり",
+            "- 断りの言葉：図の「（概略）」→ (schematic)、「（講師の解釈）」→ (lecturer's interpretation)、「（発表者の解釈）」→ (presenter's interpretation)、"
+            "原稿の「※（資料外の補足）」→ ※ (Not from the source) … のように、その言語で",
+            "- 確認問題・解答の●見出しは、その言語の言葉のあとに番号の範囲（英語なら \"Review Questions (1-1 to 1-3)\"・\"Answers (1-1 to 1-3)\"）",
+            f"- 判定の流れ図（s.decision）の枝は自動で「{yes}／{no}」。全角の空白（　）・全角の記号（：、。）は使わない（ラテン文字の間で幅が崩れる）", ""]
 
 
 DEEP_MAX = 1   # 1枚のカードに渡す「深」の候補の数（かなり知っている聞き手のときだけ。初学者・多少知っているでは渡さない）
@@ -130,7 +155,7 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
     st = story.story_table(text) or {}
     beats = story.beat_map(text, kind) if kind in ("memo", "outline") else {}
     arc_name = (story.arc_of(text)[1] or ("",))[0]
-    body = [r for r in rows if (col(r, "役割") or "本文") == "本文"]
+    body = [r for r in rows if (col(r, "役割") or "本文") in ("本文", "まとめ")]   # まとめの枚も書き手に渡す
     per = f"{minutes * 300 / max(len(body), 1):.0f}字" if minutes else ("380字" if kind == "memo" else "400字")
     skel = build_py(work, kind, "T", rows)
     code = blocks(skel)
@@ -154,6 +179,8 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
         if terms:
             C += ["## 用語・記号の決め事（設計メモ 4節）", terms, ""]
         C += ["## 目安"] + targets(kind, per) + [""]
+        from slide_profile import read_options
+        C += language_rules(read_options(text).get("言語"), per)
         out["00_共通.md"] = "\n".join(C)
     for k, r in enumerate(body):
         n = r["#"]
@@ -198,7 +225,9 @@ def writer(work: Path, kind, rows, care, minutes=None, source=None):
               f"- 本文の形：{col(r, '本文の形') or '—'}（部品の使い方：`python <skill>/scripts/guide.py structures` の、その形の節）",
               f"- 本文の要点（★は赤字。〔…〕は出どころ＝その数値・例を引く所。スライドには書かない）：{col(r, '本文の要点')}",
               (f"- 図で見せるもの：{fig_cell}（画像は使わない。表は s.table、大きな数字は本文の部品で組む）" if not_image else
-               f"- 図で見せるもの：{fig_cell}（図のファイルは figs/s{n:02d}.png。描くのは図の担当なので、名前だけ使う）"),
+               (f"- 図で見せるもの：{fig_cell}（資料の図。図の担当が figs/s{n:02d}.png に切り出す。名前だけ使い、注目点は s.oval・s.pointer・s.note で重ねる。出典は図の下に）"
+                if figplan.parse_fig(fig_cell)[1] == "資料の図" else
+                f"- 図で見せるもの：{fig_cell}（図のファイルは figs/s{n:02d}.png。描くのは図の担当なので、名前だけ使う）")),
               f"- ノートへ（原稿で言う細部）：{col(r, 'ノートへ', 'ノート') or 'なし'}"]
         for c in care.get(n, []):
             L.append(f"- 手当て（必ず原稿か本文に入れる）：{c}")

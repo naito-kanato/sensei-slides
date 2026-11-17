@@ -38,20 +38,51 @@ def f_next_token():
 
 
 def f_tokens():
-    """「明日の天気は晴れ」をトークンに分けた例（分け方は例。実際はモデルで違う）"""
-    k = 1.2   # 以前の 5.0×2.4 in の座標を 1.2 倍に
-    f, ax = blank(5.0 * k, 2.4 * k)
-    ax.text(2.5 * k, 2.05 * k, "明日の天気は晴れ", ha="center", va="center", fontsize=20)
-    arrow(ax, (2.5 * k, 1.75 * k), (2.5 * k, 1.3 * k))
-    toks = ["明日", "の", "天気", "は", "晴れ"]
-    ws = [0.95 * k, 0.6 * k, 0.95 * k, 0.6 * k, 0.95 * k]
-    gap = 0.12 * k
-    x = (5.0 * k - sum(ws) - gap * (len(ws) - 1)) / 2
-    for t, w in zip(toks, ws):
-        box(ax, x, 0.55 * k, w, 0.6 * k, t, fs=18)
-        x += w + gap
-    ax.text(2.5 * k, 0.2 * k, "5 トークン", ha="center", va="center", fontsize=16, color=COL.blue)
+    """「明日の天気は晴れ」と「ハルシネーション」をトークンに分けた例（分け方は例。実際はモデルで違う）。
+    上の段は語ごとに1つ、下の段は1語が語の一部（3つ）に分かれる様子"""
+    W, H = 6.0, 4.7
+    f, ax = blank(W, H)
+
+    def row(y, text, toks, ws, label):
+        ax.text(W / 2, y + 1.3, text, ha="center", va="center", fontsize=20)
+        arrow(ax, (W / 2, y + 1.0), (W / 2, y + 0.78))
+        gap = 0.14
+        x = (W - sum(ws) - gap * (len(ws) - 1)) / 2
+        for t, w in zip(toks, ws):
+            box(ax, x, y, w, 0.62, t, fs=18)
+            x += w + gap
+        ax.text(W / 2, y - 0.32, label, ha="center", va="center", fontsize=16, color=COL.blue)
+
+    row(2.75, "明日の天気は晴れ", ["明日", "の", "天気", "は", "晴れ"], [1.0, 0.65, 1.0, 0.65, 1.0], "5 トークン（語ごと）")
+    row(0.45, "ハルシネーション", ["ハル", "シネー", "ション"], [1.1, 1.35, 1.35], "1語が 3 トークン（語の一部）")
     save(f, OUT / "tokens.png")
+
+
+def f_scaling():
+    """大きさと予測の誤差（概略）：両方の軸を対数目盛りにすると、べき乗則は右下がりの直線になる。
+    大きさ10倍ごとに誤差が決まった割合で下がり、傾向は7桁以上の範囲で続いた（Kaplan et al., 2020）。
+    誤差の値・傾きは説明のための形（実際の値ではない）。横軸は一番小さいモデルを1とした倍率"""
+    f, ax = fig(6.6, 4.6)
+    x = np.logspace(0, 7, 50)
+    y = 4.0 * x ** (-0.11)
+    ax.plot(x, y, color=COL.blue, lw=2.5)
+    for x0, lab in ((1e1, "決まった割合で減少"), (1e5, "同じ割合で減少")):   # 10倍ごとの段（同じ形が2か所）
+        x1, y0, y1 = x0 * 10, 4.0 * x0 ** (-0.11), 4.0 * (x0 * 10) ** (-0.11)
+        ax.plot([x0, x1], [y0, y0], color=COL.gray, lw=1.2, ls="--")
+        ax.plot([x1, x1], [y0, y1], color=COL.red, lw=2.0)
+        ax.text(10 ** (np.log10(x0) + 0.5), y0 * 1.04, "10倍", ha="center", va="bottom", fontsize=14, color=COL.text)
+        ax.text(x1 * 1.4, (y0 * y1) ** 0.5, lab, ha="left", va="center", fontsize=14, color=COL.red)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(0.6, 2e7)
+    ax.set_ylim(0.6, 4.8)
+    ax.set_xticks([1, 1e2, 1e4, 1e6], ["1", "100", "1万", "100万"])
+    ax.set_yticks([])
+    ax.minorticks_off()
+    ax.set_xlabel("モデルの大きさ（最小を1とした倍率・対数目盛り）", fontsize=14)
+    ax.set_ylabel("予測の誤差（対数目盛り）", fontsize=14)
+    ax.tick_params(labelsize=14)
+    save(f, OUT / "scaling.png")
 
 
 def f_params():
@@ -70,7 +101,7 @@ def f_params():
 def f_temperature():
     """温度を変えると、選ばれる確率がどう変わるか（2枚目の例の確率を4候補で規格化し、p^(1/T) から計算）"""
     p = np.array(PROBS) / sum(PROBS)
-    f, ax = fig(5.8, 4.3)
+    f, ax = fig(6.4, 4.6)   # 図が主役の型（s.figure_main）で左に大きく置く幅
     x = np.arange(len(WORDS))
     temps = [(0.5, COL.blue), (1.0, COL.gray), (2.0, COL.orange)]   # 赤は本文の結論の色なので使わない
     w = 0.26
@@ -90,7 +121,7 @@ def f_temperature():
 def f_fabricated():
     """ChatGPT が挙げた文献のうち実在しないものの割合（Walters & Wilder, Sci. Rep. 13, 14045 (2023)）"""
     f, ax = fig(5.4, 4.3)
-    ax.bar(["GPT-3.5", "GPT-4"], [55, 18], color=[COL.red, COL.blue], width=0.55)
+    ax.bar(["GPT-3.5", "GPT-4"], [55, 18], color=[COL.dred, COL.blue], width=0.55)   # 赤の棒は落ち着いた赤（原色の赤の面は浮く）
     for x, v in zip([0, 1], [55, 18]):
         ax.text(x, v + 2, f"{v}%", ha="center", fontsize=FS)
     ax.set_ylim(0, 70)
@@ -100,16 +131,21 @@ def f_fabricated():
 
 
 def f_cutoff():
-    """学習データの範囲と締め切り、その後の時間軸（GPT-4 は 2021年9月：OpenAI, 2023）"""
-    k = 1.15   # 以前の 5.2×2.6 in の座標を 1.15 倍に
-    f, ax = blank(5.2 * k, 2.6 * k)
-    ax.add_patch(Rectangle((0.2 * k, 1.0 * k), 3.0 * k, 0.7 * k, fc=COL.pale, ec=COL.ink, lw=1.5))
-    ax.text(1.7 * k, 1.35 * k, "学習データ", ha="center", va="center", fontsize=16)
-    ax.plot([3.2 * k, 3.2 * k], [0.75 * k, 2.0 * k], color=COL.red, lw=2.5)
-    ax.text(3.2 * k, 2.25 * k, "締め切り", ha="center", va="center", fontsize=16, color=COL.red)
-    ax.text(4.15 * k, 1.35 * k, "知らない", ha="center", va="center", fontsize=16, color=COL.gray)
-    arrow(ax, (0.2 * k, 0.55 * k), (5.05 * k, 0.55 * k))
-    ax.text(4.95 * k, 0.2 * k, "今", ha="center", va="center", fontsize=16)
+    """学習データの範囲と締め切り、その後の時間軸（GPT-4 は 2021年9月：OpenAI, 2023）。図が主役の型で左に大きく置く"""
+    W, H = 6.4, 4.6   # 置く幅（右の列に場合分けを置いた残り）で描く。縮めて置くと文字が 14pt を切った
+    f, ax = blank(W, H)
+    xc = 3.9   # 締め切りの位置
+    ax.add_patch(Rectangle((0.15, 1.45), xc - 0.15, 1.95, fc=COL.pale, ec=COL.ink, lw=1.5))
+    ax.text((0.15 + xc) / 2, 2.42, "学習データ（文章）", ha="center", va="center", fontsize=20)
+    ax.add_patch(Rectangle((xc, 1.45), W - 0.15 - xc, 1.95, fc="white", ec=COL.gray, lw=1.2, ls=(0, (4, 3))))
+    ax.text((xc + W - 0.15) / 2, 2.75, "締め切りの後の\n出来事", ha="center", va="center", fontsize=16, color=COL.text)
+    ax.text((xc + W - 0.15) / 2, 1.95, "→ 知らない", ha="center", va="center", fontsize=18, color=COL.text)
+    ax.plot([xc, xc], [1.15, 3.7], color=COL.red, lw=2.5)
+    ax.text(xc, 4.35, "締め切り", ha="center", va="center", fontsize=20, color=COL.red)
+    ax.text(xc, 3.95, "（GPT-4 は 2021年9月）", ha="center", va="center", fontsize=16, color=COL.ink)
+    arrow(ax, (0.15, 0.8), (W - 0.05, 0.8))
+    ax.text(0.15, 0.4, "時間", ha="left", va="center", fontsize=16)
+    ax.text(W - 0.25, 0.4, "今", ha="center", va="center", fontsize=16)
     save(f, OUT / "cutoff.png")
 
 

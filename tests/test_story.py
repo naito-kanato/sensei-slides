@@ -38,7 +38,7 @@ def test_long_and_run_and_no_but_warn(outline):
     text = re.sub(r"\| (しかし|だから)（[^）]*） \|", "| そして（並べる） |", outline)
     res = {i: (m, t) for m, i, t in story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")}
     mark, msg = res["前の枚から"]
-    assert mark == "△" and "「そして」が続く" in msg and "「しかし」が1つも無い" in msg
+    assert mark == "✘" and "「そして」が続く" in msg and "「しかし」が1つも無い" in msg
 
 
 def test_reason_allows_and_run(outline):
@@ -65,7 +65,7 @@ def test_unknown_kind_warns(outline):
 def test_open_doubt_warns(outline):
     """しかし（疑い）のあと、最後まで「だから」が無いと出しっぱなし。"""
     mark, msg = link_msg(outline.replace("| だから（帰結） |", "| そして（次へ） |"))
-    assert mark == "△" and "出しっぱなし" in msg
+    assert mark == ("✘" if "「そして」が続く" in msg else "△") and "出しっぱなし" in msg
 
 
 def test_split_link():
@@ -90,7 +90,7 @@ def test_fig_check_no_schema(outline):
     text = re.sub(r"仕組み：(模式図|資料の図)", "観点：表", outline)
     text = re.sub(r"実物：資料の図", "観点：表", text)
     res = {item: (mark, d) for mark, item, d in story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")}
-    assert res["型と図"][0] == "△" and ("模式図が1枚も無い" in res["型と図"][1] or "型の拍に合わない図" in res["型と図"][1])
+    assert res["型と図"][0] == "✘" and ("模式図が1枚も無い" in res["型と図"][1] or "型の拍に合わない図" in res["型と図"][1])
 
 
 def test_figs_table_shows_pitfalls():
@@ -108,4 +108,4 @@ def test_many_tables_without_decision_warn(outline):
     assert not any("判定の流れ図が無い" in d for _, _, d in res)        # 論文紹介（方法から）には判定の拍が無い
     text = re.sub(r"^話の型：.*$", "話の型：論文紹介（問題から）", text, flags=re.M)
     res = story.fig_check(text, "outline", body)
-    assert res and res[0][0] == "△" and "判定の流れ図が無い" in res[0][2]
+    assert res and res[0][0] == "✘" and "判定の流れ図が無い" in res[0][2]

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-mode="course">
+<html lang="ja" data-mode="course" data-lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -199,6 +199,13 @@ details.fold.gallery figure{margin:0 0 4px}
   .card{box-shadow:none;border:1px solid #B8B8BB}
   details.fold::details-content{height:auto!important;content-visibility:visible!important}
 }
+/* 言語の切り替え：日本語（既定）と英語の2つの版を持ち、片方だけを見せる */
+:root[data-lang="ja"] .en,:root[data-lang="en"] .ja{display:none!important}
+:root[data-lang="en"] .say div::before,:root[data-lang="en"] li .say span::before{content:"\201C"}
+:root[data-lang="en"] .say div::after,:root[data-lang="en"] li .say span::after{content:"\201D"}
+main{position:relative}
+.lang-btn{position:absolute;top:14px;right:18px;z-index:2}
+@media (max-width:900px){.lang-btn{position:static;width:max-content;margin:0 0 10px auto}}
 </style>
 </head>
 <body>
@@ -208,29 +215,31 @@ details.fold.gallery figure{margin:0 0 4px}
 </svg>
 <div class="app">
 <nav class="side" aria-label="使い方の目次">
-  <div class="brand"><div class="mk" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8.5 20h7M7 8.5h6M7 11.5h3.5"/><path d="M15.5 13.5l2.5-3"/></svg></div><div><b>sensei-slides</b><span>使い方</span></div></div>
+  <div class="brand"><div class="mk" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8.5 20h7M7 8.5h6M7 11.5h3.5"/><path d="M15.5 13.5l2.5-3"/></svg></div><div><b>sensei-slides</b><span class="ja">使い方</span><span class="en">User guide</span></div></div>
   <div class="mode" role="radiogroup" aria-label="使い方の種類">
-    <button type="button" role="radio" data-mode="course">講座</button>
-    <button type="button" role="radio" data-mode="zemi">発表</button>
+    <button type="button" role="radio" data-mode="course"><span class="ja">講座</span><span class="en">Courses</span></button>
+    <button type="button" role="radio" data-mode="zemi"><span class="ja">発表</span><span class="en">Talks</span></button>
   </div>
   <div class="toc" role="tablist" aria-label="章">
-  <button class="nav-btn only-course" role="tab" data-tab="intro-course"><span class="n"></span>はじめに</button>
-  <button class="nav-btn only-zemi" role="tab" data-tab="intro-zemi"><span class="n"></span>はじめに</button>
-  <button class="nav-btn" role="tab" data-tab="setup"><span class="n"></span>準備</button>
-  <button class="nav-btn only-course" role="tab" data-tab="course"><span class="n"></span>講座スライドを作る</button>
-  <button class="nav-btn only-zemi" role="tab" data-tab="ask"><span class="n"></span>発表スライドを作る</button>
-  <button class="nav-btn" role="tab" data-tab="template"><span class="n"></span>テンプレート</button>
-  <button class="nav-btn" role="tab" data-tab="notes"><span class="n"></span>原稿とコメント</button>
-  <button class="nav-btn" role="tab" data-tab="answer"><span class="n"></span>質問に答えてもらう</button>
-  <button class="nav-btn" role="tab" data-tab="faq"><span class="n"></span>困ったとき</button>
+  <button class="nav-btn only-course" role="tab" data-tab="intro-course"><span class="n"></span><span class="ja">はじめに</span><span class="en">Introduction</span></button>
+  <button class="nav-btn only-zemi" role="tab" data-tab="intro-zemi"><span class="n"></span><span class="ja">はじめに</span><span class="en">Introduction</span></button>
+  <button class="nav-btn" role="tab" data-tab="setup"><span class="n"></span><span class="ja">準備</span><span class="en">Setup</span></button>
+  <button class="nav-btn only-course" role="tab" data-tab="course"><span class="n"></span><span class="ja">講座スライドを作る</span><span class="en">Making course slides</span></button>
+  <button class="nav-btn only-zemi" role="tab" data-tab="ask"><span class="n"></span><span class="ja">発表スライドを作る</span><span class="en">Making talk slides</span></button>
+  <button class="nav-btn" role="tab" data-tab="template"><span class="n"></span><span class="ja">テンプレート</span><span class="en">Templates</span></button>
+  <button class="nav-btn" role="tab" data-tab="notes"><span class="n"></span><span class="ja">原稿とコメント</span><span class="en">Script and comments</span></button>
+  <button class="nav-btn" role="tab" data-tab="answer"><span class="n"></span><span class="ja">質問に答えてもらう</span><span class="en">Getting answers</span></button>
+  <button class="nav-btn" role="tab" data-tab="faq"><span class="n"></span><span class="ja">困ったとき</span><span class="en">Troubleshooting</span></button>
   </div>
   <div class="grow"></div>
   <button class="theme-btn" id="theme" type="button" aria-label="明るさの切り替え"><svg class="i"><use href="#i-theme"/></svg><span>明るさ：自動</span></button>
 </nav>
 
 <main>
+<button class="theme-btn lang-btn" id="lang" type="button" lang="en">English</button>
 <!-- ============================================================ 1（講座） -->
 <section class="tab only-course" id="tab-intro-course" role="tabpanel">
+<div class="ja">
   <p class="eyebrow">使い方</p>
   <h1>はじめに</h1>
   <p class="lead">AI が講師になって、あなた専用の連続講座を1回ずつ作ります。</p>
@@ -256,12 +265,12 @@ details.fold.gallery figure{margin:0 0 4px}
       <div><b>止まる所を埋める</b><p>説明の飛躍を、別の AI が書き出します。どこまで埋めるかは、あなたの詳しさで変わります。</p><details class="more"><summary>くわしく</summary><p>書いた AI とは別の AI があなたの立場で読み、あなたが自分で補う前提を書き出します。結論の理由・意味の書いていない用語・言葉から思い浮かべる像のずれ（「切る」「感染する」など）・あとで使う前提は、話の流れの中で埋めます。どこまで埋めるかは、あなたの詳しさに合わせます（推論距離）。</p></details></div>
       <div><b>話の筋</b><p>最初に問いを立て、壁を越えて最後に答えます。事実を並べるだけの講義にしません。</p><details class="more"><summary>くわしく</summary><p>あなたの疑問を「問い」にして最初の数枚で立て、意外な結果や壁を越えて、後ろのほうで答えます。枚と枚のつながり（そして・しかし・だから）まで決めて、事実を並べるだけの講義にしません。</p></details></div>
       <div><b>数字を探す・裏取り</b><p>筋を決める前に、思い込みを崩す数字と事実を探します。使う事実は出典で確かめ、言い過ぎにしません。</p><details class="more"><summary>くわしく</summary><p>話の筋を決める前に、別の AI が、比べられる数字の組と、驚きの事実（「〜だと思われがちだが、実際は〜」）を探し、話の「しかし」に使います。数字の無いテーマでは、無理に作りません。</p><p>数値や事実は、出典を確かめてから使います。制度の版や統計のように変わるものは、最新の版を探します。出典は、どの資料のどこかを特定できる形で書きます。裏が取れない事実は「要確認」と印を付けて、言い切りにしません。出典の「〜とされる」「一部」が、スライドで「必須」「全部」に強まっていないかも、プログラムが確かめます。</p></details></div>
-      <div><b>組み方と量</b><p>中身に合う組み方を1枚ずつ選び、1枚100〜150字に収めます。はみ出しや重なりは、描いた画像で検査します。</p><details class="more"><summary>くわしく</summary><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、箇条書きだけにせず、中身に合う組み方を1枚ずつ選びます。本文は1枚100〜150字、結論の語句は赤字、確認問題は毎回6問（1枚に3問）。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></details></div>
+      <div><b>組み方と量</b><p>中身に合う組み方を1枚ずつ選び、1枚80〜120字に収めます。はみ出しや重なりは、描いた画像で検査します。</p><details class="more"><summary>くわしく</summary><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、箇条書きだけにせず、中身に合う組み方を1枚ずつ選びます。本文は1枚80〜120字、結論の語句は赤字、確認問題は毎回6問（1枚に3問）。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></details></div>
     </div>
     <details class="fold gallery">
-      <summary><svg class="i"><use href="#i-chev"/></svg>文字の組み方の型を見る（型の見本帳から12枚）</summary>
+      <summary><svg class="i"><use href="#i-chev"/></svg>文字の組み方の型を見る（型の見本帳から14枚）</summary>
       <div class="in">
-        <figure><img src="docs/structures.jpg" alt="本文の形と図解の型の見本12枚" loading="lazy"><figcaption>同梱の examples/structures。「前提 ⇒ 帰結」「ラベル＋説明」「横の矢印で展開」「場合分け」「問い → 答え」「手順」「縦の矢印で結論へ」と、並列カード・段違いの順序・循環・前後・2つ並べた図。</figcaption></figure>
+        <figure><img src="docs/structures.jpg" alt="本文の形と図解の型の見本14枚" loading="lazy"><figcaption>同梱の examples/structures。「前提 ⇒ 帰結」「ラベル＋説明」「横の矢印で展開」「場合分け」「問い → 答え」「手順」「縦の矢印で結論へ」と、並列カード（下に大きな値）・段違いの順序・循環・前後・2つ並べた図・図が主役（左に図、右に図の読み方）・想定質問の図。</figcaption></figure>
       </div>
     </details>
     <p>見つけるのは AI、確かめるのはプログラム。検査を通るまで先へ進みません。</p>
@@ -291,10 +300,75 @@ details.fold.gallery figure{margin:0 0 4px}
       </tbody>
     </table>
   </div>
+</div>
+<div class="en">
+  <p class="eyebrow">User guide</p>
+  <h1>Introduction</h1>
+  <p class="lead">An AI acts as your teacher and builds a course just for you, one lecture at a time.</p>
+
+  <div class="card">
+    <h2>What it does</h2>
+    <p>Name a topic, or give a textbook or paper PDF to an AI agent (such as Codex or Claude Code), and ask it to "make a course". Once the course map is set (how many lectures, and what you will learn),
+      the slides and script arrive one lecture at a time.</p>
+    <p>On the script page, write comments where you are unsure and answer the quiz. Hand them back and you get an answer deck. Whatever you stumbled on is covered at the start of the next lecture.</p>
+    <figure><img src="docs/en-course-notes.jpg" alt="The script page: slides and spoken script side by side"><figcaption>The script page (read the slides and the spoken script side by side; comments and quiz answers are written here too). The sample is lecture 1 of the AI course in the bundled examples/course_en, "What a Chat AI Computes", 16 slides. It was made by asking in English on the same topic as the Japanese sample (examples/course).</figcaption></figure>
+    <details class="fold gallery">
+      <summary><svg class="i"><use href="#i-chev"/></svg>See all the sample slides (16)</summary>
+      <div class="in">
+        <figure><figcaption class="cap-top">Slides 1–4 (title and the start of the body).</figcaption><img src="docs/en-course-slides-1.jpg" alt="Slides 1–4 of the course sample" loading="lazy"></figure>
+        <figure><figcaption class="cap-top">Slides 5–16: the rest of the body (a chat is one document, why answers vary, made-up answers and why they happen, how to check), then the quiz and its answers. You answer the quiz with the "Answer 1-1" buttons on the script page.</figcaption><img src="docs/en-course-slides-2.jpg" alt="Slides 5–16 of the course sample" loading="lazy"></figure>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>It checks where you would get stuck, the facts, the layout and the amount of text before handing over</h2>
+    <div class="feats">
+      <div><b>Filling the gaps</b><p>Another AI lists the leaps in the explanation. How much gets filled depends on how much you already know.</p><details class="more"><summary>More</summary><p>An AI other than the one that wrote the lecture reads it from your side and lists the premises you would have to fill in yourself. The reason behind a conclusion, terms used without saying what they mean, a gap between a word and the picture it brings to mind (such as "cut" or "infect"), and premises used later are filled in within the flow of the story. How much is filled is matched to how much you know (inference distance).</p></details></div>
+      <div><b>Storyline</b><p>It poses a question first, gets over a wall, and answers at the end. Not a lecture that just lists facts.</p><details class="more"><summary>More</summary><p>Your own doubt becomes the "question", posed in the first few slides. After a surprising result or a wall, it is answered near the end. The links between slides (and, but, so) are decided too, so the lecture is not just a list of facts.</p></details></div>
+      <div><b>Finding numbers, checking facts</b><p>Before the storyline is set, it looks for numbers and facts that break common assumptions. Every fact it uses is checked against a source and not overstated.</p><details class="more"><summary>More</summary><p>Before the storyline is set, another AI looks for pairs of numbers that can be compared and for surprising facts ("people tend to think …, but actually …"), and uses them for the "but" in the story. For topics without numbers, it does not force any.</p><p>Numbers and facts are used only after their source is checked. For things that change, such as versions of rules or statistics, it looks for the latest version. Sources are written so you can find which document and where. Facts it cannot confirm are marked "to be checked" and not stated as certain. A program also checks that "is said to" or "some" in a source has not become "must" or "all" on the slides.</p></details></div>
+      <div><b>Layout and amount</b><p>It picks a layout that fits the content of each slide and keeps each slide to 80–120 characters. Overflow and overlaps are checked on rendered images.</p><details class="more"><summary>More</summary><p>Instead of only bullet points, it picks a layout that fits the content of each slide, such as "premise ⇒ consequence", "label + explanation" or "question → answer". The body is 80–120 characters per slide, key words of the conclusion are in red, and every lecture has a 6-question quiz (3 per slide). A program checks this on the actually rendered images, together with overflow, overlaps and the space around figures.</p></details></div>
+    </div>
+    <details class="fold gallery">
+      <summary><svg class="i"><use href="#i-chev"/></svg>See the layout types (14 slides from the sample book)</summary>
+      <div class="in">
+        <figure><img src="docs/en-structures.jpg" alt="14 sample slides of body layouts and diagram types" loading="lazy"><figcaption>The bundled examples/structures (English version, build_en.py): "premise ⇒ consequence", "label + explanation", "expanding with side arrows", "case split", "question → answer", "steps" and "down arrows to the conclusion", plus diagrams with parallel cards (a big value at the bottom), staggered order, a cycle, before and after, two figures side by side, a figure first (the figure on the left, how to read it on the right) and expected questions with a figure.</figcaption></figure>
+      </div>
+    </details>
+    <p>The AI finds the problems; programs check them. It does not move on until the checks pass.</p>
+  </div>
+
+  <div class="card">
+    <h2>How a course goes</h2>
+    <div class="flow">
+      <div class="b">Topic or PDF</div><span class="a">→</span>
+      <div class="b">Course map<small>you check it</small></div><span class="a">→</span>
+      <div class="b">Lecture 1 slides and script</div><span class="a">→</span>
+      <div class="b">Read, comment, answer</div><span class="a">→</span>
+      <div class="b">Answer deck</div><span class="a">→</span>
+      <div class="b last">Next lecture</div>
+    </div>
+    <p>All you do is check the map, read the script, and write comments and answers.</p>
+  </div>
+
+  <div class="card">
+    <h2>What you get for each lecture</h2>
+    <table class="kv">
+      <thead><tr><th>File</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr><td><code>…_slides.pptx</code></td><td>The PowerPoint slides. The speaker notes hold the spoken script.</td></tr>
+        <tr><td><code>…_script.html</code></td><td>A page with the slide images and the script side by side. Double-click it to open it in your browser. You also write comments and quiz answers here.</td></tr>
+        <tr><td><code>…_answers_slides.pptx</code></td><td>A deck that replies to your comments and quiz answers. Made only when you export your comments and ask.</td></tr>
+      </tbody>
+    </table>
+    <p>For a deck in Japanese the names end in <code>_スライド.pptx</code>, <code>_原稿.html</code> and <code>_質問回答_スライド.pptx</code> instead.</p>
+  </div>
+</div>
 </section>
 
 <!-- ============================================================ 1（発表） -->
 <section class="tab only-zemi" id="tab-intro-zemi" role="tabpanel">
+<div class="ja">
   <p class="eyebrow">使い方</p>
   <h1>はじめに</h1>
   <p class="lead">1回の発表のスライドを作ります。ゼミ（論文紹介・教科書の輪読）、学会などの研究発表、自分の理解を確かめる「ひとりゼミ」に使えます。</p>
@@ -320,14 +394,14 @@ details.fold.gallery figure{margin:0 0 4px}
     <div class="feats">
       <div><b>止まる所を埋める</b><p>説明の飛躍を、別の AI が書き出します。どこまで埋めるかは、聞き手の詳しさで変わります。</p><details class="more"><summary>くわしく</summary><p>書いた AI とは別の AI が聞き手の立場で読み、聞き手が自分で補う前提を書き出します。結論の理由・意味の書いていない用語・言葉から思い浮かべる像のずれ（「切る」「緩和する」など）・あとで使う前提を、聞き手の詳しさに合わせて言い足しで埋めます（推論距離）。</p></details></div>
       <div><b>話の筋</b><p>問いを立てたら、すぐ結論を言い、あとの枚で根拠を示します。山場の無い発表にしません。</p><details class="more"><summary>くわしく</summary><p>発表の問い（何を確かめたいか）を前のほうで立て、すぐ後の枚で結論と、それを支える柱を見せます（結論から話す形。聞き手が途中で迷いません）。あとの枚は柱の順に根拠を示し、最後にもう一度結論を言います。最後に答えを回収する形がよければ、オプション「答えの位置」を「後」にします。枚と枚のつながり（そして・しかし・だから）まで決めて、山場の無い発表にしません。</p></details></div>
-      <div><b>組み方と量</b><p>中身に合う組み方を1枚ずつ選び、1枚100〜150字に収めます。はみ出しや重なりは、描いた画像で検査します。</p><details class="more"><summary>くわしく</summary><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、中身に合う組み方を1枚ずつ選びます。あなたの過去のデッキの癖にも寄せられます（「テンプレート」の章の「追加する」）。本文は1枚100〜150字、結論の語句は赤字。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></details></div>
+      <div><b>組み方と量</b><p>中身に合う組み方を1枚ずつ選び、1枚80〜120字に収めます。はみ出しや重なりは、描いた画像で検査します。</p><details class="more"><summary>くわしく</summary><p>「前提 ⇒ 帰結」「ラベル＋説明」「問い → 答え」など、中身に合う組み方を1枚ずつ選びます。あなたの過去のデッキの癖にも寄せられます（「テンプレート」の章の「追加する」）。本文は1枚80〜120字、結論の語句は赤字。はみ出し・重なり・図との間隔とあわせて、実際に描いた画像でプログラムが確かめます。</p></details></div>
       <div><b>数字の比べ</b><p>資料の表や図から、比べられる数字の組を拾い、話の「しかし」に使います。</p><details class="more"><summary>くわしく</summary><p>構成案を作るときに、資料の表・図から比べられる数字の組を拾います。無ければ「見つからなかった」でよく、無理に作りません。数字には単位・分母・時点と出典を付け、資料の「〜とされる」を言い切りに強めません。</p></details></div>
       <div><b>想定質問</b><p>聞かれそうな質問を4問決め、最後の2枚に回答案を載せます。戻るとよい枚は、原稿に書きます。</p><details class="more"><summary>くわしく</summary><p>発表のあと聞かれそうな質問を4問、構成案の段階で決め、最後に1枚2組で2枚置きます。答えるときに戻るとよい枚は、原稿に書いておきます（「詳しくは13枚目に戻ると…」）。</p></details></div>
     </div>
     <details class="fold gallery">
-      <summary><svg class="i"><use href="#i-chev"/></svg>文字の組み方の型を見る（型の見本帳から12枚）</summary>
+      <summary><svg class="i"><use href="#i-chev"/></svg>文字の組み方の型を見る（型の見本帳から14枚）</summary>
       <div class="in">
-        <figure><img src="docs/structures.jpg" alt="本文の形と図解の型の見本12枚" loading="lazy"><figcaption>同梱の examples/structures。「前提 ⇒ 帰結」「ラベル＋説明」「横の矢印で展開」「場合分け」「問い → 答え」「手順」「縦の矢印で結論へ」と、並列カード・段違いの順序・循環・前後・2つ並べた図。</figcaption></figure>
+        <figure><img src="docs/structures.jpg" alt="本文の形と図解の型の見本14枚" loading="lazy"><figcaption>同梱の examples/structures。「前提 ⇒ 帰結」「ラベル＋説明」「横の矢印で展開」「場合分け」「問い → 答え」「手順」「縦の矢印で結論へ」と、並列カード（下に大きな値）・段違いの順序・循環・前後・2つ並べた図・図が主役（左に図、右に図の読み方）・想定質問の図。</figcaption></figure>
       </div>
     </details>
     <p>見つけるのは AI、確かめるのはプログラム。検査を通るまで先へ進みません。</p>
@@ -360,10 +434,80 @@ details.fold.gallery figure{margin:0 0 4px}
     </table>
     <p>できた原稿を読み、わからない所にコメントしておくと、答えのデッキで理解を固められます。</p>
   </div>
+</div>
+<div class="en">
+  <p class="eyebrow">User guide</p>
+  <h1>Introduction</h1>
+  <p class="lead">It makes the slides for one talk. Use it for seminars (paper presentations, textbook reading groups), research talks such as at conferences, and a "solo seminar" to check your own understanding.</p>
+
+  <div class="card">
+    <h2>What it does</h2>
+    <p>Put your materials at the top of the folder and ask an AI agent (such as Codex or Claude Code) to "make slides". You get slides with a spoken script.</p>
+    <p>Besides paper and textbook PDFs, a research talk can start from just result figures, earlier slides or notes. The AI files them into <code>資料/</code> in the talk's own folder,
+      and if the aim, what each figure shows, or the conclusion is not in the files, it asks you in the chat first (it drafts the background and methods from the materials).</p>
+    <p>You can use it with no talk planned. Putting the material into a form you could explain to others shows you where you do not understand it yet (a solo seminar).</p>
+    <figure><img src="docs/en-zemi-notes.jpg" alt="The script page: slides and spoken script side by side"><figcaption>The script page (read the slides and the spoken script side by side; comments on unclear points are written here too). The sample is the paper presentation "The First Observation of Gravitational Waves" in the bundled examples/zemi_en, 17 slides. It was made by asking in English from the same paper as the Japanese sample (examples/zemi).</figcaption></figure>
+    <details class="fold gallery">
+      <summary><svg class="i"><use href="#i-chev"/></svg>See all the sample slides (16)</summary>
+      <div class="in">
+        <figure><figcaption class="cap-top">Slides 1–4 (title, background, the paper's title page).</figcaption><img src="docs/en-zemi-slides-1.jpg" alt="Slides 1–4 of the talk sample" loading="lazy"></figure>
+        <figure><figcaption class="cap-top">Slides 5–17: how the detector works (four slides), results 1–3 (two slides each), the source, expected questions (two slides). Figures from the paper are used with their source, under the terms of CC BY 3.0 (Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)).</figcaption><img src="docs/en-zemi-slides-2.jpg" alt="Slides 5–17 of the talk sample" loading="lazy"></figure>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>It checks not just the look but where the audience would get stuck before handing over</h2>
+    <div class="feats">
+      <div><b>Filling the gaps</b><p>Another AI lists the leaps in the explanation. How much gets filled depends on how much the audience already knows.</p><details class="more"><summary>More</summary><p>An AI other than the one that wrote the slides reads them from the audience's side and lists the premises the audience would have to fill in themselves. The reason behind a conclusion, terms used without saying what they mean, a gap between a word and the picture it brings to mind (such as "cut" or "relax"), and premises used later are filled in with a few added words, matched to how much the audience knows (inference distance).</p></details></div>
+      <div><b>Storyline</b><p>Once the question is posed, it gives the conclusion right away and shows the evidence in later slides. No talk without a high point.</p><details class="more"><summary>More</summary><p>The talk's question (what you want to find out) is posed early, and the next slide shows the conclusion and the pillars that support it (conclusion first, so the audience does not get lost). Later slides give the evidence pillar by pillar, and the end states the conclusion once more. If you prefer to collect the answer at the end, set the option "Answer position" to "late". The links between slides (and, but, so) are decided too, so the talk always has a high point.</p></details></div>
+      <div><b>Layout and amount</b><p>It picks a layout that fits the content of each slide and keeps each slide to 80–120 characters. Overflow and overlaps are checked on rendered images.</p><details class="more"><summary>More</summary><p>It picks a layout that fits the content of each slide, such as "premise ⇒ consequence", "label + explanation" or "question → answer". It can also follow the habits of your past decks ("Add one" in the "Templates" chapter). The body is 80–120 characters per slide, and key words of the conclusion are in red. A program checks this on the actually rendered images, together with overflow, overlaps and the space around figures.</p></details></div>
+      <div><b>Comparing numbers</b><p>It picks pairs of numbers that can be compared from the tables and figures in your materials, and uses them for the "but" in the story.</p><details class="more"><summary>More</summary><p>While making the outline, it picks pairs of numbers that can be compared from the tables and figures. If there are none, "none found" is fine; it does not force any. Numbers get units, denominators, dates and sources, and "is said to" in the material is not turned into a flat claim.</p></details></div>
+      <div><b>Expected questions</b><p>It sets four likely questions and puts draft answers on the last two slides. Slides worth going back to are noted in the script.</p><details class="more"><summary>More</summary><p>At the outline stage it sets four questions you are likely to get after the talk, and puts them on two slides at the end, two per slide. Slides worth going back to when you answer are noted in the script ("Going back to slide 13 for details, …").</p></details></div>
+    </div>
+    <details class="fold gallery">
+      <summary><svg class="i"><use href="#i-chev"/></svg>See the layout types (14 slides from the sample book)</summary>
+      <div class="in">
+        <figure><img src="docs/en-structures.jpg" alt="14 sample slides of body layouts and diagram types" loading="lazy"><figcaption>The bundled examples/structures (English version, build_en.py): "premise ⇒ consequence", "label + explanation", "expanding with side arrows", "case split", "question → answer", "steps" and "down arrows to the conclusion", plus diagrams with parallel cards (a big value at the bottom), staggered order, a cycle, before and after, two figures side by side, a figure first (the figure on the left, how to read it on the right) and expected questions with a figure.</figcaption></figure>
+      </div>
+    </details>
+    <p>The AI finds the problems; programs check them. It does not move on until the checks pass.</p>
+  </div>
+
+  <div class="card">
+    <h2>How it goes</h2>
+    <div class="flow">
+      <div class="b">Add materials and ask</div><span class="a">→</span>
+      <div class="b">Check the settings<small>familiarity, talk length</small></div><span class="a">→</span>
+      <div class="b">Answer what is missing<small>for research talks</small></div><span class="a">→</span>
+      <div class="b">Outline<small>you check it</small></div><span class="a">→</span>
+      <div class="b">Figures and slides</div><span class="a">→</span>
+      <div class="b">Checks and review</div><span class="a">→</span>
+      <div class="b last">Receive</div>
+    </div>
+    <p>You answer only twice: the settings check at the start and the outline check (the first check asks how familiar the audience is with the topic; the talk length is optional).
+      You can skip the outline check by saying "leave it to you".</p>
+  </div>
+
+  <div class="card">
+    <h2>What you get</h2>
+    <table class="kv">
+      <thead><tr><th>File</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr><td><code>…_slides.pptx</code></td><td>The PowerPoint slides. The speaker notes hold the spoken script.</td></tr>
+        <tr><td><code>…_script.html</code></td><td>A page with the slide images and the script side by side. Double-click it to open it in your browser. Use it to practice the talk or to read it again.</td></tr>
+        <tr><td><code>…_answers_slides.pptx</code></td><td>A deck that answers the questions you wrote on the script page. Made only when you export your comments and ask.</td></tr>
+      </tbody>
+    </table>
+    <p>For a deck in Japanese the names end in <code>_スライド.pptx</code>, <code>_原稿.html</code> and <code>_質問回答_スライド.pptx</code> instead.</p>
+    <p>Read the finished script and comment where you do not understand; the answer deck helps you firm up your understanding.</p>
+  </div>
+</div>
 </section>
 
 <!-- ============================================================ 2 -->
 <section class="tab" id="tab-setup" role="tabpanel">
+<div class="ja">
   <p class="eyebrow">使い方</p>
   <h1>準備</h1>
   <p class="lead">一式を解凍して、フォルダを AI エージェントで開いて頼むだけです。足りない部品は、最初に AI が聞いてから入れます。</p>
@@ -406,7 +550,7 @@ details.fold.gallery figure{margin:0 0 4px}
       <li><b>準備は AI に任せてよい</b>頼むと最初に、部品と PowerPoint・フォントがそろっているかを確かめ、足りない部品は、入れてよいかを聞いてから作業フォルダの仮想環境（<code>.venv</code>）に入れます（数分、最初の1回だけ）。
         自分で先に済ませるなら <code>.setup/準備.bat</code> をダブルクリックします（Mac・Linux はターミナルで <code>sh .setup/準備.sh</code>）。</li>
       <li><b>フォルダをエージェントで開いて頼む</b>Codex・Claude Code・Antigravity・VS Code の Copilot でこのフォルダを開き、
-        <span class="only-course">「〇〇の講座を作って」</span><span class="only-zemi">「〇〇.pdf のスライドを作って」</span>と頼みます。
+        <span class="only-course">「〇〇の講座を作って」</span><span class="only-zemi">「〇〇.pdf のスライドを作って」</span>と頼みます。スライドと原稿は頼んだ言語で作ります（英語で頼めば英語のスライドになり、言語を言って指定することもできます）。
         開き方：VS Code（Copilot・Codex の拡張）なら「ファイル → フォルダーを開く」でこのフォルダを選び、チャット欄に書きます。
         Claude Code や Codex をターミナルで使うなら、このフォルダに移動（<code>cd</code>）してから起動します。
         <small>（慣れた人向け：仮想環境を有効にする操作は要りません。スキルが <code>.venv</code> の Python を自分で使います）</small></li>
@@ -420,7 +564,7 @@ details.fold.gallery figure{margin:0 0 4px}
         <tr><td><code>.agents/skills/sensei-slides/</code></td><td>スキル（Codex・Antigravity・VS Code の Copilot が読む）</td></tr>
         <tr><td><code>.claude/skills/sensei-slides/</code></td><td>同じスキル（Claude Code が読む）</td></tr>
         <tr><td><code>.codex/rules/sensei-slides.rules</code></td><td>Codex で PowerPoint を使う3つの作業だけを、確認なしで動かす決まり（フォルダを「信頼する」にしたときに読まれる）</td></tr>
-        <tr><td><code>スキルの使い方.html</code></td><td>このページ</td></tr>
+        <tr><td><code>how_to_use.html</code></td><td>このページ</td></tr>
         <tr><td><code>.setup/準備.bat</code>・<code>準備.sh</code></td><td>自分で準備するときのスクリプト（AI に任せるなら使わない）</td></tr>
       </tbody>
     </table>
@@ -468,10 +612,118 @@ details.fold.gallery figure{margin:0 0 4px}
       </div>
     </details>
   </div>
+</div>
+<div class="en">
+  <p class="eyebrow">User guide</p>
+  <h1>Setup</h1>
+  <p class="lead">Unzip the package, open the folder in an AI agent, and ask. If any parts are missing, the AI asks you first and then installs them.</p>
+
+  <div class="card">
+    <h2>What you need</h2>
+    <table class="kv">
+      <thead><tr><th>Item</th><th>What it is for</th></tr></thead>
+      <tbody>
+        <tr><td>An AI agent</td><td>The engine that runs the skill. We have confirmed that Codex, Claude Code, Antigravity and GitHub Copilot can make a short deck from start to finish. Light models are less careful with figures and fact checks, so a standard or stronger model is recommended.</td></tr>
+        <tr><td>Python 3.10 or later</td><td>Runs the programs that make the slides and figures.</td></tr>
+        <tr><td>PowerPoint or LibreOffice (either one)</td><td>Used to actually render the finished slides for checking, and to make the script page. If you have PowerPoint on Windows, it is used.
+          If not, the free LibreOffice can render instead (its checks are a little looser, so check the images by eye at the end; not yet tried on Mac or Linux).
+          Even with neither, you still get the slides (.pptx).</td></tr>
+        <tr><td>Japanese fonts</td><td>Meiryo and Yu Gothic on Windows, Hiragino on Mac (both come preinstalled). On Linux, install Noto Sans CJK.</td></tr>
+      </tbody>
+    </table>
+    <p>Ask the AI and it returns a table of what you have (the first time you use it, it checks this first even if you do not ask).</p>
+    <div class="say"><div>Check my environment</div></div>
+    <details class="fold">
+      <summary><svg class="i"><use href="#i-chev"/></svg>How to install LibreOffice</summary>
+      <div class="in">
+        <table class="kv">
+          <tbody>
+            <tr><td>Windows</td><td>From the official site <a href="https://www.libreoffice.org/download/">libreoffice.org</a>, or <code>winget install TheDocumentFoundation.LibreOffice</code></td></tr>
+            <tr><td>Mac</td><td>From the official site, or <code>brew install --cask libreoffice</code></td></tr>
+            <tr><td>Linux</td><td><code>sudo apt install libreoffice-impress</code></td></tr>
+          </tbody>
+        </table>
+        <p>You install it yourself. The AI only shows you how, and installs it only when you ask it to ("install it"), after checking with you.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Steps</h2>
+    <ol class="steps">
+      <li><b>Download and unzip the package</b>Download the work folder package with the skill, <code>sensei-slides.zip</code>, from <a href="https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip">the latest release</a> (GitHub Releases) and unzip it.
+        You can rename the folder (for example "Talks" or "Courses").</li>
+      <li><b>You can leave the setup to the AI</b>When you ask, it first checks that the parts, PowerPoint and the fonts are there. It asks before installing missing parts into the work folder's virtual environment (<code>.venv</code>) (a few minutes, first time only).
+        To do it yourself beforehand, double-click <code>.setup/準備.bat</code> (on Mac and Linux, run <code>sh .setup/準備.sh</code> in a terminal).</li>
+      <li><b>Open the folder in an agent and ask</b>Open this folder in Codex, Claude Code, Antigravity or Copilot in VS Code, and ask
+        <span class="only-course">"Make a course on …"</span><span class="only-zemi">"Make slides from ….pdf"</span>. The slides and script are made in the language you ask in (ask in English and you get English slides; you can also name a language).
+        To open it in VS Code (the Copilot or Codex extension), choose File → Open Folder, pick this folder, and type in the chat box.
+        If you use Claude Code or Codex in a terminal, move into this folder (<code>cd</code>) before starting it.
+        <small>(For experienced users: you do not need to activate the virtual environment. The skill uses the Python in <code>.venv</code> by itself.)</small></li>
+      <li><b>Answer the first questions</b>You are asked how familiar <span class="only-course">you are</span><span class="only-zemi">the audience is</span> with the topic (beginner or know a little / know a lot).
+        Only this one is required, and nothing moves on until you answer it<span class="only-zemi"> (if the talk length is set, give it at the same time)</span>. Next, if you have materials for the slides (PDFs, figures, earlier slides, notes), put them at the top of this folder and say so (with none, it works from the topic alone). Last, you are asked, optionally, about <span class="only-course">your</span><span class="only-zemi">the audience's</span> field, research topic and what <span class="only-course">you know</span><span class="only-zemi">they know</span> well.
+        With these, unfamiliar terms are reworded better and the places where readers get stuck are found better. Your answers go into that deck's settings list (there is no shared settings file for the whole skill).</li>
+    </ol>
+    <table class="kv">
+      <thead><tr><th>In the package</th><th>What it is for</th></tr></thead>
+      <tbody>
+        <tr><td><code>.agents/skills/sensei-slides/</code></td><td>The skill (read by Codex, Antigravity and Copilot in VS Code)</td></tr>
+        <tr><td><code>.claude/skills/sensei-slides/</code></td><td>The same skill (read by Claude Code)</td></tr>
+        <tr><td><code>.codex/rules/sensei-slides.rules</code></td><td>Rules that let just three tasks that use PowerPoint run in Codex without asking (read when you mark the folder as trusted)</td></tr>
+        <tr><td><code>how_to_use.html</code></td><td>This page</td></tr>
+        <tr><td><code>.setup/準備.bat</code>・<code>準備.sh</code></td><td>Scripts for doing the setup yourself (not needed if you leave it to the AI)</td></tr>
+      </tbody>
+    </table>
+    <p>Paths written in this guide as <code>references/…</code>, <code>examples/…</code> and <code>scripts/…</code> are inside <code>.agents/skills/sensei-slides/</code>
+      (<code>.agents</code> starts with a dot, so if File Explorer does not show it, turn on View → Hidden items).</p>
+    <p>To use it with the GitHub Copilot CLI, copy <code>.agents/skills/sensei-slides</code> to <code>.github/skills/sensei-slides</code>.
+      To update the skill, replace <code>.agents</code>, <code>.claude</code> and <code>.codex</code> with those from the new package (the slides you made and their settings lists stay as they are).</p>
+    <details class="fold">
+      <summary><svg class="i"><use href="#i-chev"/></svg>To add only the skill to your own folder</summary>
+      <div class="in">
+        <p>To use it in a folder you already have, put this repository's folder where your tool looks for skills, keeping the name <code>sensei-slides</code>.
+          Some tools do not load it if the folder is renamed.</p>
+        <table class="kv">
+          <thead><tr><th>Tool</th><th>Where to put it (inside the folder where you make slides)</th></tr></thead>
+          <tbody>
+            <tr><td>Codex</td><td><code>.agents/skills/sensei-slides/</code></td></tr>
+            <tr><td>Claude Code</td><td><code>.claude/skills/sensei-slides/</code></td></tr>
+            <tr><td>Antigravity</td><td><code>.agents/skills/sensei-slides/</code></td></tr>
+            <tr><td>GitHub Copilot</td><td><code>.github/skills/sensei-slides/</code> (in VS Code, <code>.agents/skills/</code> also works)</td></tr>
+          </tbody>
+        </table>
+        <p>Then, in the folder where you make slides, create a virtual environment and install the parts (Windows Command Prompt).</p>
+        <p><code>python -m venv .venv</code><br>
+          <code>.venv\Scripts\python -m pip install -r .agents\skills\sensei-slides\requirements.txt</code></p>
+        <p>Change the path in the second line to where you put the skill (the example is the Codex location). On Mac / Linux, use <code>python3 -m venv .venv</code> and
+          <code>.venv/bin/python -m pip install -r .agents/skills/sensei-slides/requirements.txt</code>.
+          Copying the package's <code>.setup</code> folder into this folder and double-clicking <code>.setup/準備.bat</code> does the same.</p>
+      </div>
+    </details>
+    <details class="fold">
+      <summary><svg class="i"><use href="#i-chev"/></svg>Without a virtual environment</summary>
+      <div class="in">
+        <p>It also works if you skip the virtual environment and install into your usual Python with <code>pip install -r requirements.txt</code> (if there is no <code>.venv</code>, the skill uses your usual Python).</p>
+      </div>
+    </details>
+    <details class="fold">
+      <summary><svg class="i"><use href="#i-chev"/></svg>To change the tool or the model</summary>
+      <div class="in">
+        <p>The instructions are written in neutral words that do not depend on a particular agent (tags such as 【質問】 "question" and 【別のエージェント】 "another agent").
+          The agent first reads the table in <code>references/agents.md</code> and maps them to the tools of the agent you use. Everything runs on the main model you chose.</p>
+        <p>The helpers (other agents) are not given a model either; they run on the same model as the main one. To change the model, choose a different main model.</p>
+        <p>In tools that cannot have another agent do a review, you may be asked at review time to "open a new chat and paste this template".</p>
+        <p>If being asked for permission at every command is a hassle, add the lines in the "allowlist" section of <code>references/agents.md</code> to your agent's allowlist settings. Do not add something broad like just <code>python</code> (any program would then run without asking).</p>
+        <p><b>In Codex</b>, the scripts that use PowerPoint do not run inside the sandbox. The package includes rules (<code>.codex/rules/sensei-slides.rules</code>), so if you mark the folder as trusted in Codex, just three tasks run outside the sandbox without asking: the render check, PDF export and making the script page (if you added only the skill to your own folder, copy <code>assets/codex/sensei-slides.rules</code> into that folder's <code>.codex/rules/</code>; for all folders, use <code>~/.codex/rules/</code>). If Codex tries to open PowerPoint by controlling the screen (the whole display changes), you can stop it.</p>
+      </div>
+    </details>
+  </div>
+</div>
 </section>
 
 <!-- ============================================================ course -->
 <section class="tab only-course" id="tab-course" role="tabpanel">
+<div class="ja">
   <p class="eyebrow">使い方</p>
   <h1>講座スライドを作る</h1>
   <p class="lead">テーマか PDF を渡すだけです。1回分ずつ進み、前の回でつまずいた所が次の回に反映されます。</p>
@@ -535,10 +787,77 @@ details.fold.gallery figure{margin:0 0 4px}
     </table>
     <p>見本は <code>examples/course/AI活用講座/00_README.md</code> です。</p>
   </div>
+</div>
+<div class="en">
+  <p class="eyebrow">User guide</p>
+  <h1>Making course slides</h1>
+  <p class="lead">Just give a topic or a PDF. It goes one lecture at a time, and whatever you stumbled on in one lecture is reflected in the next.</p>
+
+  <div class="card">
+    <h2>Example requests</h2>
+    <div class="say">
+      <div>Teach me how to use generative AI from scratch</div>
+      <div>Make a 5-lecture course on chapter 3 of this textbook (textbook.pdf)</div>
+      <div>Make a course on semiconductors. One lecture is enough</div>
+      <div>Make the next lecture</div>
+    </div>
+    <p>If you add your own material (your thesis, for example) "for reference", the course links its explanations to it, as in "Eq. (2-4) in your thesis is …".</p>
+  </div>
+
+  <div class="card">
+    <h2>What happens after you ask</h2>
+    <ol class="steps">
+      <li><b>Answer a few short questions</b>You are asked about the scope, your background, your goal, the number of lectures and so on. Things it already knows are not asked. Items you skip use the default values, and it tells you which values it used.</li>
+      <li><b>Check the course map</b>A table appears with each lecture's title and "what you will be able to explain after this lecture". If you want to change the number or order of lectures, say so here.</li>
+      <li><b>Lecture 1 arrives</b>You get the slides and the script page. Before that, the search for numbers and facts and their checking, a review by another AI (the reviewer) that did not write it, and the fixes after the review are all done. At the design stage, programs also check that the body fits in 10–15 slides and that each source can be traced to its document.</li>
+      <li><b>Read, then write comments and answers</b>On the script page, comment where you are unsure and answer the quiz.</li>
+      <li><b>Say "I commented"</b>The answer deck arrives. Then ask "Make the next lecture", and you get the next lecture with what you stumbled on covered at the start.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>A topic only, or a PDF</h2>
+    <table class="kv">
+      <thead><tr><th>What you give</th><th>Where the content comes from</th></tr></thead>
+      <tbody>
+        <tr><td>A topic only</td><td>The AI researches and writes it. Each number, formula and definition is checked against a source; anything it cannot check is marked "to be checked".</td></tr>
+        <tr><td>A PDF (textbook, paper)</td><td>The PDF is the base. The map follows the PDF's chapters, reordered for you. Additions that are not in the PDF are marked separately as "outside the material".</td></tr>
+        <tr><td>A topic + your own material</td><td>The content is written from the general literature. Your material is used as a bridge to your own research. It is only read, never changed.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>The script is in "AI lecture mode"</h2>
+    <p>The course script is written as the AI teacher talking to you.</p>
+    <ul>
+      <li>It calls you "you" and asks you questions now and then ("Which do you think it is?")</li>
+      <li>It explains in the words of your own field (only where they match exactly)</li>
+      <li>The quiz asks "How would you answer?", and the marking starts with "You answered …"</li>
+    </ul>
+    <p>If you will show it to others, such as juniors in your lab, say so. It stops saying things like "your thesis" and writes the script for all learners.</p>
+  </div>
+
+  <div class="card">
+    <h2>The course folder</h2>
+    <p>Each course gets its own folder, holding each lecture's files and the course memo (<code>00_README.md</code>).</p>
+    <table class="kv">
+      <thead><tr><th>In the memo</th><th>What it is for</th></tr></thead>
+      <tbody>
+        <tr><td>Course map</td><td>Each lecture's title and what you can explain after it. Updated when lectures are added.</td></tr>
+        <tr><td>Course ID and save folder</td><td>Two lines for filing comment files by course (see the "Getting answers" chapter).</td></tr>
+        <tr><td>Conventions</td><td>Symbols, figure orientation, names. Used to keep all lectures consistent.</td></tr>
+        <tr><td>Stumbles</td><td>What you got wrong in the quiz. Covered at the start of the next lecture, and asked again a few lectures later as a reworded question.</td></tr>
+      </tbody>
+    </table>
+    <p>The sample is <code>examples/course/AI活用講座/00_README.md</code>.</p>
+  </div>
+</div>
 </section>
 
 <!-- ============================================================ 3 -->
 <section class="tab only-zemi" id="tab-ask" role="tabpanel">
+<div class="ja">
   <p class="eyebrow">使い方</p>
   <h1>発表スライドを作る</h1>
   <p class="lead">論文や教科書を1デッキにまとめます。資料の場所と範囲を言うだけです。「PowerPoint」と言わなくても伝わります。</p>
@@ -601,10 +920,76 @@ details.fold.gallery figure{margin:0 0 4px}
     </div>
     <p>直したあとも、描いて検査するところからやり直してから渡されます。</p>
   </div>
+</div>
+<div class="en">
+  <p class="eyebrow">User guide</p>
+  <h1>Making talk slides</h1>
+  <p class="lead">It turns a paper or a textbook into one deck. Just say where the material is and which part. You do not need to say "PowerPoint".</p>
+
+  <div class="card">
+    <h2>Example requests</h2>
+    <div class="say">
+      <div>Make slides from section 3.2 of textbook.pdf</div>
+      <div>Make slides for a paper presentation. I put the paper in the folder</div>
+      <div>I want to make a conference talk. I put in the result figures and my earlier slides</div>
+      <div>Turn these lecture notes into slides in the usual format</div>
+      <div>I want to summarize this paper for my own understanding. No talk</div>
+    </div>
+    <p>Put the materials at the top of the folder and ask (you can name which ones to use by file name). It works from a scanned textbook PDF, a paper PDF, or just figures and earlier slides. For a research talk, if the files do not show the aim, what each figure shows, and the main conclusion, the AI asks you in the chat (it drafts the background and methods from earlier slides or the abstract). Your answers are kept as they are in <code>資料/方針.md</code>, and it does not move on to the outline until they are complete.</p>
+  </div>
+
+  <div class="card">
+    <h2>What happens after you ask</h2>
+    <ol class="steps">
+      <li><b>A settings table appears</b>The current values, such as how familiar the audience is, the talk length and the script style, are shown in a table. Required items that are not set are asked.
+        If they are fine, choose "Go ahead as is".</li>
+      <li><b>The materials are filed</b>After checking their content, the AI copies the materials it will use into <code>資料/</code> (figures, earlier slides, other) in the talk's own folder. The original files stay where they are.
+        For a research talk, if the aim, what each figure shows, or the conclusion is not in the files, you are asked here.</li>
+      <li><b>Check the outline</b>A table appears with every slide's heading and its one-sentence conclusion. It has already been reviewed by another AI (the reviewer).
+        At this stage, programs have also checked that the number of slides fits the talk length and that the places where the audience may get stuck are dealt with. Say what to change, or give the OK.</li>
+      <li><b>Wait</b>The AI draws the figures, builds the slides, and renders them in PowerPoint to check them. Finally, another AI (the reviewer) reviews the slide images once more.</li>
+      <li><b>Receive</b>You get the slides and the script page. They are handed over only after checking that the render check, the script and the review records are all there. It also tells you which figures the AI drew and which points you should check against the material.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Settings you can change</h2>
+    <p>Say it when you ask and it changes ("Make the talk 15 minutes", "Focus on the main results"). The values are kept in that deck's settings list (at the top of the outline).</p>
+    <table class="kv">
+      <thead><tr><th>Setting</th><th>Options (bold = default)</th></tr></thead>
+      <tbody>
+        <tr><td>Script style</td><td><b>Talk</b> (a script you speak to the audience) / AI lecture (a script in which the AI teaches you)</td></tr>
+        <tr><td>Talk length</td><td>15, 20, 30 minutes and so on. This sets the length of the script and the rough number of slides (1.5–2 minutes per slide).</td></tr>
+        <tr><td>When there are few slides</td><td><b>Do not add</b> (but if there are fewer than the talk length ÷ 2 minutes, check whether part of the story is missing) / Explain in more depth</td></tr>
+        <tr><td>Thoroughness</td><td>How far to fill the places where the audience may get stuck. It is set from how familiar the audience is: beginner or know a little → <b>0</b> (fill them all) / know a lot → <b>1</b> (leave at most one gap per slide in premises used later). The reason for the slide's conclusion, unfamiliar terms and gaps between words and pictures are always filled. You can also set the number directly</td></tr>
+        <tr><td>Inference distance</td><td><b>Fix</b> / Measure only (lists and records where readers get stuck but does not fill the gaps; for comparing with a filled version)</td></tr>
+        <tr><td>Template</td><td><b>Template 1</b> / Templates 2–8 (different structures, in order of readability) / ones you added yourself (see the "Templates" chapter)</td></tr>
+        <tr><td>Colors</td><td><b>The template's default colors</b> / blue, navy and orange, ecru and gold, indigo, teal, coral, ink and gold, deep green, gray and red, ink and indigo</td></tr>
+        <tr><td>Answer position</td><td>Talks: <b>early</b> (the conclusion right after the question, evidence in later slides) / Courses: <b>late</b> (the answer is collected near the end). Both can be changed</td></tr>
+        <tr><td>Scope</td><td><b>All results</b> / Main results only</td></tr>
+        <tr><td>Discussion slide</td><td><b>None</b> / Add one (one slide on open questions, limits and links to your own research)</td></tr>
+        <tr><td>Outline check</td><td><b>Show</b> / Leave it to the AI (go on to the end without showing it)</td></tr>
+        <tr><td>Token limit</td><td>The tokens one run may use (cache reads count as 1/10). <b>Codex 2.5M, Antigravity 2M, Claude Code 7M</b> / none. When it is exceeded, it stops and asks whether to continue</td></tr>
+      </tbody>
+    </table>
+    <p>Say "Show the options" at any point and the table of current values appears again.</p>
+  </div>
+
+  <div class="card">
+    <h2>Fixing it afterwards</h2>
+    <div class="say">
+      <div>The label in the figure on slide 5 overlaps a line. Please fix it</div>
+      <div>Split slide 8 into two</div>
+      <div>Make the script a bit shorter</div>
+    </div>
+    <p>After a fix too, it renders and checks the slides again before handing them over.</p>
+  </div>
+</div>
 </section>
 
 <!-- ============================================================ テンプレート -->
 <section class="tab" id="tab-template" role="tabpanel">
+<div class="ja">
   <p class="eyebrow">使い方</p>
   <h1>テンプレート</h1>
   <p class="lead">スライドの見た目（色・帯・タイトルの位置・見出しの印）を決めます。中身はそのままで、見た目だけを変えられます。</p>
@@ -654,10 +1039,63 @@ details.fold.gallery figure{margin:0 0 4px}
     </ol>
     <p>作ったテンプレートは、作業フォルダの <code>スライドテンプレート/</code> に、テンプレート・見た目の設定・分析の表の3つで残ります。</p>
   </div>
+</div>
+<div class="en">
+  <p class="eyebrow">User guide</p>
+  <h1>Templates</h1>
+  <p class="lead">A template sets the look of the slides (colors, bands, title position, heading markers). You can change only the look and keep the content as it is.</p>
+
+  <div class="card">
+    <h2>The templates</h2>
+    <p>Eight templates with different structures (where the title goes, where the conclusion sits, where the body is) are included. Each has default colors, and you can change the colors by asking. If you do not name one, Template 1 is used. You can also choose by structure name (such as "conclusion box").</p>
+    <figure><img src="docs/templates.jpg" alt="The same slide built with Templates 1–8" loading="lazy">
+      <figcaption>The same slide built with Templates 1–8 (default colors). Japanese screenshot.</figcaption></figure>
+    <figure><img src="docs/colors.jpg" alt="Color schemes applied to the top-band structure" loading="lazy">
+      <figcaption>Only the colors changed (color schemes applied to the top-band structure).</figcaption></figure>
+    <table class="kv">
+      <thead><tr><th>Name</th><th>Structure</th></tr></thead>
+      <tbody>
+        <tr><td>Template 1 (default)</td><td>Conclusion header: a small topic and heading at the top, a large one-sentence conclusion below (with a short vertical bar in the main color on its left), and a thin line separating the body. No bottom band, so the body has the most room (default colors: ink and indigo)</td></tr>
+        <tr><td>Template 2</td><td>Conclusion title: a small topic at the top and a large one-sentence conclusion below it. No bottom band (the conclusion is the heading) (default colors: indigo)</td></tr>
+        <tr><td>Template 3</td><td>Thin left band and subtitle: a thin band in the main color at the left edge, and a one-line conclusion as a subtitle under a large title. No bottom band (default colors: teal)</td></tr>
+        <tr><td>Template 4</td><td>Bottom band: a vertical bar and the title at the top left, and a one-line conclusion in the bottom band (the basic seminar style) (default colors: blue)</td></tr>
+        <tr><td>Template 5</td><td>Top band: the title in a dark top band, and a pale band with a "Summary" tag at the bottom (default colors: navy and orange)</td></tr>
+        <tr><td>Template 6</td><td>Chapter navigation: the chapters in a row at the top (the current one in the main color), the title below, and a one-line conclusion between two lines at the bottom (for long talks) (default colors: ink and gold)</td></tr>
+        <tr><td>Template 7</td><td>Conclusion box: a pale band at the top (title centered), no bottom band, and the conclusion in a pale box (for conferences) (default colors: ecru and gold)</td></tr>
+        <tr><td>Template 8</td><td>Pale left column: the title, conclusion and short points in a pale column on the left 34%, and a large figure on the right (for slides where the figure leads) (default colors: coral)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Choosing one</h2>
+    <div class="say"><div>Use Template 3, with deep green</div></div>
+    <p>The template and colors you choose go into that deck's settings list. A series (the next lecture, the next section) uses the same ones as before. Templates you added yourself are chosen by name in the same way.</p>
+  </div>
+
+  <div class="card">
+    <h2 id="add-template-en">Adding one (from your own slides)</h2>
+    <ol class="steps">
+      <li><b>Put the source slides in place</b>One deck with the look you want (such as the slides your lab uses for talks). Make it 16:9.
+        It may contain slides. Put it in <code>スライドテンプレート/</code> in the work folder, or tell the AI where it is.</li>
+      <li><b>Ask</b><span class="say"><span>Make a template from these slides. Name it "Lab"</span></span></li>
+      <li><b>Look at the analysis table</b>A program, not the AI, analyzes the source slides on about 50 items, so the result is the same whichever AI you ask.
+        The size, the layouts used, the title position and color, the heading markers (● ■ and so on) and their color, the body size, the emphasis color, the bottom band, table fills, margins, how figures are placed and more are listed,
+        together with the targets from a design guide for research talks. Where your slides fall outside the targets, it only tells you; nothing is changed on its own.</li>
+      <li><b>Answer just three questions</b>The layout for the body, the summary band at the bottom (keep as is / draw one / none), and the emphasis color. Everything else follows the table.</li>
+      <li><b>Look at a trial build</b>You get images of a few slides from the sample paper presentation built with the new template. Compare them side by side with the Template 1 version.</li>
+      <li><b>Fix it</b>Colors, heading markers and band alignment are fixed when you ask.
+        <span class="say"><span>Make the heading marker ■, in dark green</span></span>
+        To change the title position, the logo or the shape of a band, edit the slide master of the source slides in PowerPoint, put them back, and ask "Rebuild the Lab template".</li>
+    </ol>
+    <p>The template you made stays in <code>スライドテンプレート/</code> in the work folder as three files: the template, the look settings and the analysis table.</p>
+  </div>
+</div>
 </section>
 
 <!-- ============================================================ 4 -->
 <section class="tab" id="tab-notes" role="tabpanel">
+<div class="ja">
   <p class="eyebrow">使い方</p>
   <h1>原稿とコメント</h1>
   <p class="lead"><code>〇〇_原稿.html</code> で原稿を読み、わからないところにその場でコメントを付けます。</p>
@@ -721,10 +1159,78 @@ details.fold.gallery figure{margin:0 0 4px}
       書いた途中で閉じても消えませんが、別のブラウザや別のパソコンでは見えません。書き終えたら「書き出し」でファイルにしてください。</div>
     <div class="ban"><b class="h">「全部消す」の前に、必ず書き出す。</b> 消したコメントは戻せません。</div>
   </div>
+</div>
+<div class="en">
+  <p class="eyebrow">User guide</p>
+  <h1>Script and comments</h1>
+  <p class="lead">Read the script in <code>…_script.html</code>, and add comments right there where you do not understand.</p>
+
+  <div class="card">
+    <h2>Reading the script</h2>
+    <p>Double-click the file to open it in your browser. The slides are on the left and the script on the right. It is a single self-contained file,
+      so it opens without an internet connection, and on someone else's computer too.</p>
+    <p>The screenshots on this page are from Japanese decks; for an English deck, the buttons on the page are in English.</p>
+    <figure class="only-course"><img src="docs/course-notes.jpg" alt="The script page: slides on the left, script on the right"><figcaption>The script page of the course sample. Gray lines with a bar on the left are notes that are not read aloud (points you should check are shown in orange).</figcaption></figure>
+    <figure class="only-zemi"><img src="docs/zemi-notes.jpg" alt="The script page: slides on the left, script on the right"><figcaption>The script page of the talk sample. Gray lines with a bar on the left are notes that are not read aloud (points you should check are shown in orange).</figcaption></figure>
+    <table class="kv">
+      <thead><tr><th>Action</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td>Next / previous slide</td><td><kbd>→</kbd> <kbd>←</kbd> or <kbd>j</kbd> <kbd>k</kbd>. Click a number at the top to jump to that slide.</td></tr>
+        <tr><td>Make a PDF</td><td>Use the browser's print and choose "Save as PDF". Each slide gets its own page.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Adding comments</h2>
+    <p>Turn on comment mode with the "Comment" button at the top or the <kbd>C</kbd> key (press <kbd>C</kbd> or <kbd>Esc</kbd> again to leave it).
+      <span class="only-course">There are three ways to comment.</span><span class="only-zemi">There are two ways to comment.</span></p>
+
+    <h3>On the script text</h3>
+    <p>Drag to select the text you do not understand, and an input box appears. Write your comment and press "Save" (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>).</p>
+    <figure><img src="docs/guide/en-comment-text.jpg" alt="Selecting script text and writing a comment"><figcaption>The selected text is shown above the input box.</figcaption></figure>
+
+    <h3>On an area of a slide</h3>
+    <p>Drag over the slide to draw a box, and the comment applies to that area. Use it to point at part of a figure or formula.</p>
+    <figure><img src="docs/guide/en-comment-slide.jpg" alt="A dotted box drawn around a figure on a slide, with a comment being written"><figcaption>When the AI reads it, the boxed area arrives as a cropped image.</figcaption></figure>
+    <p class="only-zemi">We recommend reading the script through and commenting wherever you think "I could not answer if they asked about this".</p>
+
+    <div class="only-course">
+    <h3>Answering the quiz</h3>
+    <p>On the course's quiz slides, buttons such as "Answer 1-1" appear under the script. Press one and write your answer, and the answers are marked together.
+      You can use them without turning on comment mode.</p>
+    <figure><img src="docs/guide/en-answer.jpg" alt="Writing an answer to question 1-5 on a quiz slide"><figcaption>The question is shown above the input box.</figcaption></figure>
+    </div>
+
+    <h3>Editing a comment</h3>
+    <p>Click the highlighted text or the box you drew, and the input box opens for editing. To remove a comment, press "Delete" in the input box.</p>
+  </div>
+
+  <div class="card">
+    <h2>The comment list</h2>
+    <p>Open it with "List" at the top right or the <kbd>L</kbd> key. Click a comment in the list to move to its place, where it lights up.</p>
+    <figure><img src="docs/guide/en-comment-list.jpg" alt="The comment list open on the right"><figcaption>Each entry shows the number, the slide, the selected text and the comment.</figcaption></figure>
+    <table class="kv">
+      <thead><tr><th>Button</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>Export</td><td>Saves the comments<span class="only-course"> and answers</span> as one file (<code>…_comments.json</code>) in your Downloads folder. This is the file you give the AI.</td></tr>
+        <tr><td>Copy as text</td><td>Copies the comments as text. You can also paste them into the chat.</td></tr>
+        <tr><td>Register save folder</td><td>Optional. Once you choose a folder, later exports are saved straight into it instead of going through Downloads (some browsers do not support this).
+          This is separate from the "export save folder" that the AI uses to move the files later (see the "Getting answers" chapter).</td></tr>
+        <tr><td>Import</td><td>Loads an exported file and brings the comments back. Use it to keep writing on another computer.</td></tr>
+        <tr><td>Delete all</td><td>Deletes all the comments on this page.</td></tr>
+      </tbody>
+    </table>
+    <div class="caution"><b class="h">Comments are saved inside the browser.</b>
+      They are not lost if you close the page midway, but you cannot see them in another browser or on another computer. When you are done, use "Export" to save them as a file.</div>
+    <div class="ban"><b class="h">Always export before "Delete all".</b> Deleted comments cannot be brought back.</div>
+  </div>
+</div>
 </section>
 
 <!-- ============================================================ 5 -->
 <section class="tab" id="tab-answer" role="tabpanel">
+<div class="ja">
   <p class="eyebrow">使い方</p>
   <h1>質問に答えてもらう</h1>
   <p class="lead">コメントを書き出して「コメントした」と伝えると、答えのデッキが届きます。</p>
@@ -769,11 +1275,60 @@ details.fold.gallery figure{margin:0 0 4px}
       </tbody>
     </table>
   </div>
+</div>
+<div class="en">
+  <p class="eyebrow">User guide</p>
+  <h1>Getting answers</h1>
+  <p class="lead">Export your comments and say "I commented", and an answer deck arrives.</p>
+
+  <div class="card">
+    <h2>How it goes</h2>
+    <div class="flow">
+      <div class="b">Comment on the script</div><span class="a">→</span>
+      <div class="b">Export</div><span class="a">→</span>
+      <div class="b">Say "I commented"</div><span class="a">→</span>
+      <div class="b last">Answer deck</div>
+    </div>
+    <ol class="steps">
+      <li><b>Export</b>Press "Export" on the script page. The file goes into your Downloads folder.</li>
+      <li><b>Tell the agent</b>Say "I commented" to the agent. You do not need to say where the file is; it finds the newest one in your Downloads folder.</li>
+      <li><b>Receive</b>You get <code>…_質問回答_スライド.pptx</code> and <code>…_質問回答_原稿.html</code>.
+        Each question gets 1–2 slides (questions on the same point share one), and the first line of the body says which slide and which part the question is about.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>What the answer deck tells you</h2>
+    <ul>
+      <li>The answer to each question (points that are not in the material are marked separately as "outside the material")</li>
+      <li class="only-course">Marking of your quiz answers (○, △, × and what was missing), with the original question</li>
+      <li>If the original slides or script had an error, how the original deck was fixed</li>
+    </ul>
+    <p>You can comment on the answer deck too. Follow-up questions are added to the end of the same answer deck (no new deck is made).</p>
+  </div>
+
+  <div class="card">
+    <h2>Filing the comment files</h2>
+    <p class="only-course">The course memo (<code>00_README.md</code>) has the two lines below from the start. Thanks to them, comment files are filed separately for each course. You do not need to do anything.</p>
+    <p class="only-zemi">Optional. Put a memo (such as <code>00_README.md</code>) in the folder that holds the slides and the script page, and write the two lines below in it;
+      the comment files are then filed into that folder. The course ID is added to the file name once you rebuild the script page after writing the memo.</p>
+    <table class="kv">
+      <thead><tr><th>Line to write</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>- 書き出しの保存先: このフォルダ</code></td><td>"Export save folder: this folder". When the AI reads the comments, it moves them from your Downloads folder into this folder
+          (separate from "Register save folder" on the script page).</td></tr>
+        <tr><td><code>- 講座ID: AI</code></td><td>"Course ID". Letters added to the start of exported file names (<span class="only-course"><code>AI01_…_comments.json</code></span><span class="only-zemi"><code>AI_…_comments.json</code></span>). <span class="only-course">Use different letters for each course.</span><span class="only-zemi">It is called a course ID, but it works as it is in a seminar folder too.</span> Only comments with the same letters are moved together.</td></tr>
+      </tbody>
+    </table>
+    <p>Write the two lines as they are, in Japanese.</p>
+  </div>
+</div>
 </section>
 
 
 <!-- ============================================================ 7 -->
 <section class="tab" id="tab-faq" role="tabpanel">
+<div class="ja">
   <p class="eyebrow">使い方</p>
   <h1>困ったとき</h1>
   <p class="lead">よくある質問です。押すと開きます。</p>
@@ -807,9 +1362,48 @@ details.fold.gallery figure{margin:0 0 4px}
     <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>原稿を直したら、コメントの印が消えた</summary>
       <div class="in"><p>選んだ文章が原稿から無くなると、一覧に「原稿が変わって、選んだ文章が見つかりません」と出ます。コメントそのものは残っているので、そのまま書き出せます。</p></div></details>
     <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>スライドの文字が多い・図が小さいと感じる</summary>
-      <div class="in"><p>そのまま伝えてください（「3枚目の文字を減らして」）。目安は1枚100〜150字、1行は図の横なら20字（図がなければ25字）、図の中の文字は14ptです。
+      <div class="in"><p>そのまま伝えてください（「3枚目の文字を減らして」）。目安は1枚80〜120字、1行は図の横なら20字（図がなければ25字）、図の中の文字は14ptです。
         スキルはこの目安に寄せて作りますが、気になる所は言えば直してくれます。</p></div></details>
   </div>
+</div>
+<div class="en">
+  <p class="eyebrow">User guide</p>
+  <h1>Troubleshooting</h1>
+  <p class="lead">Common questions. Click one to open it.</p>
+
+  <div class="card faq">
+    <details class="fold only-course"><summary><svg class="i"><use href="#i-chev"/></svg>Can I make the whole course at once?</summary>
+      <div class="in"><p>Say "Make them all at once" and it makes them one after another. But then what you stumble on cannot feed into the next lecture, so one at a time is usually better.</p>
+        <p>Ask for the next lecture and for answers to comments in a <b>new chat</b> ("Make the next lecture", "I commented"). If you continue the previous lecture's chat, the agent rereads that long chat every time, and usage goes up. The state so far is kept in the course folder, so a new chat picks up from there.</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>How many tokens does it use?</summary>
+      <div class="in"><p>Quite a few. For each deck it reads the materials, redraws figures, redoes the render checks, and has another AI (the reviewer) review the work.
+          As a rough guide, one reviewer takes about 40k–125k tokens, and having it read a whole paper of about 50 pages takes about 180k tokens. To prevent overuse, there is a limit on the tokens one run may use (the "Token limit" setting); when it is exceeded, it stops and asks whether to continue.</p>
+        <p>How many decks you can make depends on the tool and the time. After making one deck, look at the share used on your tool's usage screen and decide.</p>
+        <p>Four tips to use less: use a standard-level main model (the other agents run on the same model as the main one). Keep each deck to 10–15 body slides. Have it read only the chapters you use. Ask for the next lecture or answers to comments in a new chat (so the long earlier chat is not reread).
+          If you stop the work near the limit, the state so far is kept in the work folder, so you can ask "Continue" later to pick it up.</p></div></details>
+    <details class="fold only-zemi"><summary><svg class="i"><use href="#i-chev"/></svg>Is it OK to use figures from papers and textbooks?</summary>
+      <div class="in"><p>For a lab seminar (use in class) and your own study (private use), it is usually fine. The skill always adds the source to the figures it crops.</p>
+        <p>If you post the slides or the script page (which contains the slide images) online, hand them out outside your lab, or use them at a conference or at work,
+          check the paper's license (such as CC BY, written on the first or last page of the paper) or the publisher's permission.</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>Does it work on a Mac?</summary>
+      <div class="in"><p>It can make the slides (.pptx) and the figures. The render check and the script page have been tested with PowerPoint on Windows. With LibreOffice it should render on a Mac too, but this has not been tried yet.</p>
+        <p>Without LibreOffice, open the finished slides in PowerPoint, check them by eye, and export a PDF. Give it that PDF to make the script page
+          (<code>python scripts/notes_html.py 〇〇_スライド.pptx --pdf 〇〇.pdf</code>; 〇〇 is the deck's name).</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>Text in figures shows as boxes or in another font</summary>
+      <div class="in"><p>This happens when the Japanese fonts (Meiryo or Yu Gothic) are not found. On systems other than Windows, install Japanese fonts and redraw the figures.</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>Something I fixed still looks unfixed in the image</summary>
+      <div class="in"><p>PowerPoint may be opening an old version of the file (this happens easily in cloud-synced folders). If it continues after redrawing,
+        check in Task Manager whether a PowerPoint that is not on screen is still running.</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>The comments I wrote are gone</summary>
+      <div class="in"><p>Comments are saved per browser. Open the page in the same browser you wrote them in.
+        If you have an exported file, you can bring them back with "Import" in the list.</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>After the script was edited, the comment marks disappeared</summary>
+      <div class="in"><p>When the selected text is no longer in the script, the list says that the script has changed and the selected text cannot be found. The comment itself is still there, so you can export it as it is.</p></div></details>
+    <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>The slides have too much text, or the figures look small</summary>
+      <div class="in"><p>Just say so ("Cut the text on slide 3"). The targets are 80–120 characters per slide, 20 characters per line beside a figure (25 with no figure), and 14 pt for text in figures (characters are counted by width, so an English letter counts as half).
+        The skill aims for these targets, but if anything bothers you, tell it and it will fix it.</p></div></details>
+  </div>
+</div>
 </section>
 </main>
 </div>
@@ -817,15 +1411,26 @@ details.fold.gallery figure{margin:0 0 4px}
 <script>
 (function(){
   function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
-  /* ---- 発表／講座の切り替えとタブ。URL の # には入れず、?mode=&tab= を replaceState で残す ---- */
+  /* ---- 発表／講座の切り替えとタブ。URL の # には入れず、?mode=&tab=&lang= を replaceState で残す ---- */
   var root=document.documentElement;
   var tabs=[].slice.call(document.querySelectorAll('.nav-btn'));
   var modeBtns=[].slice.call(document.querySelectorAll('.mode button'));
   var PAIR={'intro-zemi':'intro-course','intro-course':'intro-zemi','ask':'course','course':'ask'};
-  var EYEBROW={zemi:'発表の使い方',course:'講座の使い方'};
+  var EYEBROW={ja:{zemi:'発表の使い方',course:'講座の使い方'},en:{zemi:'Guide for talks',course:'Guide for courses'}};
+  /* 言語ごとの画面の言葉。other＝言語ボタンに出す、もう一方の言語の名前 */
+  var TEXT={
+    ja:{title:'使い方 — sensei-slides',other:'English',otherCode:'en',nav:'使い方の目次',mode:'使い方の種類',toc:'章',theme:'明るさの切り替え',
+      themePre:'明るさ：',names:{auto:'自動',light:'明るい',dark:'暗い'}},
+    en:{title:'How to use — sensei-slides',other:'日本語',otherCode:'ja',nav:'Guide contents',mode:'Guide type',toc:'Chapters',theme:'Switch theme',
+      themePre:'Theme: ',names:{auto:'auto',light:'light',dark:'dark'}}
+  };
+  var ql=(location.search.match(/[?&]lang=(en|ja)(?![a-z])/)||[])[1];
+  var lang=ql||store('slide_skill_lang')||'ja';if(!TEXT[lang])lang='ja';
   var mode='course',cur='';
   function visible(b){return getComputedStyle(b).display!=='none'}
-  function save(){try{history.replaceState(null,'','?mode='+mode+'&tab='+cur)}catch(e){}}
+  function save(){try{history.replaceState(null,'','?mode='+mode+'&tab='+cur+'&lang='+lang)}catch(e){}}
+  /* 見出しの上の小さな字：日本語版・英語版それぞれの言葉で */
+  function eyebrows(){document.querySelectorAll('.eyebrow').forEach(function(e){e.textContent=EYEBROW[e.closest('.en')?'en':'ja'][mode]})}
   function show(name,keep){
     var btn=tabs.filter(function(b){return b.dataset.tab===name&&visible(b)})[0];
     if(!btn)btn=tabs.filter(visible)[0];
@@ -838,13 +1443,37 @@ details.fold.gallery figure{margin:0 0 4px}
   function setMode(m,tab){
     mode=(m==='zemi')?'zemi':'course';root.setAttribute('data-mode',mode);store('slide_skill_mode',mode);
     modeBtns.forEach(function(b){b.setAttribute('aria-checked',b.dataset.mode===mode)});
-    document.querySelectorAll('.eyebrow').forEach(function(e){e.textContent=EYEBROW[mode]});
+    eyebrows();
     var n=0;tabs.forEach(function(b){if(visible(b))b.querySelector('.n').textContent=String(++n).padStart(2,'0')});
     var want=tab||cur;
     var el=tabs.filter(function(b){return b.dataset.tab===want})[0];
     if(el&&!visible(el)&&PAIR[want])want=PAIR[want];
     show(want||'intro-'+mode);
   }
+
+  /* ---- 明るさ：自動（OS に従う）→ 明るい → 暗い ---- */
+  var themeBtn=document.getElementById('theme'),label=themeBtn.querySelector('span');
+  var modes=['auto','light','dark'];
+  function apply(m){if(m==='auto')root.removeAttribute('data-theme');else root.setAttribute('data-theme',m);label.textContent=TEXT[lang].themePre+TEXT[lang].names[m]}
+  var theme=store('slide_skill_theme')||'auto';if(modes.indexOf(theme)<0)theme='auto';
+  themeBtn.addEventListener('click',function(){theme=modes[(modes.indexOf(theme)+1)%3];store('slide_skill_theme',theme);apply(theme)});
+
+  /* ---- 言語：日本語（既定）／英語。?lang= → 前に選んだもの → 日本語 ---- */
+  var langBtn=document.getElementById('lang');
+  function setLang(l){
+    lang=(l==='en')?'en':'ja';var T=TEXT[lang];
+    root.setAttribute('data-lang',lang);root.lang=lang;document.title=T.title;
+    langBtn.textContent=T.other;langBtn.lang=T.otherCode;
+    document.querySelector('nav.side').setAttribute('aria-label',T.nav);
+    document.querySelector('.mode').setAttribute('aria-label',T.mode);
+    document.querySelector('.toc').setAttribute('aria-label',T.toc);
+    themeBtn.setAttribute('aria-label',T.theme);
+    eyebrows();apply(theme);
+    if(cur)save();
+  }
+  langBtn.addEventListener('click',function(){setLang(lang==='ja'?'en':'ja');store('slide_skill_lang',lang)});
+  setLang(lang);
+
   tabs.forEach(function(b){b.setAttribute('aria-controls','tab-'+b.dataset.tab);b.addEventListener('click',function(){show(b.dataset.tab)})});
   /* どこを押しても反対側へ（キーボードでは、ボタンにフォーカスして Enter・Space でも切り替わる） */
   document.querySelector('.mode').addEventListener('click',function(){setMode(mode==='course'?'zemi':'course')});
@@ -855,13 +1484,6 @@ details.fold.gallery figure{margin:0 0 4px}
   var qm=(location.search.match(/[?&]mode=([a-z]+)/)||[])[1];
   var qt=(location.search.match(/[?&]tab=([a-z-]+)/)||[])[1];
   setMode(qm||store('slide_skill_mode')||'course',qt||('intro-'+(qm||store('slide_skill_mode')||'course')));
-
-  /* ---- 明るさ：自動（OS に従う）→ 明るい → 暗い ---- */
-  var themeBtn=document.getElementById('theme'),label=themeBtn.querySelector('span');
-  var modes=['auto','light','dark'],names={auto:'自動',light:'明るい',dark:'暗い'};
-  function apply(m){if(m==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',m);label.textContent='明るさ：'+names[m]}
-  var theme=store('slide_skill_theme')||'auto';if(modes.indexOf(theme)<0)theme='auto';apply(theme);
-  themeBtn.addEventListener('click',function(){theme=modes[(modes.indexOf(theme)+1)%3];store('slide_skill_theme',theme);apply(theme)});
 
   /* ---- 開いた中身を押しても閉じる（文字を選んでいる途中は閉じない） ---- */
   document.querySelectorAll('details.fold .in').forEach(function(el){

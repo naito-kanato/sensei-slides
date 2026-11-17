@@ -41,7 +41,7 @@ SLIDE_EXT = {".pptx", ".pdf"}
 
 MATERIAL_EXT = FIG_EXT | {".pptx", ".ppt", ".docx", ".doc", ".md", ".txt", ".xlsx", ".xls", ".csv", ".key", ".tex", ".bib", ".zip"}
 KEEP = ("はじめに", "準備", "~$", ".")
-KEEP_SUFFIX = ("_スライド.pptx", "_原稿.html", "_コメント.json")
+KEEP_SUFFIX = ("_スライド.pptx", "_原稿.html", "_コメント.json", "_slides.pptx", "_script.html", "_comments.json")
 
 
 def kind_of(p: Path) -> str:

@@ -52,9 +52,16 @@ def body_rows(text: str):
     out = []
     for r in rows[1:]:
         h = r[i] if len(r) > i else ""
-        if h and "表紙" not in h and "問題" not in h and "解答" not in h:
+        if h and not not_body_heading(h):
             out.append(h)
     return out
+
+
+def not_body_heading(h: str) -> bool:
+    """表紙・確認問題・解答（・区切り）の行の●見出しか。日本語でない見出し（"Review Questions (1-1 to 1-3)"・"Answers"）も見る。
+    英語の試しで、英語の確認問題の見出しを本文に数え、設計の担当が見出しを日本語に戻して逃げた。"""
+    import language as LG
+    return any(w in h for w in ("表紙", "問題", "解答")) or LG.is_qa_heading(h) or bool(re.match(r"\s*(title|cover)\b", h, re.I))
 
 
 CONCRETE = re.compile(r"[0-9０-９]|「[^」]+」|例[：:）)]|たとえば|例えば")
@@ -70,7 +77,7 @@ def concreteness(rows):
     body, plain = 0, []
     for r in rows[1:]:
         h = r[i_h] if len(r) > i_h else ""
-        if not h or any(w in h for w in ("表紙", "問題", "解答")):
+        if not h or not_body_heading(h):
             continue
         body += 1
         t = re.sub(r"第[0-9０-９]+回", "", " ".join(r[k] for k in cols if k < len(r)))   # 「第1回の〜」は数値に数えない
@@ -140,7 +147,7 @@ def thin_points(rows, what="設計メモ2節"):
             continue
         role = r[kr].strip() if kr is not None and kr < len(r) else ""
         h = r[kh] if kh < len(r) else ""
-        if (role and role != "本文") or (not role and any(w in h for w in ("表紙", "問題", "解答", "区切り"))):
+        if (role and role != "本文") or (not role and (not_body_heading(h) or "区切り" in h)):
             continue
         body += 1
         if point_count(r[k] if k < len(r) else "") < POINTS_MIN:
@@ -154,8 +161,12 @@ def thin_points(rows, what="設計メモ2節"):
 
 
 # 事実の行の限定（言い切りを弱める言葉）。「または」は並べるときにも使うので、事実の側では見ない（枚の側で残っていれば通す）
-HEDGE_FACT = re.compile(r"とされ|考慮|望ましい|努力義務|場合が?ある|ことがある|可能性|一部|原則")
-HEDGE = re.compile(HEDGE_FACT.pattern + r"|または|あるいは|いずれか|選択肢|例[：:）)]|の例|目安|など")
+# 英語などの語も見る（英語の試しで、設計の担当が英語の要点に「(ことがある)」と日本語の印を付けて通していた）
+HEDGE_FACT = re.compile(r"とされ|考慮|望ましい|努力義務|場合が?ある|ことがある|可能性|一部|原則"
+                        r"|(?i:\b(?:may|might|can|could|often|usually|typically|generally|some|likely|is considered|are considered"
+                        r"|is thought|are thought|in principle|recommended|should)\b)")
+HEDGE = re.compile(HEDGE_FACT.pattern + r"|または|あるいは|いずれか|選択肢|例[：:）)]|の例|目安|など"
+                   r"|(?i:\b(?:or|either|e\.g\.|for example|such as|about|around|approximately|up to|at least|roughly)\b|~|≈)")
 
 
 def hedged_facts(text: str, rows):
@@ -188,8 +199,9 @@ def hedged_facts(text: str, rows):
             + ("…" if len(hits) > 6 else "") + "。限定を残す（「〜とされる」を言い切りに、「一部」を全体に、「考慮する」を「必須」にしない）")
 
 
-WHEN = re.compile(r"\d{4}\s*年|年度|\d+\s*月|時点|現在|\d{4}[-/.]\d")
-DENOM = re.compile(r"分母|÷|／|うち|中\s*\d|中の|に対し|あたり|当たり|全国|全体|のなかで|に占める")
+WHEN = re.compile(r"\d{4}\s*年|年度|\d+\s*月|時点|現在|\d{4}[-/.]\d|\b(?:19|20)\d{2}\b|(?i:\bas of\b)")   # 英語の年・as of も
+DENOM = re.compile(r"分母|÷|／|うち|中\s*\d|中の|に対し|あたり|当たり|全国|全体|のなかで|に占める"
+                   r"|(?i:\b(?:out of|of all|per|among|share of)\b)")
 
 
 def data_slides(rows, what="設計メモ2節"):
@@ -275,7 +287,7 @@ def data_rows(text: str, work: Path, body_no, kind: str = "memo") -> list:
     if not ds:
         res.append(("・", "データ", f"比べられる数字の組は見つからなかった（{'／'.join(nf)}）。しかし はデータ無しで組む" if nf else "3b節に組が無い"))
     elif not used and not re.search(r"データを使わない理由[：:]\s*\S", text):
-        res.append(("△", "データ", "3b節にデータがあるのに、描く図が無い。強い組なら、図の案を「目的：種類：データN」（棒グラフ・折れ線・帯など）にして見せる。"
+        res.append(("✘", "データ", "3b節にデータがあるのに、描く図が無い。強い組なら、図の案を「目的：種類：データN」（棒グラフ・折れ線・帯など）にして見せる。"
                     "弱い組（別の読み方で驚きが消える）なら使わずに、1節に「データを使わない理由：…」と書く"))
     elif not bad and not missing:
         res.append(("✔", "データ", f"{len(ds)}組。図で使うもの：{'・'.join(f'データ{n}' for n in sorted(used)) or 'なし'}"))
@@ -308,15 +320,15 @@ def check(memo: Path, require_review: bool = False):
             res.append(("✔", "本文の枚数", f"{n}枚（既定 {BODY_MIN}〜{BODY_MAX}枚から外れるが、理由が書いてある）"))
         else:
             hint = "話を足す（前提・具体例・数値の例・つまずきやすい所・前後の回とのつながり）か、回をまとめる" if n < BODY_MIN else "回を分ける"
-            res.append(("△", "本文の枚数", f"{n}枚（既定 {BODY_MIN}〜{BODY_MAX}枚）。{hint}。どうしても外れるなら2節に「枚数の理由：…」を書く"))
+            res.append(("✘", "本文の枚数", f"{n}枚（既定 {BODY_MIN}〜{BODY_MAX}枚）。{hint}。どうしても外れるなら2節に「枚数の理由：…」を書く"))
     import figplan
     plan = figplan.plan_from_text(text, "memo")
     rows = table_rows(text, "話の順番") or []
     body_no = [int(r[0]) for r in rows[1:] if r and r[0].strip().isdigit() and r[1:2] and
-               not any(w in r[1] for w in ("表紙", "問題", "解答"))]
+               not not_body_heading(r[1])]
     if plan:
         mark, msg = figplan.flow_check(figplan.flow_count(plan, body_no), len(body_no), text, "設計メモ")
-        res.append((mark or "△", "流れ図の数", msg))
+        res.append((mark or "✘", "流れ図の数", msg))
         nf = figplan.no_figure(plan, body_no)
         res.append(("✘" if nf else "✔", "図の無いスライド",
                     f"5節「図の案」が「なし」・無い本文のスライド：{'・'.join(map(str, nf))}。{figplan.NO_FIGURE_HINT}" if nf

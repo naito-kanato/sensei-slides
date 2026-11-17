@@ -49,6 +49,13 @@ def match(head: str, key: str) -> bool:
     return key in head
 
 
+def section(name: str, key: str):
+    """name の手順書の、key に当たる最初の節の本文（見出しから次の同じ深さの見出しの手前まで）。無ければ None。"""
+    lines, secs = sections(path_of(name).read_text(encoding="utf-8"))
+    hit = [(a, b) for _, h, a, b in secs if match(h, key)]
+    return "\n".join(lines[hit[0][0]:hit[0][1]]).rstrip() if hit else None
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if not argv:

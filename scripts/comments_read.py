@@ -57,7 +57,7 @@ def move_course_files(data, p=None):
         return p
     cid, todo = data.get("course_id") or "", []
     if cid:
-        for q in sorted(DL.glob(f"{cid}*_コメント*.json"), key=lambda q: q.stat().st_mtime):   # 新しいものが最後に上書き
+        for q in sorted([*DL.glob(f"{cid}*_コメント*.json"), *DL.glob(f"{cid}*_comments*.json")], key=lambda q: q.stat().st_mtime):   # 新しいものが最後に上書き
             try:
                 if json.loads(q.read_text(encoding="utf-8")).get("course_id") == cid:
                     todo.append(q)
@@ -71,7 +71,7 @@ def move_course_files(data, p=None):
 
 def collect(cid):
     """ダウンロードフォルダの、講座ID cid のコメントを全部その講座の保存先へ移す（読まずに片づけるだけ）"""
-    for q in DL.glob(f"{cid}*_コメント*.json"):
+    for q in [*DL.glob(f"{cid}*_コメント*.json"), *DL.glob(f"{cid}*_comments*.json")]:
         try:
             data = json.loads(q.read_text(encoding="utf-8"))
         except Exception:
@@ -85,8 +85,8 @@ def collect(cid):
 def find_recent(n=8):
     """ダウンロードフォルダと、いまのフォルダ以下（_work を除く）のコメントJSONを新しい順に表示する（移さない）"""
     dl = Path.home() / "Downloads"
-    files = set(dl.glob("*_コメント*.json"))
-    files |= {p for p in Path.cwd().rglob("*_コメント*.json") if "_work" not in p.parts}
+    files = set(dl.glob("*_コメント*.json")) | set(dl.glob("*_comments*.json"))   # 英語のデッキは _comments.json
+    files |= {p for pat in ("*_コメント*.json", "*_comments*.json") for p in Path.cwd().rglob(pat) if "_work" not in p.parts}
     files = sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
     for p in files[:n]:
         print(p)
@@ -99,8 +99,9 @@ def deck_paths(data, deck_arg):
         pptx = Path(deck_arg)
     else:
         hp = html_path(data) or Path("不明_原稿.html")
-        stem = hp.stem[:-len("_原稿")] if hp.stem.endswith("_原稿") else hp.stem
-        pptx = hp.with_name(f"{stem}_スライド.pptx")
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import language
+        pptx = language.sibling(hp, "script", "slides")   # X_原稿.html → X_スライド.pptx、X_script.html → X_slides.pptx
     return pptx, pptx.with_suffix(".pdf")
 
 

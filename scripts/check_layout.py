@@ -6,9 +6,11 @@
   ERROR  スライド外へのはみ出し / 青帯への侵入 / 要素どうしの重なり / タイトル・青帯まとめの折り返し
          本文と図・表の間隔が狭い（横に並ぶ本文の右端と図の左端が 0.4 in 未満）
   WARN   要素の間隔が詰まりすぎ / 左右の余白不足 / 図形内テキストの自動折り返し
-         本文の文字量が目安を超えている（180字超 または 10行超。目安は 100〜150字。210字超・12行超は「多すぎる」）
+         本文の文字量が目安を超えている（140字超 または 8行超。目安は 80〜120字。170字超・10行超は「多すぎる」）
          1行が長い（図・表の横では全角22字超（目安18〜20字）、図がなければ25字超）
          ※ 確認問題・解答・やり取り・添削のスライド（●見出しで判定）と、表紙・区切り（●見出しが無い）には文字量と行長の目安を当てない
+         ※ 日本語でないデッキ（設定の「言語」。pptx の言語の印で見分ける）は、字数を全角に直した幅で数える（半角の字・空白は0.5）。
+           体言止め・動詞で終わる行の検査は日本語だけ。ほかの言語は、文の終わりの記号（. 。 !）で終わる行を文章調として数える
          図を縮小して置いている（描いた幅より置いた幅が 5% 以上小さい → 図の文字が目安より小さくなる）
          下が空いている（本文の最下端が y 4.5 in より上で、図も表もない → 2枚を1枚にまとめるか、行間を広げて縦に配分）
          図が無い（●見出しのある本文のスライドに、図・表・大きな数字・比較のどれも無い）
@@ -26,7 +28,7 @@
   WARN   図が柱の中にある / ページ番号の文字が下の帯の色に埋もれる（明暗差 3:1 未満）
 
 最後に、スライドごとの一覧（字数・行数・最長行・図との間隔・図の縮尺）を必ず出す。
-**ERROR 0 は「収まっている」という意味でしかない。** 一覧の値を目安（100〜150字・図の横は1行20字・間隔 0.4 in 以上・縮尺 1.0）に
+**ERROR 0 は「収まっている」という意味でしかない。** 一覧の値を目安（80〜120字・図の横は1行20字・間隔 0.4 in 以上・縮尺 1.0）に
 寄せるところまでが描画確認（過去の質問回答デッキで、文章調・1行23〜26字のまま上限に収まるのを合格扱いにした反省）。
 
 図の注目点に重ねる輪（zemi.py の s.oval、名前「注目の輪」）は図と重なるのが役目なので、重なり検査から外す。
@@ -41,22 +43,26 @@ import sys
 from itertools import combinations
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import language as LG
+
 if hasattr(sys.stdout, "reconfigure"):  # cp932 の端末でも 𝑑 などの数式文字で落ちないように
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 PT = 72.0
 BAND_TOP = 487.0        # 青帯の上端 (pt)
 MARGIN = 0.25 * PT
-TEXT_TARGET_CHARS = 180  # これを超えたら「目安超え」（目安は100〜150字。輪読・論文紹介の実際のデッキの実測：中央値 120字前後、多い1割が170字超）
-TEXT_TARGET_LINES = 10   # これを超えたら「目安超え」
-TEXT_MAX_CHARS = 210     # 本文の字数の上限（実測の最大 約210字）
-TEXT_MIN_CHARS = 70      # 本文の枚で、これより少なければ「本文が少ない」（見本の中央値は 90〜100字。1行だけの枚が出た）
-TEXT_MIN_CHARS_FIG = 50  # 図が面積の2割以上の枚（図が主役）の下限
-TEXT_FULL_CHARS = 100    # 目安（100〜150字）の下端。これより少ない枚には、行数だけで「目安超え」を出さない（短い行が並ぶと行数で削らせていた）
-TEXT_MEDIAN_MIN = 100    # 本文の枚の中身の字数の中央値の下限（実際のデッキは 120字前後。Codex の試作は 66字で、全体に薄かった）
+TEXT_TARGET_CHARS = 140  # これを超えたら「目安超え」（目安は80〜120字。2026-11-13 に狭めた：3本の比べで文が多いと減点され、AI は引き算が苦手。前の目安は80〜120字。輪読・論文紹介の実際のデッキの実測：中央値 120字前後、多い1割が170字超）
+TEXT_TARGET_LINES = 8    # これを超えたら「目安超え」
+TEXT_MAX_CHARS = 170     # 本文の字数の上限（前は実測の最大 約210字。狭めた）
+TEXT_MIN_CHARS = 60      # 本文の枚で、これより少なければ「本文が少ない」（見本の中央値は 90〜100字。1行だけの枚が出た）
+TEXT_MIN_CHARS_FIG = 40  # 図が面積の2割以上の枚（図が主役）の下限
+TEXT_FULL_CHARS = 80     # 目安（80〜120字）の下端。これより少ない枚には、行数だけで「目安超え」を出さない（短い行が並ぶと行数で削らせていた）
+TEXT_MEDIAN_MIN = 80     # 本文の枚の中身の字数の中央値の下限（実際のデッキは 120字前後。Codex の試作は 66字で、全体に薄かった）
 LO_GAP_SHIFT = 4.0      # LibreOffice の描画で、縦に並ぶ文字どうしの間隔に足す分（pt）。PowerPoint との差の実測の最小
+LANG = LG.DEFAULT        # デッキの言語（main が pptx の言語の印か作業フォルダの設定から決める）
 BRIEF = False            # --brief：直す所（ERROR・WARN と「←」の行）だけを出す。make_deck.py が使う（会話を短く保つ）
-TEXT_MAX_LINES = 12      # 本文の行数の上限
+TEXT_MAX_LINES = 10      # 本文の行数の上限
 LINE_MAX_BESIDE_FIG = 22  # 図・表の横にある本文の1行の長さ（全角。目安は18〜20字、これを超えたら WARN）
 LINE_MAX = 25            # 図がないときの1行の長さ
 FIG_GAP_MIN = 0.4 * PT   # 本文の右端と図の左端の間隔の下限
@@ -65,7 +71,10 @@ FIG_GAP_MIN_LO = 0.25 * PT  # LibreOffice で描いたとき。文字の範囲�
 LO_BOTTOM_TOL = 6.0       # LibreOffice は文字の高さを PowerPoint より約6pt 高く測る（同じ実測。中央値 +6pt）。下端の判定に足す分（pt）
 FIG_GAP_BELOW_MIN = 0.3 * PT  # 本文の下端と、その下に置いた図・表の上端の間隔の下限
 PIC_SCALE_MIN = 0.95     # 置いた幅／描いた幅 がこれ未満なら「縮小して置いている」
-FIG_FONT_MIN = 14.0      # 図の中のいちばん小さい文字が、置いた大きさでこれ未満なら WARN（figkit.save が画像に書いた大きさ × 縮尺）。
+RASTER_FONT_MIN = 12.0   # 文字の大きさの記録が無い図（資料の図の切り出し・写真）を画像から測った文字の大きさの下限。
+#   測り方：文字らしい塊（同じ高さの塊が横に並ぶもの）の高さの上から4分の1の値。figkit の図（14pt）で 14.3〜15.0pt と出る。
+#   英語の論文紹介の見本で、論文の Fig. 3 を元の大きさのまま置いた枚が 8pt と出て読めなかった（ほかの論文の図は 13〜14pt）
+FIG_FONT_MIN = 14.0      # 図の中のいちばん小さい文字が、置いた大きさでこれ未満なら ERROR（figkit.save が画像に書いた大きさ × 縮尺）。
                          # 試しの回で、目盛りが下限ちょうどの 13pt のまま置かれ、本文 18pt の横で読みにくかった
 TABLE_FONT_MIN = 14.0    # 表のセルの文字の下限（s.table の既定は 16pt。詰め込むために小さくした表がぎっしり見えた）
 TABLE_CELLS_MAX = 20     # 表のマス（見出しの行を除くセルと行ラベル）の上限。超えたら2枚に分けるか、判定の流れ図・ツリーに
@@ -93,8 +102,8 @@ CONTENT_SKIP = ("見出し", "結論の一文", "結論の線", "章のナビ", 
 
 def content_chars(items):
     """本文・囲み・箱など、中身の文字（16pt 以上。タイトル・結論の一文・表・図の注記・ページ番号は除く）の字数。"""
-    return sum(len(re.sub(r"\s", "", s.get("text") or "")) for s in items
-               if s.get("ph") is None and s.get("text") and s.get("name") not in CONTENT_SKIP and (s.get("size") or 0) >= 16)
+    return round(sum(LG.measure(s.get("text") or "", LANG) for s in items
+               if s.get("ph") is None and s.get("text") and s.get("name") not in CONTENT_SKIP and (s.get("size") or 0) >= 16))
 
 
 def rect_area(s):
@@ -145,8 +154,12 @@ def is_body(s):
 
 
 def paragraphs(s):
+    """本文の段落。日本語は空白を除いた文字列、ほかの言語は空白を1つにまとめた文字列（語の区切りを残す）。"""
     for para in s["text"].replace("\n", "\r").split("\r"):
-        t = para.replace(" ", "").replace("　", "").replace("\t", "")
+        if LG.is_japanese(LANG):
+            t = para.replace(" ", "").replace("　", "").replace("\t", "")
+        else:
+            t = re.sub(r"\s+", " ", para).strip()
         if t and not t.startswith("●"):
             yield t
 
@@ -155,7 +168,7 @@ def is_qa_slide(items):
     """確認問題・解答・実際のやり取りのスライド（●見出しで判定）。文字量と行の長さの目安は当てない（要素を削らない）。"""
     for s in items:
         t = (s.get("text") or "").strip()
-        if (s.get("name") == "見出し" or t.startswith("●")) and any(k in t for k in ("問題", "解答", "やり取り", "添削", "想定質問")):
+        if (s.get("name") == "見出し" or t.startswith("●")) and LG.is_qa_heading(t):
             return True
     return False
 
@@ -173,10 +186,11 @@ def body_amount(items):
         if not is_body(s):
             continue
         for t in paragraphs(s):
-            chars += len(t)
+            n = LG.measure(t, LANG)
+            chars += n
             lines += 1
-            longest = max(longest, len(t))
-    return chars, lines, longest
+            longest = max(longest, n)
+    return round(chars), lines, round(longest)
 
 
 SENTENCE_END = re.compile(r"(ます|です|する|しない|できる|できない|ない|いる|ある|れる|られる|なる|える|める|った|だ|。)$")
@@ -191,7 +205,7 @@ def sentence_lines(items):
             continue
         for t in paragraphs(s):
             u = t.rstrip("）」』)]")
-            if SENTENCE_END.search(u):
+            if (SENTENCE_END.search(u) if LG.is_japanese(LANG) else LG.is_sentence(t, LANG)):
                 out.append(t)
     return out
 
@@ -202,6 +216,8 @@ VERB_END = re.compile(r"(にくい|やすい|[ぁ-んァ-ヶ一-龥][うくぐ�
 
 
 def verb_lines(items):
+    if not LG.is_japanese(LANG):   # 動詞の終止形で見るのは日本語だけ
+        return []
     out = []
     for s in items:
         if not is_body(s):
@@ -211,6 +227,91 @@ def verb_lines(items):
             if not SENTENCE_END.search(u) and VERB_END.search(u):
                 out.append(t)
     return out
+
+
+# 1枚の文の塊（言いたいことの単位）の数。塊の見出し1つ・見出しの無い説明（s.lead）・問い・手順・場合分け・定義・横の矢印の展開1組・
+# 比較の2列・部品を使わない文の箱を、それぞれ1と数える。外から見た採点で「1枚に言いたいことが2つ以上入っている」と減点された枚は3〜4つだった
+UNIT_ONE = ("問い", "手順", "場合分け", "定義")
+UNIT_KNOWN = ("塊の見出し", "塊の本文", "帰結", "展開の左", "展開の右", "答え") + UNIT_ONE
+UNITS_WARN, UNITS_MAX = 3, 4   # 3つで WARN、4つ以上で ERROR
+# 図解の部品の中の文字（カードの値・前後の値・並べた図のラベルと値・大きな数字の説明・比較の2列）は塊に数えない（比較は全体で1つ）
+UNIT_PART_TEXT = ("比較の", "カードの値", "前後の値", "並べた図", "大きな数字", "判定の", "注目の", "まとめの")
+
+
+def text_units(items):
+    bodies = [s for s in items if (is_body(s) or s.get("name") in UNIT_KNOWN) and s.get("text")
+              and not (s.get("name") or "").startswith(UNIT_PART_TEXT)]
+    heads = [s for s in bodies if s.get("name") == "塊の見出し"]
+    n = len(heads) + (1 if any((s.get("name") or "").startswith("比較の") for s in items) else 0)
+    for s in bodies:
+        nm = s.get("name")
+        if nm == "塊の本文":
+            if not any(abs(h["left"] - s["left"]) < 0.6 * PT and abs(s["top"] - (h["top"] + h["height"])) < 0.25 * PT for h in heads):
+                n += 1
+        elif nm in UNIT_ONE or nm not in UNIT_KNOWN:
+            n += 1
+    last = None
+    for s in sorted([s for s in bodies if s.get("name") == "展開の左"], key=lambda s: s["top"]):
+        if last is None or s["top"] > last + 0.15 * PT:
+            n += 1
+        last = max(last or 0, s["top"] + s["height"])
+    return n
+
+
+# 本文の「右の図」「下の図」と、図の実際の位置（図の中のパネル「the right panel」は数えない。日本語の論文紹介で「右の図」と書いた図が下にあり、外から見た採点で見つかった）
+WHERE_WORDS = [("右", re.compile(r"右(の|に示す|側の)?(図|グラフ|写真|表)|(figure|graph|plot|chart|table|histogram|diagram) (on|at) the right|right(-hand)? (figure|graph|plot)", re.I)),
+               ("左", re.compile(r"左(の|に示す|側の)?(図|グラフ|写真|表)|(figure|graph|plot|chart|table|histogram|diagram) (on|at) the left|left(-hand)? (figure|graph|plot)", re.I)),
+               ("下", re.compile(r"下(の|に示す|側の)?(図|グラフ|写真|表)|(figure|graph|plot|chart|table) below", re.I)),
+               ("上", re.compile(r"上(の|に示す|側の)?(図|グラフ|写真|表)|(figure|graph|plot|chart|table) above", re.I))]
+
+
+def where_mismatch(text_shape, figs):
+    """本文の箱の文が言う図の位置（右・左・下・上）に、図が1つも無ければ、その言葉を返す。図が無い枚は見ない。"""
+    if not figs:
+        return None
+    t = text_shape.get("text") or ""
+    tx0, ty0, tx1, ty1 = rect_of(text_shape)
+    for word, pat in WHERE_WORDS:
+        if not pat.search(t):
+            continue
+        ok = False
+        for f in figs:
+            fx0, fy0, fx1, fy1 = shape_rect(f)
+            if word == "右" and fx0 >= tx1 - 0.3 * PT:
+                ok = True
+            elif word == "左" and fx1 <= tx0 + 0.3 * PT:
+                ok = True
+            elif word == "下" and fy0 >= ty1 - 0.3 * PT:
+                ok = True
+            elif word == "上" and fy1 <= ty0 + 0.3 * PT:
+                ok = True
+        if not ok:
+            return word
+    return None
+
+
+def unit_lines(items):
+    """文の塊ごとの行数（塊の見出しは、その下の説明と帰結を合わせて1つ）。text_units と同じ数え方で、行数を返す。"""
+    bodies = [s for s in items if (is_body(s) or s.get("name") in UNIT_KNOWN) and s.get("text")
+              and not (s.get("name") or "").startswith(UNIT_PART_TEXT)]
+    heads = [s for s in bodies if s.get("name") == "塊の見出し"]
+    owned, out = set(), []
+    for h in heads:
+        n = 1
+        for s in bodies:
+            if s.get("name") in ("塊の本文", "帰結") and abs(h["left"] - s["left"]) < 0.6 * PT and 0 <= s["top"] - h["top"] < 3.5 * PT:
+                if id(s) not in owned and not any(h2 is not h and h["top"] < h2["top"] <= s["top"] for h2 in heads):
+                    owned.add(id(s)); n += s.get("paras") or 1
+        out.append(n)
+    for s in bodies:
+        if id(s) in owned or s.get("name") in ("塊の見出し", "展開の右", "答え"):
+            continue
+        out.append(s.get("paras") or 1)
+    return out
+
+
+BLOCK_ONE_LONG = 5        # 塊が1つだけで、これ以上の行：2つに分ける
+BLOCK_LONELY = (2, 4)     # 塊が2つで、片方が2行以下・もう片方が4行以上かつ3倍以上：釣り合わない（長い塊＋少し空けて1〜2行）
 
 
 def shape_rect(s):
@@ -303,9 +404,156 @@ def picture_fonts(pptx_path):
     return out
 
 
+def figure_texts(pptx_path):
+    """スライド番号 → 図の中の文字（figkit.save が PNG に書いた FigTexts）。記録の無い図は見ない。"""
+    out = {}
+    try:
+        import io
+        from PIL import Image
+        from pptx import Presentation
+        prs = Presentation(pptx_path)
+    except Exception:
+        return out
+    for i, slide in enumerate(prs.slides, 1):
+        for sh in slide.shapes:
+            if sh.shape_type != MSO_PICTURE or not hasattr(sh, "image"):
+                continue
+            try:
+                with Image.open(io.BytesIO(sh.image.blob)) as im:
+                    t = im.info.get("FigTexts") or getattr(im, "text", {}).get("FigTexts")
+            except Exception:
+                t = None
+            if t:
+                out[i] = out.get(i, "") + " " + t
+    return out
+
+
+# 本文と図で同じ数字（2桁以上か小数・%付き）を2つ以上言い直していたら WARN（図と文の二重。外から見た採点で「冗長」と減点された）
+NUM_RE = re.compile(r"\d+(?:[.,]\d+)?\s*[%％]|\d+\.\d+|\d{2,}")
+DUP_NUMS_MIN = 2
+QA_ITEM_MAX = 70     # 確認問題・解答の1つ（1つの文の箱）の字数の上限（全角に直した幅）。小さい字の長文が毎回減点された
+QA_SIZE_MIN = 21     # 確認問題・解答の字の大きさの下限（本文と同じ 22pt に）
+
+
+def _nums(t: str) -> set:
+    return {re.sub(r"[\s,％]", lambda m: "%" if m.group(0) == "％" else "", x) for x in NUM_RE.findall(t or "")}
+
+
+def glyph_pt(blob: bytes, placed_h_in: float, maxw: int = 800):
+    """画像の中の文字の大きさ（pt、置いた大きさで）を測る。文字らしい塊が少なければ None。
+    濃い画素のつながった塊のうち、字の形（高さが画像の8%まで・幅が高さの0.25〜1.3倍）で、同じ高さの塊が横に並ぶものを文字とみなし、
+    高さの上から4分の1の値（数字・大文字の高さ ≒ 字の大きさの0.72）から字の大きさにする。"""
+    import io
+    from collections import deque
+    import numpy as np
+    from PIL import Image
+    with Image.open(io.BytesIO(blob)) as im:
+        g = im.convert("L")
+    s = min(1.0, maxw / g.width)
+    if s < 1:
+        g = g.resize((max(1, int(g.width * s)), max(1, int(g.height * s))))
+    a = np.asarray(g) < 110
+    H, W = a.shape
+    seen = np.zeros_like(a)
+    boxes = []
+    ys, xs = np.nonzero(a)
+    for y0, x0 in zip(ys.tolist(), xs.tolist()):
+        if seen[y0, x0]:
+            continue
+        q = deque([(y0, x0)])
+        seen[y0, x0] = True
+        y1 = y2 = y0
+        x1 = x2 = x0
+        n = 0
+        while q:
+            y, x = q.popleft()
+            n += 1
+            if y < y1: y1 = y
+            if y > y2: y2 = y
+            if x < x1: x1 = x
+            if x > x2: x2 = x
+            for yy, xx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                if 0 <= yy < H and 0 <= xx < W and a[yy, xx] and not seen[yy, xx]:
+                    seen[yy, xx] = True
+                    q.append((yy, xx))
+        h, w = y2 - y1 + 1, x2 - x1 + 1
+        if 4 <= h <= 0.08 * H and 0.25 * h <= w <= 1.3 * h and n >= 0.15 * h * w:
+            boxes.append((h, y2, x1, x2))
+    rows = [h for h, yb, xa, xb in boxes
+            if any(b != (h, yb, xa, xb) and abs(b[1] - yb) <= 0.35 * h and 0.6 * h <= b[0] <= 1.6 * h
+                   and min(abs(b[2] - xb), abs(xa - b[3])) <= 1.2 * h for b in boxes)]
+    if len(rows) < 8:
+        return None
+    return float(np.percentile(rows, 75)) / s / (H / s) * placed_h_in * 72 / 0.72
+
+
+def notes_texts(pptx_path):
+    """スライド番号 → 発表者ノートの文（原稿）。無ければ空。"""
+    try:
+        from pptx import Presentation
+        prs = Presentation(pptx_path)
+    except Exception:
+        return {}
+    out = {}
+    for i, sl in enumerate(prs.slides, 1):
+        if sl.has_notes_slide:
+            out[i] = sl.notes_slide.notes_text_frame.text if sl.notes_slide.notes_text_frame else ""
+    return out
+
+
+def notes_where_mismatch(text, figs, W):
+    """原稿が言う図の位置（右・左・下・上）に、図が1つも無ければ、その言葉を返す。位置は図の中心がスライドのどちら側か。"""
+    if not figs or not text:
+        return None
+    for word, pat in WHERE_WORDS:
+        if not pat.search(text):
+            continue
+        cx = [(shape_rect(f)[0] + shape_rect(f)[2]) / 2 for f in figs]
+        top = min(shape_rect(f)[1] for f in figs)
+        ok = {"右": any(c > W * 0.5 for c in cx), "左": any(c < W * 0.5 for c in cx),
+              "下": top > 2.6 * PT or any(shape_rect(f)[1] > 3.2 * PT for f in figs), "上": True}[word]
+        if not ok:
+            return word
+    return None
+
+
+def raster_fonts(pptx_path):
+    """スライド番号 → [(図形名, 測った文字の大きさ pt)]：figkit の記録（MinFontPt）が無い、高さ1in以上の画像（資料の図・写真）だけ。"""
+    out = {}
+    try:
+        from PIL import Image
+        from pptx import Presentation
+        from pptx.util import Emu
+        import io
+        prs = Presentation(str(pptx_path))
+    except Exception:
+        return out
+    for i, slide in enumerate(prs.slides, 1):
+        for sh in slide.shapes:
+            if sh.shape_type != MSO_PICTURE or not hasattr(sh, "image") or sh.name == "数式":
+                continue
+            try:
+                h_in = Emu(sh.height).inches
+                if h_in < FIG_MIN_H / PT:
+                    continue
+                with Image.open(io.BytesIO(sh.image.blob)) as im:
+                    if im.info.get("MinFontPt") or getattr(im, "text", {}).get("MinFontPt"):
+                        continue
+                pt = glyph_pt(sh.image.blob, h_in)
+            except Exception:
+                continue
+            if pt is not None:
+                out.setdefault(i, []).append((sh.name, pt))
+    return out
+
+
 # 出どころの断り（作る側のメモ）。スライドに出してよいのは図の「（概略）」と解釈の行の「（講師の解釈）」「（発表者の解釈）」だけで、
 # 資料外・自分の計算の断りは原稿の ※ 行に書く。論文から作った講座の試しで、「（資料外・概算）」「（発表者の計算）」のような断りが本文と注記に出ていた
-SOURCE_NOTE = re.compile(r"資料外|(?:発表者|講師)の(?:計算|概算|読み|推定|補足|見積)")
+SOURCE_NOTE = re.compile(r"資料外|(?:発表者|講師)の(?:計算|概算|読み|推定|補足|見積)"
+                         r"|not (?:from|in|stated in|given in) the (?:paper|source|materials?|textbook)|outside the (?:paper|source|materials?|textbook)"
+                         r"|beyond the (?:paper|source)|(?:presenter|lecturer|speaker|author)'s (?:calculation|estimate|reading|supplement|guess|approximation)"
+                         r"|\b(?:my|our) (?:own )?(?:estimate|calculation|reading|guess|approximation|supplement|note)s?\b"
+                         r"|\b(?:rough|back-of-(?:the-)?envelope) (?:estimate|calculation)\b|\bestimated by (?:me|us|the presenter|the lecturer)\b", re.I)
 SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺"
 
 
@@ -386,11 +634,12 @@ def quiz_problems(shapes, n_slides):
     for i in range(1, n_slides + 1):
         items = [s for s in shapes if s["slide"] == i]
         head = " ".join((s.get("text") or "") for s in items if s.get("name") == "見出し" or (s.get("text") or "").strip().startswith("●"))
-        if "確認問題" not in head and "解答" not in head:
+        kind = LG.quiz_kind(head)
+        if not kind:
             continue
         lines = [t for s in items if s.get("ph") is None and s.get("name") != "見出し" and s.get("text")
                  for t in s["text"].replace("\n", "\r").split("\r")]
-        (q if "確認問題" in head else a)[i] = quiz_ids(lines)
+        (q if kind == "確認問題" else a)[i] = quiz_ids(lines)
     if not q:
         return []
     out = []
@@ -406,8 +655,13 @@ def quiz_problems(shapes, n_slides):
     return out
 
 
+def fit_hint(n: int) -> str:
+    """1行に入る長さの言い方（日本語は全角の字数、ほかは半角の字数）。"""
+    return f"全角 {n} 字以内" if LG.is_japanese(LANG) else f"半角 {n * 2} 字以内（空白を含む）"
+
+
 def over_target(chars: int, lines: int) -> bool:
-    """文字量が目安を超えたか（180字超か10行超）。目安の下端（100字）より少ない枚は、行数だけでは超えにしない。"""
+    """文字量が目安を超えたか（140字超か8行超）。目安の下端（80字）より少ない枚は、行数だけでは超えにしない。"""
     return chars > TEXT_TARGET_CHARS or (lines > TEXT_TARGET_LINES and chars >= TEXT_FULL_CHARS)
 
 
@@ -525,6 +779,16 @@ def visible_rect(s, inks):
 
 
 NOBAND_BOTTOM = 7.5 * PT - 0.45 * PT   # 下の帯の無い構造で、本文・図の下端の限り（ページ番号の上）
+# 箱の型（カード・段違い・循環・ツリー・判定・前後・比較・縦の矢印・場合分け）の枚：箱が小さく余白が大きいと ERROR。
+# 見本帳と見本で測った値：寂しく見えた枚は本文の塊の高さが本文の場所の 0.32〜0.48、幅が 0.57〜0.64。よく見えた枚は高さ 0.64 以上・幅 0.72 以上。
+# 箱そのものの面積（比較の2列・カード・判定の箱など）が本文の場所の 0.12 未満なら「箱が小さい」（比較の2列に2行ずつで右半分が空いた講座の枚は 0.08）
+BOX_NAMES = ("比較の", "カード_", "カードの値", "前後_", "ツリー", "判定の", "場合分け", "縦の")
+BOX_SOLID = ("比較の", "カード_", "前後_", "ツリー", "判定の")   # 面積を測る箱（場合分け・縦の矢印は文の塊なので測らない）
+BOX_FILL_H, BOX_FILL_W, BOX_AREA_MIN = 0.55, 0.65, 0.12
+# 箱が多い・広い枚：目線が散る（「箱が多くて目線が散る」とユーザーに言われた）。5個以上か、本文の場所の半分を超えたら WARN。
+# ただし矢印でつながった流れ（段・手順・循環・筋）で、1つ1つが小さい箱は、まとめると順番が読めなくなるので5個まで許す
+BOX_MANY, BOX_MANY_FLOW, BOX_WIDE, BOX_SMALL_EACH = 5, 6, 0.5, 0.15
+BOX_NOT = ("青帯", "結論の囲み", "結論の線", "章のナビ", "見出し", "注目の輪", "区切りの地")
 EMPTY_BELOW_NOBAND = 1.6 * PT          # 帯の無い枚で、本文の下端からその限りまでがこれより空いていたら「下が空いている」
 
 
@@ -969,10 +1233,10 @@ def template_checks(items, g, area, conclusion, W, H, band_top, inks=(), right_t
                 n = int((limit - r[0]) / size)
                 if s["lines"] > 1 or s["paras"] > 1:
                     msgs.append(("ERROR", f"結論の一文が {max(s['lines'], s['paras'])} 行になっている（1行の場所）: {label(s)}"
-                                          f" → 全角 {n} 字以内（{size:.0f}pt）に削る。言い足りない分は本文・ノートへ"))
+                                          f" → {fit_hint(n)}（{size:.0f}pt）に削る。言い足りない分は本文・ノートへ"))
                 elif r[2] > limit + EDGE_TOL:
                     msgs.append(("ERROR", f"結論の一文が右にはみ出す（右端 {r[2] / PT:.2f} in > {limit / PT:.2f} in）: {label(s)}"
-                                          f" → 全角 {n} 字以内（{size:.0f}pt）に削る"))
+                                          f" → {fit_hint(n)}（{size:.0f}pt）に削る"))
         heads = [s for s in header if _is_mark_heading(s)]
         lines_ = [s for s in header if s["name"] == "結論の線"]
         for ln in lines_:
@@ -1006,19 +1270,28 @@ def template_checks(items, g, area, conclusion, W, H, band_top, inks=(), right_t
     return msgs, edge
 
 
-def main(path, pptx_path=None, template=None):
+def main(path, pptx_path=None, template=None, lang=None):
+    global LANG
     data = json.load(open(path, encoding="utf-8-sig"))
     W, H = data["slideWidth"], data["slideHeight"]
     shapes = data["shapes"]
     if isinstance(shapes, dict):
         shapes = [shapes]
     pptx_path = pptx_path or data.get("pptx")
+    LANG = LG.lang_name(lang) if lang else LG.deck_language(pptx_path if pptx_path and Path(pptx_path).exists() else None,
+                                                            Path(path).resolve().parent.parent)
+    if not LG.is_japanese(LANG):
+        print(f"（言語：{LANG}。字数は全角に直した幅で数える：半角の字・空白は0.5。目安の数は日本語と同じ。"
+              "体言止め・動詞止めの検査はせず、文の終わりの記号で終わる行を文章調として数える）")
     stale = stale_slides(pptx_path, data, shapes) if pptx_path and Path(pptx_path).exists() else []
     if stale:
         print(f"[ERROR] 描画結果が今の pptx と食い違う（スライド {', '.join(map(str, stale[:10]))}）: "
               "PowerPoint が古い版を開いた。render_check.ps1 をやり直す（一時フォルダの複製から開く版か確かめる）")
     scales = picture_scales(pptx_path, shapes)
     pic_fonts = picture_fonts(pptx_path)
+    raster = raster_fonts(pptx_path) if pptx_path and Path(pptx_path).exists() else {}
+    notes = notes_texts(pptx_path) if pptx_path and Path(pptx_path).exists() else {}
+    fig_txt = figure_texts(pptx_path) if pptx_path and Path(pptx_path).exists() else {}
     inks = picture_ink(pptx_path)
     unders = underlines(pptx_path) if pptx_path and Path(pptx_path).exists() else {}
     marks = text_marks(pptx_path) if pptx_path and Path(pptx_path).exists() else {}
@@ -1073,7 +1346,7 @@ def main(path, pptx_path=None, template=None):
         thin = body_slide and content < min_chars and not any(s.get("name") == "大きな数字" for s in items)
         if thin:
             thin_slides.add(i)
-            msgs.append(("WARN", f"本文が少ない（{content}字。目安 100〜150字）→ 本文の要点を3〜4個にし、根拠の数値・具体例・よくある間違いを1つ足す"
+            msgs.append(("WARN", f"本文が少ない（{content}字。目安 80〜120字）→ 本文の要点を3〜4個にし、根拠の数値・具体例・よくある間違いを1つ足す"
                                  "（1行だけの枚にしない。言うことが無い枚なら前後の枚とまとめる。"
                                  "見出しの言い換えや「〜の見方」「別々の要因」のような中身の無い行で字数を埋めない）"))
         if body_slide and reds is not None and reds.get(i, 0) == 0:
@@ -1082,10 +1355,10 @@ def main(path, pptx_path=None, template=None):
         if qa or cover:
             pass  # 問題・解答（要素を削らない）と表紙・区切り（本文ではない）には、文字量・行長の目安を当てない
         elif chars > TEXT_MAX_CHARS or lines > TEXT_MAX_LINES:
-            msgs.append(("WARN", f"本文の文字量が多すぎる（{chars}字・{lines}行。目安 100〜150字、上限{TEXT_MAX_CHARS}字・{TEXT_MAX_LINES}行）"
+            msgs.append(("WARN", f"本文の文字量が多すぎる（{chars}字・{lines}行。目安 80〜120字、上限{TEXT_MAX_CHARS}字・{TEXT_MAX_LINES}行）"
                                  " → 式の導出・長い説明などの細部を発表者ノートへ移すか、スライドを分ける"))
         elif over_target(chars, lines):
-            msgs.append(("WARN", f"本文の文字量が目安を超えている（{chars}字・{lines}行。目安 100〜150字）"
+            msgs.append(("WARN", f"本文の文字量が目安を超えている（{chars}字・{lines}行。目安 80〜120字）"
                                  " → 式の導出・長い説明だけをノートへ。根拠の数値・具体例は残す。行が多いなら塊（ラベル＋説明）に分けて読みやすく"))
         # 1行の長さ（図・表が横にあるときは20字、なければ25字）
         any_beside = any(beside(t, f) is not None for t in bodies for f in figs)
@@ -1093,12 +1366,68 @@ def main(path, pptx_path=None, template=None):
         if longest > lim and not (qa or cover):
             msgs.append(("WARN", f"1行が長い（最長{longest}字。目安 {'図・表の横は' if any_beside else ''}{lim}字）"
                                  " → \\n の位置を直すか、文を短くする（図を左に寄せて逃げない）"))
+        # 日本語でないデッキに残った日本語（表紙の名前・上の題・部品の決まった言葉も含めて、全部の文字で見る）
+        left = [(s.get("text") or "").replace("\r", " ").replace("\n", " ").strip() for s in items
+                if LG.japanese_left(s.get("text") or "", LANG)]
+        if left:
+            msgs.append(("ERROR", f"日本語の文字が残っている（言語：{LANG}）: " + " / ".join(f"「{t[:24]}」" for t in left[:4])
+                                  + f" → {LANG}に直す（表紙の名前・上の題・確認問題の見出しも）。日本語の語をわざと見せるなら、原稿で言う"))
+        # 「右の図」などの言葉と、図の実際の位置
+        for t in [s for s in items if s.get("type") == MSO_TEXTBOX and s.get("ph") is None and s.get("text")]:
+            w = where_mismatch(t, figs)
+            if w:
+                msgs.append(("ERROR", f"本文が「{w}の図」と言うが、{w}に図が無い：「{(t.get('text') or '')[:24]}」"
+                                      " → 言葉を図の位置に合わせる（原稿の言い方も）"))
+        w = notes_where_mismatch(notes.get(i, ""), figs, W)
+        if w:
+            msgs.append(("WARN", f"原稿が「{w}の図」と言うが、{w}側に図が無い → 原稿の言い方を図の位置に合わせる"
+                                 "（型を変えたときに残りやすい。左に図・右に文の型なら「左の図」）"))
+        # 図の数字を本文で言い直していないか（図と文の二重）
+        if not (qa or cover) and fig_txt.get(i):
+            body_txt = " ".join(s.get("text") or "" for s in items if is_body(s))
+            dup = sorted(_nums(body_txt) & _nums(fig_txt[i]))
+            if len(dup) >= DUP_NUMS_MIN:
+                msgs.append(("WARN", f"図と本文で同じ数字を言い直している（{'・'.join(dup[:5])}） → 本文では数字を繰り返さず、"
+                                     "図の読み方か、そこから言えることだけを書く（数字は図に任せる）"))
+        # 確認問題・解答の枚：字が小さい・1つが長い（毎回の採点で「小さい字の長文」と減点された）
+        if qa:
+            qa_boxes = [s for s in items if s.get("type") == MSO_TEXTBOX and s.get("ph") is None and s.get("text")
+                        and s.get("name") not in ("見出し",) and (s.get("size") or 22) < 30]
+            small = [s for s in qa_boxes if (s.get("size") or 22) < QA_SIZE_MIN and LG.measure(s.get("text") or "", LANG) > 8]
+            longq = [s for s in qa_boxes if LG.measure(re.sub(r"\s+", "", s.get("text") or "") if LG.is_japanese(LANG) else s.get("text") or "", LANG) > QA_ITEM_MAX]
+            if small:
+                msgs.append(("WARN", f"確認問題・解答の字が小さい（{min(s.get('size') or 0 for s in small):g}pt） → 本文と同じ 22pt に"
+                                     "（scaffold.py の qa() の size）"))
+            if longq:
+                msgs.append(("WARN", f"確認問題・解答の1つが長い（{len(longq)} か所、{QA_ITEM_MAX}字を超える） → 問いは1文、解答は要点だけにし、"
+                                     "くわしい説明は原稿へ。1枚の問題・解答は3つまで"))
+        # 文の塊の組み方：1つの長い塊、長い塊＋1行だけの塊は読みにくい。釣り合う2つに分ける（ユーザーの指摘）
+        if not (qa or cover):
+            ul = unit_lines(items)
+            if len(ul) == 1 and ul[0] >= BLOCK_ONE_LONG:
+                msgs.append(("WARN", f"文が1つの塊で長い（{ul[0]} 行） → 小見出しを付けて、釣り合う2つの塊に分ける（s.block を2つ）"))
+            elif len(ul) == 2 and min(ul) <= BLOCK_LONELY[0] and max(ul) >= max(BLOCK_LONELY[1], 3 * min(ul)):
+                msgs.append(("WARN", f"短い塊が、長い塊に付いている（{min(ul)} 行と {max(ul)} 行） → 短い方を長い塊に入れるか、"
+                                     "行を分け直して釣り合う2つの塊にする"))
+        # 文の塊の数（言いたいことは1枚に1つ。塊が多いと、どこから読むかが分からない）
+        nu = 0 if (qa or cover) else text_units(items)
+        if nu >= UNITS_MAX:
+            msgs.append(("ERROR", f"文の塊が多い（{nu} つ。{UNITS_WARN - 1}つまで、多くて{UNITS_WARN}つ）"
+                                  " → この枚の結論に要る塊だけ残し、ほかは原稿へ回すか、次の枚に分ける（言いたいことは1枚に1つ）"))
+        elif nu == UNITS_WARN:
+            msgs.append(("WARN", f"文の塊が {nu} つ（目安は2つまで）"
+                                 " → 3つ目は結論に要るか確かめる。要らなければ原稿へ（図の読み方なら図の中への書き込みに）"))
         # 文章調（体言止めになっていない行）
         sent = [] if (qa or cover) else sentence_lines(items)
         if sent:
-            msgs.append(("WARN", f"文章調の行が {len(sent)} 行（本文は体言止め・短い言い切り。style-guide 2・3節）: "
-                                 + " / ".join(f"「{t[:16]}」" for t in sent[:4])
-                                 + " → 「〜できない」→「〜不可」「〜は無理」、「合っています。正確には〜」→「合っている：〜」のように名詞句で切る"))
+            if LG.is_japanese(LANG):
+                msgs.append(("WARN", f"文章調の行が {len(sent)} 行（本文は体言止め・短い言い切り。style-guide 2・3節）: "
+                                     + " / ".join(f"「{t[:16]}」" for t in sent[:4])
+                                     + " → 「〜できない」→「〜不可」「〜は無理」、「合っています。正確には〜」→「合っている：〜」のように名詞句で切る"))
+            else:
+                msgs.append(("WARN", f"文の形の行が {len(sent)} 行（本文は短い句。style-guide 7節）: "
+                                     + " / ".join(f"「{t[:28]}」" for t in sent[:4])
+                                     + ' → 文末の記号を取り、句にする（"The model cannot see the source." → "No access to the source"）'))
         verb = [] if (qa or cover) else verb_lines(items)
         if verb:
             msgs.append(("WARN", f"動詞で終わる行が {len(verb)} 行: " + " / ".join(f"「{t[:16]}」" for t in verb[:4])
@@ -1116,6 +1445,11 @@ def main(path, pptx_path=None, template=None):
                 if 0 <= g < gap_min:
                     msgs.append(("ERROR", f"本文と図・表の間隔が狭い({g / PT:.2f}in < {gap_min / PT:.1f}in): {label(t)} → {label(f)}"
                                           " → 本文の行を短くする（図を右へずらすだけでは余白が偏る）"))
+            for f in figs:   # 図が主役の型（s.figure_main）：左の図と、右の列の文
+                g = beside(f, t)
+                if g is not None and t["left"] - f["left"] >= 1.0 * PT and 0 <= g < gap_min:
+                    msgs.append(("ERROR", f"図と右の文の間隔が狭い({g / PT:.2f}in < {gap_min / PT:.1f}in): {label(f)} → {label(t)}"
+                                          " → 図を少し小さく（figure_main の w）するか、右の列の文を短くする"))
         # 本文の下に図・表を置いたときの縦の間隔（過去の質問回答デッキ：本文の直下に表が密着していた）
         for t in bodies:
             for f in figs:
@@ -1137,8 +1471,15 @@ def main(path, pptx_path=None, template=None):
         for name, mf, sc in pic_fonts.get(i, []):
             eff = mf * sc
             if eff < FIG_FONT_MIN - 0.25:
-                msgs.append(("WARN", f"図の文字が小さい（いちばん小さい字が置いた大きさで {eff:.1f}pt < {FIG_FONT_MIN:g}pt）: {name}"
-                                     " → figs.py で目盛り・注記の fontsize を 14 以上にする（入らなければラベルを減らすか、図を大きく描く）"))
+                # ERROR：小さいまま残さない（WARN のときは「前からある」として残り、見本に 13.4pt の図が残った）
+                msgs.append(("ERROR", f"図の文字が小さい（いちばん小さい字が置いた大きさで {eff:.1f}pt < {FIG_FONT_MIN:g}pt）: {name}"
+                                      " → 置く大きさで描き直す（figs.py の fig() の幅を置く幅に合わせ、目盛り・注記の fontsize を 14 以上。"
+                                      "入らなければラベルを減らす）"))
+        for name, pt in raster.get(i, []):   # 資料の図の切り出しなど、文字の大きさの記録の無い図は画像から測る
+            if pt < RASTER_FONT_MIN:
+                msgs.append(("ERROR", f"図の文字が小さい（資料の図など、画像から測った文字が約 {pt:.0f}pt < {RASTER_FONT_MIN:g}pt）: {name}"
+                                     " → 話すパネル・部分だけを切り出し直して大きく置く（pdf_pages.py crop）。要る所が広くて大きくできないなら、"
+                                     "その部分だけ figkit で描き直す（元の図の出典は残す）"))
         # 表の文字とマスの数（詰め込んだ表は、ぎっしり見えて読まれない）
         cells = [s for s in items if s.get("name") in TABLE_NAMES and s.get("text")]
         if cells and not cover:
@@ -1151,7 +1492,45 @@ def main(path, pptx_path=None, template=None):
                 msgs.append(("WARN", f"表のマスが多い（{n_cells} マス > {TABLE_CELLS_MAX}）"
                                      " → 言いたい比べに要る行・列だけ残すか、2枚に分ける。条件で結論が分かれる表なら、判定の流れ図・ツリーに"))
         # 下が空いている: 本文スライド（タイトルあり）で、図も表もなく、本文の最下端が 4.5in より上
-        designed = any(s.get("name") in ("大きな数字", "比較の左") for s in items)   # 大きな数字・比べる型は、下が空く形
+        designed = any(s.get("name") in ("大きな数字", "比較の左") or (s.get("name") or "").startswith("まとめの") for s in items)   # 大きな数字・比べる型は、下が空く形
+        # 箱が多い・広い（目線が散る）。流れ図の4段までは通す
+        if not cover:
+            solid_boxes = [s for s in items if s.get("type") == 1 and s.get("ph") is None and s.get("name") not in BOX_NOT
+                           and "矢印" not in (s.get("name") or "") and "Arrow" not in (s.get("name") or "")
+                           and s["width"] > 0.6 * PT and s["height"] > 0.4 * PT]
+            if solid_boxes:
+                body_area = (W - 0.8 * PT) * max(band_top - 1.4 * PT, 1.0)
+                barea_ = sum(s["width"] * s["height"] for s in solid_boxes) / body_area
+                flow_ = (any("矢印" in (s.get("name") or "") or "Arrow" in (s.get("name") or "") for s in items)
+                         or any((s.get("name") or "").startswith(("カード_段違い", "カード_循環")) for s in items))
+                small_ = all(s["width"] * s["height"] < BOX_SMALL_EACH * body_area for s in solid_boxes)
+                many = BOX_MANY_FLOW if flow_ and small_ else BOX_MANY
+                if len(solid_boxes) >= many or barea_ > BOX_WIDE:
+                    msgs.append(("WARN", f"箱が多い・広い（{len(solid_boxes)} 個、本文の場所の {barea_:.0%}。目安は4個まで"
+                                         f"（矢印でつながった小さな段は5個まで）・半分まで）"
+                                         " → 同じ役割の箱は1つにまとめる、箱をやめて白い地の文字の塊（太字の見出し＋文。区切りは余白）にする、"
+                                         "箱は主役（答え・結論）だけに。同じ段の中は作りをそろえる（左右とも箱か、全部文字）"))
+        # 箱の型の枚：箱が小さく、余白が大きい（下が空く形として見逃していた。寂しく見えると言われた）
+        if not (qa or cover) and any((s.get("name") or "").startswith(BOX_NAMES) for s in items):
+            heads = [s for s in items if s.get("name") in HEADER_SHAPES or s.get("ph") == PH_TITLE]
+            top_ = max((s["top"] + s["height"] for s in heads), default=1.2 * PT)
+            body_ = [s for s in items if s.get("ph") is None and s.get("name") not in HEADER_SHAPES and s.get("name") != "青帯"
+                     and s["top"] >= top_ - 2]
+            if body_:
+                rr = [rect_of(s) for s in body_]
+                bx0, by0, bx1, by1 = min(r[0] for r in rr), min(r[1] for r in rr), max(r[2] for r in rr), max(r[3] for r in rr)
+                aw, ah = W - 0.8 * PT, max(band_top - top_, 1.0)
+                fw, fh = (bx1 - bx0) / aw, (by1 - by0) / ah
+                solid = [shape_rect(s) for s in body_ if (s.get("name") or "").startswith(BOX_SOLID)]
+                barea = sum((r[2] - r[0]) * (r[3] - r[1]) for r in solid) / (aw * ah)
+                if fh < BOX_FILL_H or fw < BOX_FILL_W:
+                    msgs.append(("ERROR", f"箱の図のまわりが空いている（本文の塊が本文の場所の 高さ {fh:.0%}・幅 {fw:.0%}。"
+                                          f"目安は高さ {BOX_FILL_H:.0%}・幅 {BOX_FILL_W:.0%} 以上）"
+                                          " → 箱を大きく（文字 22pt・h を広げる・カードの3つ目に値）、下に横長の図や例を足す、"
+                                          "前後の枚とまとめる。箱だけで言うことが少ないなら、別の型に"))
+                elif solid and barea < BOX_AREA_MIN:
+                    msgs.append(("ERROR", f"箱が小さい（箱の面積が本文の場所の {barea:.0%}。目安 {BOX_AREA_MIN:.0%} 以上）"
+                                          " → 箱に中身を足す（比較なら各列3〜4行、根拠の数値・例）か、箱の横・下に図を添える"))
         if chars and any(s.get("ph") == PH_TITLE for s in items) and not figs and not designed:
             bottom = max((s["top"] + s["height"] for s in items if s.get("ph") is None), default=0)
             if bottom < EMPTY_BOTTOM:
@@ -1167,7 +1546,7 @@ def main(path, pptx_path=None, template=None):
         if tm.get("notes"):
             msgs.append(("WARN", f"出どころの断りがスライドに出ている：{' / '.join('「' + x[:28] + '」' for x in tm['notes'][:3])}"
                                  " → 資料外・自分の計算の断りは原稿の ※ 行へ移す（スライドに残してよいのは、図の「（概略）」と、"
-                                 "解釈の行の「（講師の解釈）」〔発表は「（発表者の解釈）」〕だけ）"))
+                                 "解釈の行の「（講師の解釈）」〔発表は「（発表者の解釈）」〕だけ。英語なら (schematic)・(lecturer's interpretation)・(presenter's interpretation)）"))
         if tm.get("subs"):
             msgs.append(("WARN", f"下付きになっていない文字：{'・'.join(dict.fromkeys(tm['subs']))}"
                                  " → 下付きは `_{p}` で書く（例 \"x²_{n}\"）"))
@@ -1237,6 +1616,8 @@ def main(path, pptx_path=None, template=None):
         for (a, ra), (b, rb) in combinations(content, 2):
             if is_ring(a) or is_ring(b):
                 continue
+            if (a.get("name") or "").endswith("の地") or (b.get("name") or "").endswith("の地"):   # 文を載せる地（まとめの右の列など）は重なるのが役目
+                continue
             w, h = inter(ra, rb)
             if w > 2 and h > 2 and w * h > 6:
                 msgs.append(("ERROR", f"重なり: {label(a)} × {label(b)} ({w:.0f}x{h:.0f}pt)"))
@@ -1273,7 +1654,7 @@ def main(path, pptx_path=None, template=None):
         if rows_bad:
             print("目安から外れた枚（直す）：\n" + "\n".join(rows_bad))
     elif table:
-        print("\nスライドごとの一覧（目安：100〜150字、1行は図の横で20字・図なしで25字、文章調 0行、図との間隔 0.4in 以上、縮尺 1.0、"
+        print("\nスライドごとの一覧（目安：80〜120字、1行は図の横で20字・図なしで25字、文章調 0行、図との間隔 0.4in 以上、縮尺 1.0、"
               f"図の範囲 {FIG_AREA_MIN * 100:.0f}% 以上）")
         print("  枚  字数  行数  最長行  文章調  図との間隔  図の縮尺  図の範囲")
         for i, chars, lines, longest, any_beside, min_gap, min_scale, qa, n_sent, n_verb, cover, area in table:
@@ -1315,7 +1696,7 @@ def main(path, pptx_path=None, template=None):
                   " → 少ない枚から順に、根拠の数値・具体例・よくある間違い・図の読み方を足す（字数合わせの行は足さない）")
     if amounts and not BRIEF:
         a = sorted(amounts)
-        print(f"\n本文の字数: 中央値 {a[len(a) // 2]}字 / 最大 {a[-1]}字（目安 100〜150字、最大{TEXT_MAX_CHARS}字）")
+        print(f"\n本文の字数: 中央値 {a[len(a) // 2]}字 / 最大 {a[-1]}字（目安 80〜120字、最大{TEXT_MAX_CHARS}字）")
     print(f"{data['slides']} slides: {n_err} errors, {n_warn} warnings")
     return 1 if n_err else 0
 
@@ -1330,4 +1711,9 @@ if __name__ == "__main__":
         k = args.index("--template")
         tmpl = args[k + 1]
         del args[k:k + 2]
-    sys.exit(main(args[0], args[1] if len(args) > 1 else None, template=tmpl))
+    lang = None
+    if "--lang" in args:   # 言語を決めて見るとき（ふつうは pptx の言語の印から決まる）
+        k = args.index("--lang")
+        lang = args[k + 1]
+        del args[k:k + 2]
+    sys.exit(main(args[0], args[1] if len(args) > 1 else None, template=tmpl, lang=lang))

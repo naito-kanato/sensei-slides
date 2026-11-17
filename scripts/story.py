@@ -91,6 +91,17 @@ ARCS = [
      [("しかし", "意外", "不思議な現象"), ("しかし", "疑い", "よくある説明"), ("だから", "帰結", "確かめた結果"), ("だから", "問い", "本当の原因")]),
 ]
 ARC_NAMES = [a[0] for a in ARCS]
+# 話の型 → まとめの枚の既定の形（zemi.Slide.recap の kind。references/story.md 3節）
+RECAP_OF_ARC = {"論文紹介（問題から）": "問い→答え", "輪読（節の筋）": "問い→答え", "定義から応用へ": "問い→答え", "原因を探る": "問い→答え",
+                "素朴な見方を崩す": "前と後", "誤解を正す": "前と後",
+                "論文紹介（方法から）": "筋", "研究発表": "筋", "事例・問題解決": "筋", "今の形から由来へ": "筋",
+                "手順を身につける": "次の一歩", "提案": "次の一歩", "比べて選ぶ": "選び方"}
+
+
+def recap_kind(text: str) -> str:
+    """構成案・設計メモの「話の型」から、まとめの枚の既定の形。型が無い・知らない型なら「問い→答え」。"""
+    name, hit = arc_of(text)
+    return RECAP_OF_ARC.get(hit[0] if hit else (name or ""), "問い→答え")
 # 回のねらい（講座は地図の「ねらい」の列、発表は構成案のオプション「ねらい」）→ 既定の話の型。
 # 型を自由に選ばせると、強い数字や目立つ話に筋が引っぱられる（ゴールが「なぜこの形か」の回で数字の型が選ばれた）。
 # ねらいは学習者・発表者が地図や一覧で見て直せる言葉にし、型はそこから決める。別の型にするなら「型を外す理由：…」
@@ -321,7 +332,7 @@ def arc_check(text: str, kind: str, body_no: list):
     if notes and re.search(r"型を外す理由[：:]\s*\S", text):
         return [("✔", "話の型", f"「{arc[0]}」から外している（型を外す理由あり）")]
     if notes:
-        return [("△", "話の型", "。".join(notes) + "。合わないなら別の型を選ぶか、「型を外す理由：…」を書く")]
+        return [("✘", "話の型", "。".join(notes) + "。合わないなら別の型を選ぶか、「型を外す理由：…」を書く")]
     return [("✔", "話の型", f"「{arc[0]}」（答えの位置「{pos}」" + (f"・{rounds}周" if rounds > 1 else "") + f"）の拍 {len(beats)} つが順に出ている："
              + "・".join(f"[{n}]{w}（{kd}）" for n, (_, w, kd, *_x) in got.items()))]
 
@@ -538,8 +549,8 @@ def check(text: str, kind: str, body_no: list, where: str):
                      + f"（{AND_LIMIT}つまで。並べるだけの所を、しかし・だからでつなぐか、まとめる。手順などで続けるなら「つなぎの理由：…」を書く）")
     if not any(w == "しかし" for _, w in seq):
         notes.append("「しかし」が1つも無い（意外な結果・対立・壁の枚を、山場として青帯に出す）")
-    if notes:
-        res.append(("△", "前の枚から", "。".join(notes)))
+    if notes:   # 「そして」が続く（つなぎの理由が無い）は ✘、ほかは △
+        res.append(("✘" if any(x.startswith("「そして」が続く") for x in notes) else "△", "前の枚から", "。".join(notes)))
     else:
         buts = "・".join(k for _, w, k in full if w == "しかし")
         cnt = {w: sum(x == w for _, x in seq) for w in LINKS}
@@ -678,7 +689,7 @@ def fig_check(text: str, kind: str, body_no: list):
     if arc[0] in NEEDS_REAL and kinds and not any(k in REAL_KINDS for k in kinds):
         notes.append("実物の画面・道具の写真・資料の図・模式図が1枚も無い（この型は、やり方を目で見せる枚が要る）")
     if notes:
-        return [("△", "型と図", "。".join(notes) + f"。拍ごとのおすすめは `python <skill>/scripts/story.py --figs {arc[0]}`（変えないなら中身に「外す理由：…」）")]
+        return [("✘", "型と図", "。".join(notes) + f"。拍ごとのおすすめは `python <skill>/scripts/story.py --figs {arc[0]}`（変えないなら中身に「外す理由：…」）")]
     return [("✔", "型と図", "型の拍の枚の図は、どれもその拍のおすすめ")]
 
 

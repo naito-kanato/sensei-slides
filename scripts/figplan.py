@@ -59,7 +59,7 @@ FIG_PURPOSES = [
     ("傾向", "関数形・傾向を見せる（数値なし）", ("概略グラフ",)),
     ("内訳", "全体の中の割合", ("帯グラフ", "大きな数字")),
     ("時期", "いつ何が起きたか・時代の区切り", ("年表",)),
-    ("仕組み", "仕組み・構造・配置・縮尺", ("模式図", "資料の図")),
+    ("仕組み", "目に見えない流れ・構造・配置・縮尺だけ（数の比べ・決まり・出来事・例は、ほかの目的に）", ("模式図", "資料の図")),
     ("流れ", "手順・因果・分類の枝分かれ", ("流れ図",)),
     ("判定", "条件で結論が分かれる（要件・例外・場合分け・選び方）", ("判定の流れ図", "ツリー", "表")),
     ("観点", "項目×観点で整理する", ("表",)),
@@ -106,7 +106,7 @@ def check_menu(text: str, kind: str, body_no: list):
     i = next((k for k, h in enumerate(head) if "図で見せる" in h), None)
     if i is None:
         return []
-    nopurpose, nokind, offmenu = [], [], []
+    nopurpose, nokind, offmenu, noread = [], [], [], []
     for r in rows[1:]:
         if not (r and r[0].strip().isdigit() and int(r[0]) in body_no and len(r) > i):
             continue
@@ -120,6 +120,8 @@ def check_menu(text: str, kind: str, body_no: list):
             nokind.append(f"[{r[0]}]「{d[:14]}」")
         else:
             rec = next(x[2] for x in FIG_PURPOSES if x[0] == purpose)
+            if k == "模式図" and not re.search(r"読み方[：:]\s*\S", d):   # 模式図は図だけでは読めないことが多い（3本の比べ）
+                noread.append(f"[{r[0]}]")
             if k not in rec and not REASON_WORDS.search(d):
                 offmenu.append(f"[{r[0]}] {purpose}に{k}（おすすめ：{'・'.join(rec)}）")
     notes = []
@@ -129,8 +131,11 @@ def check_menu(text: str, kind: str, body_no: list):
         notes.append("種類が選択肢に無い：" + "・".join(nokind[:6]) + "（" + "・".join(n for n, *_ in FIG_MENU) + "）")
     if offmenu:
         notes.append("目的のおすすめでない図：" + "；".join(offmenu[:6]) + "（おすすめにするか、中身に「外す理由：…」）")
-    if notes:
-        return [("△", "図の目的と種類", "。".join(notes) + "。書き方は「目的：種類：中身」（references/figures.md 1b）")]
+    if noread:
+        notes.append("模式図に読み方が無い：" + "・".join(noread[:8]) + "（中身に「読み方：四角の大きさ＝パラメータ数」のように、"
+                     "図の中に書く1行を足す。図の担当はそれを図の中に入れる）")
+    if notes:   # ✘：△ のときは「違いに模式図」が理由なしで素通りし、図だけでは読めない図になった（3本の比べ）
+        return [("✘", "図の目的と種類", "。".join(notes) + "。書き方は「目的：種類：中身」（references/figures.md 1b）")]
     return [("✔", "図の目的と種類", "本文の図の案は、どれも目的と、そのおすすめの種類で書いてある")]
 
 
@@ -251,6 +256,8 @@ def slide_type(slide, W, H):
     names = {s.name for s in shapes}
     if "大きな数字" in names:
         return "大きな数字"
+    if any(n.startswith("まとめの") for n in names):
+        return "まとめ"
     if {"比較の左", "比較の右"} <= names:
         return "比較"
     if "区切りの地" in names:
@@ -265,6 +272,8 @@ def slide_type(slide, W, H):
     kinds = actual_kinds(slide)
     if pics:
         big = max(pics, key=lambda s: s.width * s.height)
+        if big.name == "左の図":   # 図が主役の型（s.figure_main）。大きくても全面の図ではない
+            return "右文左図"
         if big.name == "全面の図" or big.width * big.height > 0.4 * W * H:
             return "全面の図"
         if big.name == "下の図" or (big.width > 0.5 * W and big.top > 0.4 * H):
@@ -291,6 +300,16 @@ def monotony(prs, skip=()):
                 out.append((seq[start][0], seq[k - 1][0], seq[start][1]))
             start = k
     return out
+
+
+MAX_SHARE = 0.5   # 「左文右図」が本文の枚に占めてよい割合。迷ったら全部この型になり、続かなくても単調に見えた（見本で16枚中11枚）
+
+
+def side_share(prs, skip=()):
+    """(左文右図の枚数, 本文の枚数)。本文の枚＝skip と ●見出しの無い枚（表紙・区切り）を除いた枚。"""
+    W, H = prs.slide_width, prs.slide_height
+    body = [sl for i, sl in enumerate(prs.slides, 1) if i not in skip and any(sh.name == "見出し" for sh in sl.shapes)]
+    return sum(slide_type(sl, W, H) == "左文右図" for sl in body), len(body)
 
 
 def mismatches(prs, plan: dict, skip=()):

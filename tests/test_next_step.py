@@ -85,3 +85,10 @@ def test_final_review_asking_for_fixes_comes_before_check_done(tmp_path):
     review.write_text("- 判定: 「このまま渡してよい」\n", encoding="utf-8")
     os.utime(review, (t + 20, t + 20))
     assert not next_step.needs_final_fix(review, pptx)
+    # 組み直したあとに review.md へ採否を書き足しても、直し済み（英語の試しで、手順9から進まなかった）
+    review.write_text("- 判定: 直してから渡す\n\n## 採否と直した点\n\n- 必ず直す点 1〜4：全部採った\n", encoding="utf-8")
+    os.utime(review, (t + 30, t + 30))
+    assert not next_step.needs_final_fix(review, pptx)
+    review.write_text("- 判定: 直してから渡す\n\n## 採否と直した点\n\n", encoding="utf-8")   # 見出しだけで中身が無いのは、まだ
+    os.utime(review, (t + 40, t + 40))
+    assert next_step.needs_final_fix(review, pptx)

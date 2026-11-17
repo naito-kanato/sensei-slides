@@ -144,7 +144,8 @@ def test_brief_fills_template_and_keeps_kind_lines(tmp_path, monkeypatch):
     w = _work(tmp_path)
     for role in brief.roles():
         text = brief.build(role, "X講座" if role in brief.NO_WORK else str(w))
-        assert "{" not in text and "[発表]" not in text and "[講座]" not in text, role
+        own = text.split("\n---\n# 手順書の節")[0]   # 写した手順書の節には、{r:赤字} のような書き方がもともとある
+        assert "{" not in own and "[発表]" not in text and "[講座]" not in text and "[節]" not in text, role
         assert "ユーザーには質問しません" in text and "10行まで" in text
     t = brief.build("直しの担当", str(w))
     assert "_work/X講座_01/memo_review.md" in t and "facts_diff.md" in t and "outline.md" not in t
@@ -209,7 +210,7 @@ def test_figure_purpose_and_recommended_kind():
             "| 2 | a | 比べる：棒グラフ：x | 本文 |\n| 3 | b | 比べる：年表：y | 本文 |\n| 4 | c | 棒グラフ：z | 本文 |\n"
             "| 5 | d | 時期：表：w（外す理由：年が2つだけ） | 本文 |\n")
     mark, _, msg = figplan.check_menu(rows, "outline", [2, 3, 4, 5])[0]
-    assert mark == "△" and "[3] 比べるに年表" in msg and "目的が無い：[4]" in msg and "[5]" not in msg
+    assert mark == "✘" and "[3] 比べるに年表" in msg and "目的が無い：[4]" in msg and "[5]" not in msg
     assert figplan.planned_kind("観点：表：推定値") == "表" and figplan.planned_kind("比べる：棒グラフ：x") == "図"
 
 
@@ -230,12 +231,12 @@ def test_story_arc_both_positions():
     late = ["—", "しかし（壁）", "そして（詳しく）", "だから（手段）", "そして（次へ）", "しかし（疑い）", "だから（帰結）", "しかし（限り）"]
     assert _arc_mark(_arc_outline(late, "論文紹介（問題から）", "後"))[0] == "✔"
     mark, msg = _arc_mark(_arc_outline(late, "論文紹介（問題から）", "先", answer=4))
-    assert mark == "△" and "答えと柱の一覧" in msg                       # 先にすると、壁のすぐ後に答えの拍が要る
+    assert mark == "✘" and "答えと柱の一覧" in msg                       # 先にすると、壁のすぐ後に答えの拍が要る
     early = ["—", "しかし（壁）", "だから（帰結）"] + late[3:]
     assert _arc_mark(_arc_outline(early, "論文紹介（問題から）", "先", answer=4))[0] == "✔"
     assert "答えの枚は 5" in _arc_mark(_arc_outline(early, "論文紹介（問題から）", "先", answer=5))[1]
     swapped = ["—", "だから（手段）", "しかし（壁）"] + late[4:]
-    assert _arc_mark(_arc_outline(swapped, "論文紹介（問題から）", "後"))[0] == "△"
+    assert _arc_mark(_arc_outline(swapped, "論文紹介（問題から）", "後"))[0] == "✘"
     assert _arc_mark(_arc_outline(swapped, "論文紹介（問題から）", "後") + "\n型を外す理由：方法が見どころ\n")[0] == "✔"
     assert _arc_mark(_arc_outline(late, "ない型", "後"))[0] == "△"
 
@@ -249,7 +250,7 @@ def test_story_arc_rounds():
     assert got[7] == (5, "だから", "手段", "定義・式", 2)                  # 2周目の最初の拍
     short = _arc_outline(["—"] + one + one[:2] + one[3:], "輪読（節の筋）×2")   # 2つ目の小節で「成り立たない場合」を飛ばした
     mark, msg = _arc_mark(short)
-    assert mark == "△" and "2周目" in msg
+    assert mark == "✘" and "2周目" in msg
     paper = ["—", "しかし（壁）", "だから（手段）"] + ["そして（次へ）", "しかし（疑い）", "だから（帰結）"] * 2 + ["しかし（限り）"]
     assert _arc_mark(_arc_outline(paper, "論文紹介（問題から）×2"))[0] == "✔"   # 実験2つ：結果 → 疑い → 確かめた結果 を2周
     assert _arc_mark(_arc_outline(paper, "論文紹介（問題から）"))[0] == "✔"      # 周の数を書かなければ1周分だけ見る
@@ -320,7 +321,7 @@ def test_data_sets_merge_check_and_cards(tmp_path):
     (w / "data_2.md").unlink()
     data.merge(w)
     memo = (w / "memo.md").read_text(encoding="utf-8")
-    assert [m for m, item, _ in check_memo.data_rows(memo, w, [2, 3])] == ["△"]   # データがあるのに描く図が無い
+    assert [m for m, item, _ in check_memo.data_rows(memo, w, [2, 3])] == ["✘"]   # データがあるのに描く図が無い
     memo = memo.replace("## 2.", "データを使わない理由：差が2項目だけで弱い\n\n## 2.", 1)
     assert [m for m, item, _ in check_memo.data_rows(memo, w, [2, 3])] == ["✔"]   # 弱い組を使わないと書けば △ にしない
 
@@ -369,7 +370,7 @@ def test_aim_sets_the_default_arc():
     assert _arc_mark(text)[0] == "✔"
     other = text.replace("| ねらい | 論文を紹介する（問題から） |", "| ねらい | 教科書の節を読む |")
     mark, msg = _arc_mark(other)
-    assert mark == "△" and "輪読（節の筋）" in msg
+    assert mark == "✘" and "輪読（節の筋）" in msg
     assert _arc_mark(other + "\n型を外す理由：教科書だが論文の結果を紹介する節\n")[0] == "✔"
     mark, msg = _arc_mark(other.replace("話の型：論文紹介（問題から）", ""))
     assert mark == "△" and "話の型：輪読（節の筋）" in msg
@@ -435,3 +436,14 @@ def test_search_rule_for_fact_rows(tmp_path):
     assert facts.search_problem("1") is None and facts.search_problem("3：2 一次資料が無い／3 最新版") is None
     assert "理由が 1 個" in facts.search_problem("3：2 一次資料が無い")
     assert "超えた" in facts.search_problem("6：2 a／3 b／4 c／5 d／6 e")
+
+
+def test_schematic_needs_a_reading_line():
+    """模式図は図の案に「読み方：…」が無ければ ✘（図だけでは読めない模式図が出た）。"""
+    import figplan
+    head = "## 構成\n\n| # | ●見出し | 図で見せるもの | 役割 |\n|---|---|---|---|\n"
+    no = head + "| 2 | A | 仕組み：模式図：干渉計 | 本文 |\n"
+    yes = head + "| 2 | A | 仕組み：模式図：干渉計（読み方：赤い線＝光の通り道） | 本文 |\n"
+    r = figplan.check_menu(no, "outline", [2])
+    assert r and r[0][0] == "✘" and "模式図に読み方が無い" in r[0][2]
+    assert figplan.check_menu(yes, "outline", [2])[0][0] == "✔"

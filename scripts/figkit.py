@@ -24,7 +24,8 @@ class COL:
     ink = "#222222"    # 軸・線画
     blue = "#215F99"   # テンプレートの青（帯と同色）。主役の線・液体の濃い部分
     lblue = "#4E95D9"  # 矢印の水色。流れ・補助の線
-    red = "#FF0000"    # 強調（結論・注目点）だけに使う
+    red = "#FF0000"    # 強調（結論・注目点）だけに使う。線・文字・小さな印だけ（棒や面の塗りには dred）
+    dred = "#C0504D"   # 赤の塗り（棒・面）。原色の赤の面は、ほかの色から浮いて見えた（外から見た採点の指摘）
     green = "#4EA72E"
     orange = "#E97132"
     gray = "#9A9A9A"   # 比較対象・参考線（破線で）
@@ -141,11 +142,36 @@ def lint(f, name=""):
         print(f"  [WARN] {name}: 文字が {MIN_FONT}pt 未満 → 14pt を基本にする（図を大きく描くか、ラベルを減らす）: " + "、".join(small[:6]))
     if n_lab > MAX_LABELS:
         print(f"  [WARN] {name}: ラベルが {n_lab} 個（目安 {MAX_LABELS} 個まで）→ 本文・ノートに回すか、図を2枚に分ける")
+    red_area = red_fill_share(f)
+    if red_area > RED_FILL_MAX:
+        print(f"  [WARN] {name}: 原色の赤の塗りが図の {red_area:.0%}（目安 {RED_FILL_MAX:.0%} まで）"
+              " → 棒・面の塗りは COL.dred（落ち着いた赤）か主色の濃淡に。原色の赤（COL.red）は線・文字・小さな印だけ")
     hits = text_on_lines(f)
     if hits:
         print(f"  [WARN] {name}: 文字が枠の縁・線にかかっている → 箱を広げる・改行する・ラベルを線から離す"
               f"（すき間は文字の高さの半分ほど）: " + "、".join(hits[:6]))
     return bool(small) or n_lab > MAX_LABELS or bool(hits)
+
+
+RED_FILL_MAX = 0.02   # 原色の赤の塗り（棒・面）が図に占めてよい割合
+
+
+def red_fill_share(f):
+    """原色の赤（#FF0000 に近い色）で塗った図形（棒・四角・円など）の面積が、図全体に占める割合。"""
+    from matplotlib.colors import to_rgba
+    f.canvas.draw()
+    r = f.canvas.get_renderer()
+    W, H = f.canvas.get_width_height()
+    total = 0.0
+    for ax in f.axes:
+        for p in ax.patches:
+            if not p.get_visible() or not p.get_fill():
+                continue
+            c = to_rgba(p.get_facecolor())
+            if c[3] > 0.5 and c[0] > 0.9 and c[1] < 0.2 and c[2] < 0.2:
+                bb = p.get_window_extent(r)
+                total += max(0.0, bb.width) * max(0.0, bb.height)
+    return total / max(1.0, W * H)
 
 
 TEXT_GAP_PT = 3    # 文字と、枠の縁・線との最小のすき間（pt）
@@ -189,6 +215,14 @@ def save(f, path, tight=True):
     mf = min_font(f)
     if mf is not None and str(path).lower().endswith(".png"):
         kw["metadata"] = {"MinFontPt": f"{mf:g}"}   # 描画の検査（check_layout）が、置いた大きさでの文字の大きさを見る
+        # 図の中の文字（目盛りは除く）：描画の検査が、本文が図の数字を言い直していないかを見る
+        free = [t.get_text().strip() for t in f.texts if t.get_text().strip()]
+        for ax in f.axes:
+            free += [t.get_text().strip() for t in ax.texts if t.get_text().strip()]
+            leg = ax.get_legend()
+            if leg is not None:
+                free += [t.get_text().strip() for t in leg.get_texts() if t.get_text().strip()]
+        kw["metadata"]["FigTexts"] = " | ".join(free)[:2000]
     if tight:
         f.savefig(path, bbox_inches="tight", pad_inches=0.06, **kw)
     else:

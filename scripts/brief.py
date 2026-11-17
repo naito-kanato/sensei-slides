@@ -15,7 +15,9 @@
 メインが中身を確かめるだけなら --peek（数えない）。
 直しの担当の依頼文を出すとき（--peek でないとき）は、直す前の memo.md・outline.md を <work>/memo_直す前.md・outline_直す前.md に写す（もうあれば上書きしない）。担当を起動したあと作業フォルダに何も書かれていなければ、次の起動と同じ1回とみなす。
 
-雛形の書き方：{skill}・{work}・{course}・{plan_name}・{review_name}・{n} を埋める。行の頭が [発表] か [講座] の行は、
+雛形の書き方：{skill}・{work}・{course}・{plan_name}・{review_name}・{n} を埋める。
+`[節] steps 5 6 ／ tools コマンドの書き方` の行は、その手順書の節（guide.py と同じ切り方）を依頼文の終わりに写す
+（担当が guide.py を呼ぶ回数を減らす。呼ぶたびに、それまでの会話をまるごと読み直すため）。行の頭が [発表] か [講座] の行は、
 その種類のときだけ残す。[直す] の行は推論距離を直す回だけ、[測る] の行は「推論距離：測るだけ」の回だけ残す（種類の印のあとに付けてよい）。全部の担当に共通の頭（ユーザーに質問しない・scripts の中身を読まない・作業フォルダの置き場所）と、
 終わりの「10行までで返す」は、このスクリプトが足す。作業フォルダが講座フォルダの中にあるなど、置き場所が違えば ✘ で止める。
 """
@@ -46,10 +48,11 @@ def halves(nums: list[int]) -> list[list[int]]:
     return [nums[:k], nums[k:]]
 
 HEAD = """あなたは sensei-slides スキルの「{role}」です（{kind}）。ユーザーには質問しません（聞きたい所は、返答の「迷った所」に書く）。
-作業ディレクトリ：{cwd}（コマンドはここから `python {skill}/scripts/<名前>.py ...`。作業ディレクトリに .venv があれば、その python で）
+作業ディレクトリ：{cwd}（コマンドはここから `python "{skill}/scripts/<名前>.py" ...`（空白のあるパスは引用符で囲む）。作業ディレクトリに .venv があれば、その python で）
 作業フォルダ：{work}（作業ディレクトリ直下の `_work/` の中。講座フォルダ・発表フォルダの中に作らない）
-SKILL.md と references/*.md は丸ごと読まない（この依頼と、指定された `guide.py` の節で足りる。足りないときだけ `guide.py <名前>` で見出しを見て、その節だけ）。scripts の中身（.py）は読まない。使い方は guide.py と各スクリプト・検査の出力にある。日本語を含む使い捨てのスクリプトは、作業フォルダの外の一時フォルダに書く。
+SKILL.md と references/*.md は丸ごと読まない（この依頼（終わりに写した手順書の節を含む）と、指定された `guide.py` の節で足りる。足りないときだけ `guide.py <名前>` で見出しを見て、その節だけ）。scripts の中身（.py）は読まない。使い方は guide.py と各スクリプト・検査の出力にある。日本語を含む使い捨てのスクリプトは、作業フォルダの外の一時フォルダに書く。
 呼び出しの回数が使用量を決める（呼ぶたびに、それまでの会話をまるごと読み直すため）。前の結果を見なくても決められることは、1回の呼び出しにまとめる（例：作業の始めに要るファイルは、まとめて開く）。結果を見てから決めることだけを、次の呼び出しに回す。
+回数・トークンの上限で止まったら、`--over` を付けて越えない（越えるかはユーザーが決める）。そこで止めて、残った所を返答に書く。
 ただし、書いたあとの検査は、書いた次の呼び出しで行う（同じ呼び出しに入れない）。make_deck は、ほかのコマンドとつなげずに単独で。書いたものを目で読み直すのは要らない（確かめるのは検査のスクリプトで）。
 """
 TAIL = "\n終えたら、「返すもの」だけを10行までで返す。"
@@ -85,6 +88,65 @@ def keep_before_fix(plan: Path) -> Path | None:
     return copy
 
 
+# 日本語でないデッキ（設定の「言語」）のときに、依頼の終わりに足す行。{lang} はその言語の名前
+LANG_COMMON = ("**出力の言語：{lang}**。スライド・原稿（notes.md）・確認問題と解答の文は{lang}で書く。"
+               "構成案・設計メモの説明、手当ての書き方、返答は日本語のままでよい。")
+LANG_NOTES = {
+    "設計の担当": "表のタイトル・●見出し・青帯（結論）・本文の要点の列と、確認問題・解答の文は{lang}で書く（そのままスライドに載る）。"
+                 "表紙の行の「第N回」も {lang} で（英語なら Lecture N: …）。手当ての「原稿で「…」」の「…」と、用語の穴の語も{lang}で。数値・出典は元のまま。字数の目安は全角に直した幅（半角の字・空白は0.5）",
+    "直しの担当": "直す行のうち、スライドに載る列（タイトル・●見出し・青帯・本文の要点）と確認問題の文は{lang}で書く",
+    "制作役": "書き方の読み替えは `cards/00_共通.md` の「## 言語」の節（字数は全角に直した幅、本文は短い句、原稿は話し言葉の{lang}）",
+    "図の担当": "図の中の文字（軸・目盛りの単位・ラベル・凡例）は{lang}で書く。数値と記号はそのまま",
+    "仕上げ役": "スライドと原稿は{lang}。check_layout は全角に直した幅で数え、文末の記号で終わる行を「文の形の行」として出す（短い句に直す）。"
+               "日本語の文字が残っていないかも見る",
+    "仕上げの直しの担当": "スライドと原稿は{lang}。直した所も{lang}で書き、日本語の文字を残さない",
+    "レビュー担当": "スライドに載る列（タイトル・●見出し・青帯・本文の要点）と確認問題は{lang}で書いてある。{lang}として自然か・意味が元の事実と同じかも見る。指摘は日本語で書く",
+    "完成後のレビュー担当": "スライドと原稿は{lang}で書いてある。{lang}として自然か、日本語が残っていないか、訳で意味が強まっていないかも見る。指摘は日本語で書く",
+    "地図の担当": "講座の README の「学習者とゴール」に `- 言語：{lang}` の行を書く（各回の設計メモに写す）。各回の題は{lang}で",
+    "数字を探す担当": "集める表の説明は日本語でよい。引用する原文は元の言語のまま",
+    "裏取りの担当": "表の確かめは日本語でよい。引用する原文は元の言語のまま",
+}
+
+
+def plan_language(plan, note: str = "", readme=None) -> str:
+    """構成案・設計メモの設定の「言語」→ 講座の README の「- 言語：…」（設計メモがまだ無い設計の担当・数字を探す担当）
+    → ユーザーの答えの「言語：…」（地図の担当）。無ければ日本語。
+    英語の試しで、設計の担当の依頼に言語の行が入らなかった（memo.md ができる前で、README を見ていなかった）。"""
+    import language as LG
+    from slide_profile import read_options
+    if plan is not None and Path(plan).exists():
+        v = read_options(Path(plan).read_text(encoding="utf-8")).get("言語")
+        if v:
+            return LG.lang_name(v)
+    if readme is not None and Path(readme).exists():
+        m = re.search(r"^-\s*言語\s*[:：]\s*(.+?)\s*$", Path(readme).read_text(encoding="utf-8"), re.M)
+        if m:
+            return LG.lang_name(m.group(1))
+    m = re.search(r"言語\s*[:：]\s*([^\s／/、,。]+)", note or "")
+    return LG.lang_name(m.group(1)) if m else LG.DEFAULT
+
+
+def embed(specs) -> str:
+    """[節] の行（「steps 5 6 ／ tools コマンドの書き方」）→ 写す節の本文。同じ節は1回だけ。"""
+    import guide
+    out, seen = [], set()
+    for spec in specs:
+        for grp in re.split(r"[／]", spec):
+            w = grp.split()
+            for k in w[1:]:
+                if (w[0], k) in seen:
+                    continue
+                seen.add((w[0], k))
+                t = guide.section(w[0], k)
+                if t is None:
+                    raise SystemExit(f"✘ 雛形の [節] の「{w[0]} {k}」が手順書に無い")
+                out.append(t)
+    if not out:
+        return ""
+    return ("\n\n---\n# 手順書の節（ここに写した。同じ節を guide.py で読み直さない。ほかの節が要るときだけ guide.py で）\n\n"
+            + "\n\n".join(out))
+
+
 def build(role: str, target: str, kind: str | None = None, n: str = "1", note: str = "", part: str = "",
           over: bool = False, count: bool = False) -> str:
     path = BRIEFS / f"{role}.md"
@@ -118,7 +180,7 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
         keep_before_fix(plan)
     from slide_profile import measure_only
     measure = bool(plan and plan.exists() and measure_only(plan.read_text(encoding="utf-8")))
-    lines = []
+    lines, specs = [], []
     for line in path.read_text(encoding="utf-8").splitlines():
         if line.startswith(other):
             continue
@@ -135,6 +197,9 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
             if line.startswith("[測る]") != measure:
                 continue
             line = line[4:]
+        if line.startswith("[節]"):
+            specs.append(line[3:].strip())
+            continue
         lines.append(line)
     cards, part_note = "カード全部", ""
     if role == "制作役" and role not in NO_WORK:
@@ -159,9 +224,14 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
             "review_name": review_name, "n": n, "role": role, "kind": k, "cwd": Path.cwd().as_posix(),
             "cards": cards, "part_note": part_note, "figfile": figfile, "figpart": figpart}
     text = HEAD.format(**vals) + "\n" + "\n".join(lines).format(**vals)
+    readme = (Path(target).resolve().parents[1] / course / "00_README.md") if role not in NO_WORK and k == "講座" else None
+    lang = plan_language(plan, note, readme)
+    import language as LG
+    if not LG.is_japanese(lang):
+        text += "\n" + LANG_COMMON.format(lang=lang) + ("\n" + LANG_NOTES[role].format(lang=lang) if role in LANG_NOTES else "")
     if note:
         text += "\n\nユーザーの答え・メインからの補足：" + note
-    return text + TAIL
+    return text + embed(specs) + TAIL
 
 
 def main(argv=None):

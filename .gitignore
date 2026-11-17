@@ -26,10 +26,14 @@ examples/zemi_en/build/
 examples/zemi_en/render/
 examples/zemi_en/figs/
 examples/zemi_en/*.pptx
+examples/zemi_en/*_原稿.html
+examples/zemi_en/*_script.html
 examples/course_en/_work/*/build/
 examples/course_en/_work/*/render/
 examples/course_en/_work/*/figs/
 examples/course_en/*/*.pptx
+examples/course_en/*/*_原稿.html
+examples/course_en/*/*_script.html
 
 # 配布の一式（tools/make_starter.py が作る）
 /dist/

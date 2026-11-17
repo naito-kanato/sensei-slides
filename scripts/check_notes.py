@@ -13,6 +13,8 @@
        - 中身の無いつなぎだけの文（「では次に。」「次のスライドです。」など。次の枚で何を見るかを言う）
        - 原稿全体の長さが、発表時間（構成案の ## オプション の「発表時間」）に比べて多すぎる・少なすぎる（1分 300字の目安で ±40%）
        - 1枚あたりの原稿が少ない本文の枚（ゼミは 発表時間×300字÷本文の枚数 の半分、講座は 240字に届かない。字数は句読点・空白を除いて数える）
+  言語（設定の「言語」）が空白で語を区切る言語（英語など）なら、字数の代わりに語数で見る：1文 40語、1分 150語、講座の1枚 190語・下限 120語
+  （日本語の原稿1字が英語の約0.5語。scripts/language.py）
 """
 from __future__ import annotations
 
@@ -24,17 +26,22 @@ from pathlib import Path
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import language as LG
 
 SENT_MAX = 90            # 1文の長さの目安（字）
 CHARS_PER_MIN = 300      # 読み上げの速さの目安（字／分）
 LEN_TOL = 0.4            # 発表時間との釣り合いの幅
 NOTE_PER_SLIDE = 380     # 講座の本文の枚の原稿の目安（句読点・空白を除いた字数）
 NOTE_MIN_COURSE = 240    # 講座で、これより少ない枚は △（見本の講座は 250〜450字）
+SENT_MAX_WORDS = 40      # 語で数える言語の1文の長さの目安（語）
+WORD_RATIO = 0.5         # 日本語の原稿1字 → 語で数える言語の語数（見本の講座を英語にした原稿で 0.5）
 EMPTY_LINK = re.compile(r"^(では|それでは|続いて|次に|次は)?[、,]?\s*(次の(スライド|ページ)(です|に(進みます|行きます|移ります))|次に(進みます|行きます|移ります)|"
                         r"次のスライドをご覧ください|では次に|それでは次に)[。．]?$")
 QUOTE = re.compile(r"「([^「」]{2,})」")
 # 読み上げる原稿に残った作業のメモ（書き手が迷った所は返答に書く。※の行も聞き手に見える）
-WORK_MEMO = re.compile(r"TODO|ノートへ[:：]|抜き出し|出典を確かめ|確かめてから話して|確認できていません|仕上げ(役|段階)|書き手|カードの|手元の資料に(は)?(ありません|ない|無い)")
+EMPTY_LINK_EN = re.compile(r"^(so,?\s*|now,?\s*|okay,?\s*)?(next slide|on to the next slide|let'?s (move on|go to the next slide|move to the next slide)"
+                           r"|moving on|here is the next slide|this is the next slide)[.!]?$", re.I)
+WORK_MEMO = re.compile(r"TODO|note to self|check the source|not sure (if|whether) the (paper|source)|ノートへ[:：]|抜き出し|出典を確かめ|確かめてから話して|確認できていません|仕上げ(役|段階)|書き手|カードの|手元の資料に(は)?(ありません|ない|無い)")
 
 
 def _norm(s: str) -> str:
@@ -71,14 +78,14 @@ WORD_SHARE = 0.6         # 言い回しの中身の語のうち、原稿にあ�
 
 def _contains(hay: str, needle: str) -> bool:
     """needle の中身が hay にあるか：そのまま入っているか、中身の語（漢字・カタカナの2字以上の語、英字、数）の6割以上が入っている。"""
-    h, n = _norm(hay), _norm(needle)
+    h, n = _norm(hay).lower(), _norm(needle).lower()
     if not n or n in h:
         return True
     words = set(WORD.findall(needle))
     if not words:
         m = SequenceMatcher(None, h, n, autojunk=False).find_longest_match(0, len(h), 0, len(n))
         return m.size >= 0.7 * len(n)
-    return sum(w in hay for w in words) >= WORD_SHARE * len(words)
+    return sum(w.lower() in hay.lower() for w in words) >= WORD_SHARE * len(words)
 
 
 def missing_care(plan_text: str, notes: dict, slide_texts: dict | None = None):
@@ -95,7 +102,7 @@ def missing_care(plan_text: str, notes: dict, slide_texts: dict | None = None):
 
 def sentences(text: str):
     body = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("※"))   # 出典・補足の行は除く
-    return [s.strip() for s in re.split(r"(?<=[。！？])|\n", body) if s.strip()]
+    return [s.strip() for s in re.split(r"(?<=[。！？])|(?<=[.!?])\s+(?=[A-Z0-9\"“(])|\n", body) if s.strip()]
 
 
 def talk_minutes(plan_text: str):
@@ -103,8 +110,8 @@ def talk_minutes(plan_text: str):
     return float(m.group(1)) if m else None
 
 
-def check(work: Path, plan_text: str | None = None, slide_texts: dict | None = None):
-    """[(印, 項目, 説明)]。"""
+def check(work: Path, plan_text: str | None = None, slide_texts: dict | None = None, lang: str | None = None):
+    """[(印, 項目, 説明)]。lang を省くと、構成案・設計メモの設定の「言語」（無ければ日本語）。"""
     from set_notes import load_notes
     work = Path(work)
     nf = work / "notes.md"
@@ -114,6 +121,17 @@ def check(work: Path, plan_text: str | None = None, slide_texts: dict | None = N
     if plan_text is None:
         src = work / "memo.md" if (work / "memo.md").exists() else work / "outline.md"
         plan_text = src.read_text(encoding="utf-8") if src.exists() else ""
+    if lang is None:
+        from slide_profile import read_options
+        lang = read_options(plan_text or "").get("言語")
+    words = LG.spaced(lang)   # 語で数える言語か
+    unit = LG.script_unit(lang)
+    per_min = LG.per_min(lang)
+    sent_max = SENT_MAX_WORDS if words else SENT_MAX
+
+    def amount(t):   # 原稿の量（字数で見る言語は句読点・空白を除いた字数、ほかは語数）
+        return LG.words(t) if words else len(_norm(t))
+
     res = []
     items = care_items(plan_text)
     lack = missing_care(plan_text, notes, slide_texts)
@@ -122,26 +140,31 @@ def check(work: Path, plan_text: str | None = None, slide_texts: dict | None = N
                     + "（notes.md のその枚に、その言い回し・用語の説明を入れる。言い方を変えたなら、手当ての行も直す）"))
     elif items:
         res.append(("✔", "原稿の手当て", f"原稿に回した手当て {len(items)}件が、原稿に入っている"))
+    left = [n for n, t in notes.items() if LG.japanese_left(t, lang)]
+    if left:
+        res.append(("△", "原稿の言語", f"{LG.lang_name(lang)}の原稿に日本語が残っている枚：" + "・".join(map(str, left[:10]))
+                    + "（日本語の語を言うのでなければ、その言語に直す）"))
     memo = [(n, m.group(0)) for n, t in notes.items() for m in [WORK_MEMO.search(t)] if m]
     if memo:
         res.append(("✘", "原稿の作業メモ", "読み上げる原稿に作業のメモが残っている：" + "、".join(f"[{n}] 「{w}」" for n, w in memo[:6])
                     + "（迷った所・確かめたい所は原稿から消し、返答に書く。資料にあるかは資料を開いて確かめる）"))
-    long = [(n, len(s)) for n, t in notes.items() for s in sentences(t) if len(s) > SENT_MAX]
+    size = LG.words if words else len
+    long = [(n, size(s)) for n, t in notes.items() for s in sentences(t) if size(s) > sent_max]
     if long:
-        res.append(("△", "原稿の1文の長さ", f"{SENT_MAX}字を超える文：" + "、".join(f"[{n}] {k}字" for n, k in long[:6]) + "（読み上げで息が続かない。2文に分ける）"))
-    empty = [n for n, t in notes.items() for s in sentences(t) if EMPTY_LINK.match(s)]
+        res.append(("△", "原稿の1文の長さ", f"{sent_max}{unit}を超える文：" + "、".join(f"[{n}] {k}{unit}" for n, k in long[:6]) + "（読み上げで息が続かない。2文に分ける）"))
+    empty = [n for n, t in notes.items() for s in sentences(t) if EMPTY_LINK.match(s) or EMPTY_LINK_EN.match(s)]
     if empty:
         res.append(("△", "原稿のつなぎ", "中身の無いつなぎだけの文：" + "・".join(map(str, sorted(set(empty))))
                     + "（「では次に」で済ませず、次の枚で何を見るか・なぜそこへ進むかを1文で）"))
     mins = talk_minutes(plan_text)
     if mins:
-        total = sum(len(_norm("\n".join(sentences(t)))) for t in notes.values())
-        want = mins * CHARS_PER_MIN
+        total = sum(amount("\n".join(sentences(t))) for t in notes.values())
+        want = mins * per_min
         if abs(total - want) > LEN_TOL * want:
-            res.append(("△", "原稿の長さ", f"原稿 {total}字（読み上げ約 {total / CHARS_PER_MIN:.0f}分）、発表時間 {mins:g}分"
-                        f"（目安 {want:.0f}字 ±{LEN_TOL:.0%}）。{'削る（細部はスライドに無い補足から）' if total > want else '図の読み方・つなぎを足す'}"))
+            res.append(("△", "原稿の長さ", f"原稿 {total}{unit}（読み上げ約 {total / per_min:.0f}分）、発表時間 {mins:g}分"
+                        f"（目安 {want:.0f}{unit} ±{LEN_TOL:.0%}）。{'削る（細部はスライドに無い補足から）' if total > want else '図の読み方・つなぎを足す'}"))
         else:
-            res.append(("✔", "原稿の長さ", f"原稿 {total}字（約 {total / CHARS_PER_MIN:.0f}分）、発表時間 {mins:g}分"))
+            res.append(("✔", "原稿の長さ", f"原稿 {total}{unit}（約 {total / per_min:.0f}分）、発表時間 {mins:g}分"))
     # 1枚あたりの原稿：本文の役割の枚で、目安の半分（講座は 300字）に届かない枚
     import structures
     kind = "memo" if "話の順番" in plan_text else "outline"
@@ -149,13 +172,14 @@ def check(work: Path, plan_text: str | None = None, slide_texts: dict | None = N
     body = [n for n, r in roles.items() if r == "本文"]
     if body:
         if mins:
-            per, low = mins * CHARS_PER_MIN / len(body), 0.5 * mins * CHARS_PER_MIN / len(body)
+            per, low = mins * per_min / len(body), 0.5 * mins * per_min / len(body)
         else:   # 講座（AI講義モード）：見本の中央値は 1枚 420字前後
-            per, low = NOTE_PER_SLIDE, NOTE_MIN_COURSE
-        short = [(n, len(_norm("\n".join(sentences(notes.get(n, "")))))) for n in body]
+            r = WORD_RATIO if words else 1.0
+            per, low = round(NOTE_PER_SLIDE * r, -1), round(NOTE_MIN_COURSE * r, -1)
+        short = [(n, amount("\n".join(sentences(notes.get(n, ""))))) for n in body]
         short = [(n, k) for n, k in short if k < low]
         if short:
-            res.append(("△", "1枚あたりの原稿", f"目安 {per:.0f}字前後に対して少ない枚：" + "、".join(f"[{n}] {k}字" for n, k in short[:8])
+            res.append(("△", "1枚あたりの原稿", f"目安 {per:.0f}{unit}前後に対して少ない枚：" + "、".join(f"[{n}] {k}{unit}" for n, k in short[:8])
                         + "（図のどこを見て何が読めるか・具体例・よくある間違い・次の枚へのつなぎを足す）"))
     return res
 

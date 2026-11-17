@@ -5,7 +5,7 @@
   講座：各回の設計メモ memo.md の1節の `- 項目：値` の行（講座の README の「学習者とゴール」から写す）
   追加したテンプレート：作業フォルダの `スライドテンプレート/テンプレート一覧.md`（make_template.py が書く）
 
-    python slide_profile.py --table [--kind ゼミ|講座] [--set 項目=値 ...]   # 始めるときに見せる一覧（必須の抜けに印）
+    python slide_profile.py --table [--kind ゼミ|講座] [--set 項目=値 ...]   # 始めるときに見せる一覧（先頭に「〇〇語で作ります」の一行。必須の抜けに印）
     python slide_profile.py <作業フォルダ>                                   # そのデッキの設定と、追加したテンプレート
 
 build.py から：
@@ -30,6 +30,7 @@ FAMILIARITY = {"初学者": 0, "多少知っている": 0, "かなり知って�
 FAMILIARITY_KEY = "聞き手のテーマへの詳しさ"
 # 推論距離を測るだけにする設定（監査して穴を記録するが、手当てはしない。references/inference-distance.md 8節）
 MEASURE_KEY = "推論距離"
+LANG_KEY = "言語"   # スライド・原稿・原稿のページの言語（scripts/language.py）。構成案・設計メモ・担当への依頼は日本語のまま
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -106,6 +107,12 @@ def load_profile(start=None):
             t = readme.read_text(encoding="utf-8")
             m = re.search(r"全\s*(\d+)\s*回", t)
             total = int(m.group(1)) if m else (len(re.findall(r"^\|\s*\d+\s*\|", t, re.M)) or None)
+            # 講座の README の「学習者とゴール」の `- 項目：値` も設定に読む（設計メモの1節に書いてあればそちらが先）。
+            # 英語の見本の作り直しで、README にだけ書いたテンプレートが組むときに抜け、同梱のテンプレート1で組まれた
+            sec = re.search(r"^##\s*(?:学習者|受講者)とゴール\s*$(.*?)(?=^##\s|\Z)", t, re.S | re.M)
+            if sec:
+                base = {k.strip(): v.strip() for k, v in re.findall(r"^-\s*([^:：\n]+?)\s*[:：]\s*(.+?)\s*$", sec.group(1), re.M)}
+                d["オプション"] = {**base, **d.get("オプション", {})}
         d["_course"] = (course, total)
     reg = find_registry(folder)
     if reg:
@@ -120,13 +127,23 @@ def option(p, key, default=None):
 
 def author(p):
     """表紙の名前。発表：一覧の「発表者名」、無ければ空（表紙に名前の行を作らない。仮の名前を入れない）。
-    講座：「講座名（全N回）」、学習者の名前があれば「講座名（全N回）・〇〇さん向け」。"""
+    講座：「講座名（全N回）」、学習者の名前があれば「講座名（全N回）・〇〇さん向け」。
+    日本語でない講座は「Course name (N lectures)」「…, for 〇〇」（英語の試しで、表紙に「全1回」が残った）。
+    「なし」「無し」「none」「—」と書いた名前は空とみなす（英語の見本の作り直しで、表紙に「なし」と出た）。"""
+    def named(key):
+        v = (option(p, key) or "").strip()
+        return "" if v.lower() in ("なし", "無し", "none", "n/a", "—", "-", "（なし）") else v
     if p.get("_course"):
+        import language as LG
         course, total = p["_course"]
-        head = f"{course}（全{total}回）" if total else course
-        who = option(p, "学習者の名前")
-        return option(p, "発表者名") or (f"{head}・{who}さん向け" if who else head)
-    return option(p, "発表者名") or option(p, "学習者の名前") or ""
+        who = named("学習者の名前")
+        if LG.is_japanese(option(p, LANG_KEY)):
+            head = f"{course}（全{total}回）" if total else course
+            return named("発表者名") or (f"{head}・{who}さん向け" if who else head)
+        name = course.replace("_", " ")
+        head = f"{name} ({total} lecture{'s' if total != 1 else ''})" if total else name
+        return named("発表者名") or (f"{head}, for {who}" if who else head)
+    return named("発表者名") or named("学習者の名前") or ""
 
 
 def politeness(p):
@@ -168,7 +185,11 @@ def structure_names():
 
 
 def _clean(name):
-    return re.sub(r"（.*?）|\(.*?\)", "", name).strip() if name else name
+    """括弧の注記を外す。英語の呼び名「Template 3」は「テンプレート3」に読み替える（英語の使い方のページの呼び方）。"""
+    if not name:
+        return name
+    name = re.sub(r"（.*?）|\(.*?\)", "", name).strip()
+    return re.sub(r"^template\s*(\d+)$", r"テンプレート\1", name, flags=re.I)
 
 
 def template_name(p, name=None, place_name=None):
@@ -202,6 +223,8 @@ OPTIONS = [
     (FAMILIARITY_KEY, "", "初学者・多少知っている／かなり知っている（丁寧さがこれで決まる）", True),
     ("丁寧さ", "", "詳しさから（初学者・多少知っている 0・かなり知っている 1）。1枚に許す「あとで使う前提」の穴の数。変えてもよい", False),
     (MEASURE_KEY, "直す", "直す（監査して、要の穴に手当てする）／測るだけ（監査して穴を記録するが、手当てはしない。手当ての効きを比べるとき用）", False),
+    (LANG_KEY, "日本語", "既定は依頼文の言語（英語の依頼なら英語）。日本語／英語／ほかの言語（スライド・原稿・確認問題・原稿のページをその言語で作る。"
+     "構成案・設計メモの説明と担当への依頼は日本語のまま。表のタイトル・●見出し・結論の列と確認問題の文はその言語で書く）", False),
     ("資料", "なし", "なし（テーマだけから。事実は出典で確かめる）／フォルダに入れたもの（materials.py が 資料/ に格納）", False),
     ("聞き手のプロフィール", "", "任意：専門・研究テーマ・よく知っていること（書くと言い換えと止まる所の判定がよくなる）", False),
     ("発表者名", "", "表紙に出す名前（任意）", False),
@@ -251,17 +274,32 @@ def options_table(p=None, overrides=None, kind="ゼミ"):
     return "\n".join(lines)
 
 
+def language_line(p=None, overrides=None) -> str:
+    """一覧の上に貼る一行：何語で作るか（依頼文の言語。設定の「言語」）。"""
+    import language as LG
+    cur = {**(p or {}).get("オプション", {}), **(overrides or {})}
+    lang = LG.lang_name(cur.get(LANG_KEY))
+    return f"**{lang}で作ります**（スライド・原稿・確認問題・原稿のページ。ほかの言語にするなら言ってください）"
+
+
 def missing_required(values: dict, kind="ゼミ"):
     """必須の項目で空のもの（一覧の値 {項目: 値} から）。"""
     return [k for k, _, _, req in OPTIONS if req and not (kind == "講座" and k in COURSE_SKIP)
             and not (values.get(k) and "未設定" not in values.get(k, ""))]
 
 
-def deck_options(p, name=None, place_name=None, color=None):
+def language(p) -> str:
+    """そのデッキの言語の正式な名前（設定の「言語」。無ければ日本語）。"""
+    import language as LG
+    return LG.lang_name(option(p, LANG_KEY))
+
+
+def deck_options(p, name=None, place_name=None, color=None, lang=None):
     """Deck(...) に渡す引数：テンプレート（構造）と、使うレイアウトの名前と、配色。既定は同梱の テンプレート1 の標準の色。
         deck = Deck(workdir=HERE / "build", **deck_options(P))                                # 一覧の「テンプレート」「色」
         deck = Deck(workdir=HERE / "build", **deck_options(P, name="テンプレート3", color="深緑"))   # 構造と色を名前で
-    色は、color → 一覧の「色」 → 無ければテンプレートの標準の色（assets/templates/配色.json の名前）。"""
+    色は、color → 一覧の「色」 → 無ければテンプレートの標準の色（assets/templates/配色.json の名前）。
+    言語は、lang → 一覧の「言語」（日本語でなければ Deck に渡す。検査と原稿のページがそれで目安と画面の言葉を変える）。"""
     n = template_name(p, name)
     t = templates(p).get(n, {}) if n else {}
     c = color or option(p, "色")
@@ -269,6 +307,11 @@ def deck_options(p, name=None, place_name=None, color=None):
            "content_layout": t.get("本文のレイアウト"), "title_layout": t.get("表紙のレイアウト")}
     if c and c not in ("標準", "既定", "テンプレートの標準"):
         out["color"] = c
+    lg = lang or option(p, LANG_KEY)
+    if lg:
+        import language as LG
+        if not LG.is_japanese(lg):
+            out["lang"] = LG.lang_name(lg)
     return out
 
 
@@ -283,6 +326,7 @@ def main():
     p = load_profile(a.start)
     ov = dict(s.split("=", 1) for s in a.set if "=" in s)
     if a.table:
+        print(language_line(p, ov) + "\n")
         print(options_table(p, ov, a.kind))
         miss = missing_required({**p.get("オプション", {}), **ov}, a.kind)
         if miss:
@@ -291,7 +335,7 @@ def main():
     opts = p.get("オプション", {})
     print(f"設定：{p.get('_options_path', '（outline.md・memo.md が無い）')}")
     print("  " + ("、".join(f"{k}={v}" for k, v in opts.items()) if opts else "（まだ無い）"))
-    print(f"  丁寧さ：{politeness(p) if politeness(p) is not None else '（未設定）'}　表紙の名前：{author(p) or '（無し）'}")
+    print(f"  丁寧さ：{politeness(p) if politeness(p) is not None else '（未設定）'}　表紙の名前：{author(p) or '（無し）'}　言語：{language(p)}")
     print(f"  テンプレート：既定＝{BUNDLED.name}　追加済み：{'、'.join(p.get('テンプレート', {})) or 'なし'}"
           + (f"（{p['_path']}）" if p.get("_path") else ""))
     return 0
