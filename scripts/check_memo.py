@@ -415,27 +415,46 @@ def design_content(text: str, light: bool):
     mark = "✘" if light else "△"
     out = []
     first = body[:HOOK_BODY]
-    hooked = any("？" in get(r, i_pts) + get(r, i_sum) or "?" in get(r, i_sum)
-                 or re.search(r"データ\s*\d", get(r, i_fig) + get(r, i_pts))
-                 or "しかし" in get(r, i_link) for r in first)
-    try:   # 筋の表の「問い」を最初の枚に置いている（その枚に問いの一文を載せる決まりは別の検査）
-        import story
-        qn = ((story.story_table(text) or {}).get("問い") or ("", None))[1]
-        hooked = hooked or (qn is not None and str(qn) in {r[0].strip() for r in first})
-    except Exception:
-        pass
+    asks = lambda r: "？" in get(r, i_pts) + get(r, i_sum) or "?" in get(r, i_pts) + get(r, i_sum)   # noqa: E731
+    data_ref = lambda r: re.search(r"データ\s*\d", get(r, i_fig) + get(r, i_pts) + get(r, i_sum))   # noqa: E731
+    sec3b = re.search(r"^##\s*3b\..*?(?=^##\s|\Z)", text, re.S | re.M)
+    surprise = bool(sec3b and re.search(r"^-\s*驚き\s*[:：]", sec3b.group(0), re.M))
+    if surprise:
+        # 3b節に驚きがあれば、最初の枚でそのデータを指す（冒頭の謎）。「しかし（壁）」のつなぎや筋の表の問いの枚だけでは通さない
+        # （研究発表からの講座の試しで、2・3枚目が背景と「未検証」の説明だけのまま通り、驚きの数字2つが9・13枚目に回った）
+        hooked = any(data_ref(r) for r in first)
+    else:   # 驚きが無い回は前のまま：問い（？）・データN・しかし・筋の表の問いを置いた枚
+        hooked = any(asks(r) or data_ref(r) or "しかし" in get(r, i_link) for r in first)
+        try:
+            import story
+            qn = ((story.story_table(text) or {}).get("問い") or ("", None))[1]
+            hooked = hooked or (qn is not None and str(qn) in {r[0].strip() for r in first})
+        except Exception:
+            pass
     if not hooked:
-        out.append((mark, "冒頭の問い", f"本文の最初の {len(first)} 枚（{'・'.join(r[0] for r in first)}枚目）に、問い（？）も意外な事実（しかし・データN）も無い。"
-                    "1枚目の本文で、学習者の思い込みを問う一文か、驚きのある数字を出す（筋の表の問いを前へ。仕組みの説明はそのあと）。references/story.md 3節"))
+        out.append((mark, "冒頭の問い", f"本文の最初の {len(first)} 枚（{'・'.join(r[0] for r in first)}枚目）に、"
+                    + (("3b節の驚きのデータ（データN）を指す枚が無い（「しかし（壁）」のつなぎや背景の説明だけでは引き込めない）。"
+                        "冒頭の謎：3b節の驚きのうち一番強いものを、本文の1〜2枚目の青帯か要点で「〜のはずが、実際は〜。なぜ？」と見せ、"
+                        "要点に「（データN）」と書く（数字は一言で。グラフと理由はあとの枚で1回だけ）。型の拍の順は変えない") if surprise else
+                       ("問い（？）も意外な事実（しかし・データN）も無い。1枚目の本文で、学習者の思い込みを問う一文か、驚きのある数字を出す"
+                        "（筋の表の問いを前へ。仕組みの説明はそのあと）"))
+                    + "。references/story.md 3節"))
+    last = body[-1]
+    if re.search(r"[？?]\s*$", get(last, i_sum)) or re.search(r"[？?]\s*$", get(last, i_pts).split("/")[-1].split("／")[-1]):
+        out.append(("△", "結びの答え", f"本文の最後の枚（{last[0].strip()}枚目）が問い（？）で終わる。冒頭の謎に戻り、"
+                    "この回で言えたことを1行で答える（言えない所は「〜までは言える」と限りを付けて）"))
     import figplan
     cells = {n: " ".join(v) for n, v in figplan.fig_cells(text, "memo").items()}   # 2節の図の列と5節の図の案（値の出どころも）
     body_no = {r[0].strip() for r in body}
     seen = {}
+    teaser = {r[0].strip() for r in first if asks(r)}   # 冒頭の謎（数字を一言で見せて問う枚）は くり返しに数えない
     for n, c in cells.items():
-        if str(n) in body_no:
+        if str(n) in body_no and str(n) not in teaser:
             for d in dict.fromkeys(re.findall(r"データ\s*(\d+)", c + " " + " ".join(r for r in _fig_src(text, n)))):
                 seen.setdefault(f"データ{d}", []).append(str(n))
     for r in body:   # 青帯に同じ数字（2桁以上・%・〜の幅）をくり返す枚（試しで「誤り17〜33%」を4枚目と9枚目の青帯に）
+        if r[0].strip() in teaser:
+            continue
         for v in dict.fromkeys(re.findall(r"\d{2,}(?:[〜~-]\d+)?\s*[%％]|\d+[〜~-]\d+\s*[%％]", get(r, i_sum))):
             seen.setdefault(v.replace(" ", ""), []).append(r[0].strip())
     dup = {n: v for n, v in seen.items() if len(set(v)) >= 2}
@@ -443,7 +462,7 @@ def design_content(text: str, light: bool):
         out.append((mark, "同じデータのくり返し", "；".join(f"{n} を {'・'.join(dict.fromkeys(v))}枚目で" for n, v in dup.items())
                     + "。同じ表・数字を2回見せない（あとの枚は、前の枚を指して言葉で振り返るか、別の数字・例にする。まとめの枚での振り返りは数えない）"))
     if not out:
-        out.append(("✔", "冒頭とくり返し", f"本文の最初の {len(first)} 枚に問いか意外な事実があり、同じデータを2回見せていない"))
+        out.append(("✔", "冒頭とくり返し", f"本文の最初の {len(first)} 枚に問いか驚きの数字があり、同じデータを2回見せていない"))
     return out
 
 

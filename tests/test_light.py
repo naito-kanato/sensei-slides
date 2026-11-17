@@ -115,3 +115,23 @@ def test_light_presentation_shows_the_outline_first(tmp_path):
     assert nxt.startswith("構成案をユーザーに見せる") and "軽量の制作の担当" in nxt
     p.write_text(p.read_text(encoding="utf-8").replace("| 軽さ | 標準 |", "| 軽さ | 標準 |\n| 構成案の確認 | 任せる |"), encoding="utf-8")
     assert next_step.steps_for(w)[1].startswith("軽量：制作の担当1人を起動")
+
+
+def test_opening_mystery_points_to_the_surprise():
+    """冒頭の謎：3b節に驚きがあれば、本文の最初の2枚でそのデータを指す（「しかし（壁）」だけでは通さない）。
+    謎の枚の数字は、あとの枚でグラフを見せても くり返しに数えない。最後の枚が「？」で終わるなら △。"""
+    import check_memo
+    head = "## 2. 話の順番\n\n| # | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 本文の要点 | 役割 |\n|---|---|---|---|---|---|---|\n"
+    tail = "\n## 3b. データ\n\n### データ1：P\n\n- 驚き：0.7 のはずが 0.55\n\n## 4. 次\n"
+    rows = ("| 1 | 表紙 | — | — | — | — | 表紙 |\n| 2 | 背景 | — | 表面は金属 | 仕組み：模式図：x | a | 本文 |\n"
+            "| 3 | 未検証 | しかし（壁） | 深さを分けた実験は無い | 違い：比較：x | 表面だけ弱いか？ | 本文 |\n"
+            "| 4 | 結果 | だから | P は約55% | 比べる：棒グラフ：データ1 | c | 本文 |\n"
+            "| 5 | まとめ | だから | 表面は弱まり P は TI より低い | 仕組み：模式図：z | d | 本文 |\n")
+    marks = {i: m for m, i, _ in check_memo.design_content(head + rows + tail, True)}
+    assert marks.get("冒頭の問い") == "✘"                       # 問い（？）はあるが、驚きのデータを指していない
+    teaser = rows.replace("| 2 | 背景 | — | 表面は金属 | 仕組み：模式図：x | a |",
+                          "| 2 | 謎 | — | TKI なら約70%のはずが約55%。なぜ？ | 仕組み：模式図：x | 謎（データ1） |")
+    res = check_memo.design_content(head + teaser + tail, True)
+    assert [m for m, _, _ in res] == ["✔"], res                # 謎の枚の約55%は、4枚目のグラフと くり返しに数えない
+    ends = teaser.replace("| 表面は弱まり P は TI より低い |", "| 混成の抑制がトポロジーを抑える？ |")
+    assert {i: m for m, i, _ in check_memo.design_content(head + ends + tail, True)}.get("結びの答え") == "△"
