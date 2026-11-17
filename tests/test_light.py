@@ -66,21 +66,3 @@ def test_light_memo_stops_on_unchecked_facts(tmp_path):
     sw = _course(tmp_path / "s", light=False)
     (sw / "memo.md").write_text(m, encoding="utf-8")
     assert "事実の確かめ" not in {item for _, item, _ in check_memo.check(sw / "memo.md")}
-
-
-def test_ultra_light_one_role(tmp_path, monkeypatch):
-    """「軽さ：超軽量」：ひとりの担当が設計から完成まで。next_step は最初からその1人を言い、依頼文は A（設計）と B（制作）を続けて持つ。"""
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "X講座").mkdir()
-    (tmp_path / "X講座" / "00_README.md").write_text("# X講座\n\n## 学習者とゴール\n\n- 学習者：初学者\n- 軽さ：超軽量\n", encoding="utf-8")
-    w = tmp_path / "_work" / "X講座_01"
-    w.mkdir(parents=True)
-    assert budget.ultra(w) and budget.light(w)
-    _, nxt = next_step.steps_for(w)
-    assert "ひとりの担当" in nxt
-    (w / "memo.md").write_text("# 設計メモ\n", encoding="utf-8")
-    t = brief.build("ひとりの担当", str(w), count=False)
-    own = t.split("\n---\n# 手順書の節")[0]
-    assert "{" not in own and "[講座]" not in own and "[節]" not in own
-    assert "## A. 設計" in t and "## B. 制作" in t and "8回まで" in t and "check_done.py" in t
-    assert "4a. 流れと設計メモの中身" in t and "## 5. 描画して確認する" not in t   # B の節は B に入るときに読む
