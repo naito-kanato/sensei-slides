@@ -425,6 +425,9 @@ def geometry_marks(prs, check_layout):
     return out
 
 
+TRY_TYPES = {}   # --try all：枚 → (スライドの型, 本文の枚か)。左文右図が本文の半分を超えないかを、組む前に見る
+
+
 def try_part(work: Path, n: int) -> int:
     """parts/NN.py の1枚だけを組んで、構成案どおりか（本文の形・図・結論）と字数を短く出す。描かない。
     書き手が部品のソースや検査のスクリプトを読みに行かずに、自分の1枚を確かめるための道具。"""
@@ -479,6 +482,7 @@ def try_part(work: Path, n: int) -> int:
         bad = structures.role_mismatches(prs, {1: "本文"})
         rows_.append(("✘" if bad else "✔", "結論の一文", bad[0][1] if bad else "ある"))
     rows_ += geometry_marks(prs, check_layout)
+    TRY_TYPES[n] = (figplan.slide_type(prs.slides[0], prs.slide_width, prs.slide_height), roles.get(n) == "本文")
     lines = []
     for sh in prs.slides[0].shapes:
         tx = sh.has_text_frame and sh.text_frame.text.strip()
@@ -563,6 +567,13 @@ def main(argv=None):
             rows = [l for l in buf.getvalue().splitlines() if l[:1] in ("✘", "△")]
             bad += code
             print(f"[{f.stem}] " + ("✔" if not rows else "\n  " + "\n  ".join(rows)))
+        import figplan
+        body = [t for t, is_body in TRY_TYPES.values() if is_body]
+        side = sum(t == "左文右図" for t in body)
+        if body and side > figplan.MAX_SHARE * len(body):   # 渡す前の確認の「左に文・右に図の数」と同じ基準（試しで、軽量の回が10枚中9枚になった）
+            print(f"[型] ✘ 左に文・右に図が本文 {len(body)} 枚のうち {side} 枚（半分まで）。図そのものを読ませる枚は s.figure_main、"
+                  "横長の図は下に、並べる中身はカード、比べるなら比較にする（組む前に直す。渡す前の確認が ✘ にする）")
+            bad += 1
         import budget   # 担当ごとのトークンの上限（制作役が最後に走らせる所で見る）
         g = budget.role_guard(work)
         if g:

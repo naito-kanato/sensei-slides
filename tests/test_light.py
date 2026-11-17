@@ -48,3 +48,21 @@ def test_light_make_deck_cap(tmp_path):
     w = _course(tmp_path)
     (w / "memo.md").write_text("# 設計メモ\n", encoding="utf-8")
     assert make_deck.run_budget(w)[2] == budget.LIGHT_MAKE_DECK
+
+
+def test_light_memo_stops_on_unchecked_facts(tmp_path):
+    """軽量の回は裏取りの担当がいないので、確認がまだの事実を check_memo が ✘ にする（標準の回は裏取りの段で見る）。"""
+    import check_memo
+    src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
+    m = src.replace("| 1750億、2048 トークン | T. Brown et al., \"Language Models are Few-Shot Learners\", NeurIPS 2020（GPT-3） | ○ |",
+                    "| 1750億、2048 トークン |  | 未確認 |")
+    assert m != src
+    (tmp_path / "l").mkdir()
+    lw = _course(tmp_path / "l")
+    (lw / "memo.md").write_text(m, encoding="utf-8")
+    items = {item: mk for mk, item, _ in check_memo.check(lw / "memo.md")}
+    assert items.get("事実の確かめ") == "✘"
+    (tmp_path / "s").mkdir()
+    sw = _course(tmp_path / "s", light=False)
+    (sw / "memo.md").write_text(m, encoding="utf-8")
+    assert "事実の確かめ" not in {item for _, item, _ in check_memo.check(sw / "memo.md")}
