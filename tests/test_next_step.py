@@ -6,6 +6,10 @@ def test_empty_work_folder_starts_with_the_outline(tmp_path):
     w = tmp_path / "_work" / "論文"
     w.mkdir(parents=True)
     steps, nxt = next_step.steps_for(w)
+    assert "軽量の設計の担当" in nxt   # 既定（軽さ：標準）は担当2人
+    import budget
+    budget.set_lightness(w, "念入り")   # 念入りを選んだ回は、構成案から
+    steps, nxt = next_step.steps_for(w)
     assert nxt.startswith("手順2")
 
 
@@ -43,6 +47,8 @@ def test_course_lesson_starts_with_finding_numbers(tmp_path):
     """講座の回は、数字を探す担当 → 設計の担当の順（設計メモはデータを見てから）。"""
     w = tmp_path / "_work" / "焼き肉講座_01"
     w.mkdir(parents=True)
+    import budget
+    budget.set_lightness(w, "念入り")   # 念入りの回の流れ（既定の標準は、設計の担当が数字も探す）
     _, nxt = next_step.steps_for(w)
     assert "数字を探す担当" in nxt
     (w / "data_1.md").write_text("## データ：x\n", encoding="utf-8")
@@ -50,7 +56,7 @@ def test_course_lesson_starts_with_finding_numbers(tmp_path):
     assert "設計の担当" in nxt
     c = tmp_path / "別" / "焼き肉講座"   # まだ回の作業フォルダが無い講座
     c.mkdir(parents=True)
-    (c / "00_README.md").write_text("# 焼き肉講座\n\n## 全体の地図\n", encoding="utf-8")
+    (c / "00_README.md").write_text("# 焼き肉講座\n\n## 学習者とゴール\n\n- 軽さ：念入り\n\n## 全体の地図\n", encoding="utf-8")
     assert "数字を探す担当" in next_step.course_next(c)[1]
 
 

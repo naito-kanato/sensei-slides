@@ -9,7 +9,7 @@ import next_step
 def _course(tmp_path, light=True):
     (tmp_path / "X講座").mkdir()
     (tmp_path / "X講座" / "00_README.md").write_text(
-        "# X講座\n\n## 学習者とゴール\n\n- 学習者：初学者\n" + ("- 軽さ：軽量\n" if light else "") + "\n## 地図\n\n| 回 | 題 |\n|---|---|\n| 1 | はじめに |\n",
+        "# X講座\n\n## 学習者とゴール\n\n- 学習者：初学者\n" + ("- 軽さ：軽量\n" if light else "- 軽さ：念入り\n") + "\n## 地図\n\n| 回 | 題 |\n|---|---|\n| 1 | はじめに |\n",
         encoding="utf-8")
     w = tmp_path / "_work" / "X講座_01"
     w.mkdir(parents=True)

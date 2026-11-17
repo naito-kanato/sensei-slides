@@ -5,6 +5,7 @@ What generative AI actually computes, taught by the AI lecturer for the requeste
 
 ## 学習者とゴール
 
+- 軽さ：念入り
 - テーマへの詳しさ：初学者
 - 学習者のプロフィール（任意）：Has used chat AIs, but does not know how they work inside. No technical background assumed.
 - ゴール：Be able to say what a generative AI is computing, and to spot plausible-looking mistakes and check them while using it.

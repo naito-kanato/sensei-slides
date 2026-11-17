@@ -246,10 +246,10 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     else:
         res.append(("✔", "原稿のページ", html.name))
 
-    # 5. 完成後のレビュー（オプション「軽さ：軽量」の回は省く。検査のスクリプトで代える）
+    # 5. 完成後のレビュー（オプション「軽さ：標準」（担当2人）の回は省く。検査のスクリプトで代える）
     review = work / "review.md" if work else None
     if light and (not review or not review.exists()):
-        res.append(("✔", "完成後のレビュー", "軽量の回：別のレビューは省いた（オプション「軽さ：軽量」。検査のスクリプトで代えた）"))
+        res.append(("✔", "完成後のレビュー", "軽量の回：別のレビューは省いた（オプション「軽さ：標準」（担当2人）。検査のスクリプトで代えた）"))
     elif not review or not review.exists():
         res.append(("✘", "完成後のレビュー", "review.md が無い（手順5b のレビューの判定と直した点を書く）"))
     else:

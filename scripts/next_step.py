@@ -118,7 +118,7 @@ def usage_line(work: Path):
 
 
 def light_steps(work: Path, kind: str):
-    """オプション「軽さ：軽量」の回：設計の担当 → 制作の担当 → 渡す前の確認、の3段。"""
+    """オプション「軽さ：標準」（担当2人）の回：設計の担当 → 制作の担当 → 渡す前の確認、の3段。"""
     import budget
     out = []
 
@@ -133,7 +133,7 @@ def light_steps(work: Path, kind: str):
         add(False, "設計（軽量）", "まだ")
         if "軽量の設計の担当" in launched:
             return out, "軽量：設計の担当が書き終えるのを待つ（終わりの知らせを待つ。コマンドで様子を見ない）"
-        return out, (f"軽量（オプション「軽さ：軽量」）：設計の担当1人を起動（`brief.py 軽量の設計の担当 {w}`）。"
+        return out, (f"標準（担当2人）：設計の担当1人を起動（`brief.py 軽量の設計の担当 {w}`）。"
                      "数字・筋・事実の確かめまで1人で、検査の ✘ 0 まで")
     if kind == "memo":
         import check_memo
@@ -188,7 +188,6 @@ def steps_for(work: Path):
         add(False, "設計メモ（memo.md）", "まだ")
         one = source_based(work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md")
         return out, ("references/course.md 手順4⓪：" + (ONE if one else ANY)
-                     + "（オプション「軽さ：軽量」の回なら、先に講座の README の学習者とゴールに `- 軽さ：軽量` を書いて、もう一度 next_step。数字は軽量の設計の担当が探す）"
                      if not found else
                      "references/course.md 手順4①：設計の担当（`brief.py 設計の担当 <work>`）。data_N.md を見てから筋を決め、data.py merge で3b節に入れる")
     if not plan.exists():

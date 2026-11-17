@@ -3,6 +3,7 @@
     python <skill>/scripts/budget.py <work>                   # 今の回数・トークンと上限の一覧
     python <skill>/scripts/budget.py <work> --allow-tokens    # ユーザーが「続けてよい」と言ったとき：トークンの上限を1回分足す
     python <skill>/scripts/budget.py <work> --set-tokens "Codex 600万"   # ユーザーが上限を言ったとき：すぐ記録する（設計メモの前でも残る）
+    python <skill>/scripts/budget.py <work> --set-lightness 念入り     # ユーザーが「念入り」（担当を分けてレビューも）を選んだとき：構成案・設計メモの前でも残る
 
 数え方
   - 担当の起動：brief.py が依頼文を出すたびに <work>/budget_log.jsonl に1行（同じ担当・同じ分担が15分以内にもう一度なら数えない）
@@ -27,7 +28,7 @@ LOG = "budget_log.jsonl"
 ROLE_CAPS = {   # 1回の講座・1つの発表で、担当を起動してよい回数（標準）
     "数字を探す担当": 2, "図の担当": 2, "設計の担当": 1, "裏取りの担当": 2, "レビュー担当": 2, "直しの担当": 2,
     "制作役": 2, "仕上げ役": 1, "完成後のレビュー担当": 1, "仕上げの直しの担当": 2,
-    "軽量の設計の担当": 1, "軽量の制作の担当": 1,   # オプション「軽さ：軽量」の2人
+    "軽量の設計の担当": 1, "軽量の制作の担当": 1,   # オプション「軽さ：標準」（既定）の2人
 }
 LIGHT_MAKE_DECK = 3   # 軽量の回の make_deck の上限（制作の担当が --try で先に直してから組む）
 MAKE_DECK_CAPS = {"仕上げ": 4, "完成後のレビューのあとの直し": 2}
@@ -35,9 +36,13 @@ SAME_WITHIN = 15 * 60   # 同じ担当が依頼文を読み直しただけなら
 DEFAULT_PERCENT = 20
 
 
+CAREFUL = ("念入り",)   # オプション「軽さ」：担当を分け、設計メモと完成品を別の担当がレビューする流れ（前の標準）
+
+
 def light(work: Path) -> bool:
-    """オプション「軽さ：軽量」の回か（設計メモ・構成案の設定、講座の README の「- 軽さ：軽量」）。
-    軽量の回は担当2人（設計・制作）で作り、別のレビューは省く（検査のスクリプトで代える）。"""
+    """担当2人（設計・制作）で作る回か。オプション「軽さ」：標準（＝担当2人。前の「軽量」も同じ）／念入り（担当を分けてレビューも）。
+    設定が無ければ標準（担当2人）。
+    伏せた採点で、担当2人の講座は前の標準（レビューあり）とほぼ同じ出来で、費用は約3分の1だった。"""
     import re
     work = Path(work)
     v = ""
@@ -51,7 +56,14 @@ def light(work: Path) -> bool:
                 v = m.group(1) if m else ""
     except Exception:
         v = ""
-    return "軽量" in v
+    if not v:   # 構成案・設計メモの前：--set-lightness で記録した値
+        rows = [r for r in load(work) if r.get("type") == "set_lightness"]
+        v = rows[-1].get("value", "") if rows else ""
+    if any(k in v for k in CAREFUL):
+        return False
+    if "軽量" in v or "標準" in v:
+        return True
+    return not (work / "answers.md").exists()   # 既定は担当2人（講座も発表も）。質問回答のデッキは別の流れ
 
 
 def scale(work: Path) -> float | None:
@@ -269,6 +281,13 @@ def token_caps(work: Path) -> dict:
     return out
 
 
+def set_lightness(work: Path, value: str):
+    Path(work).mkdir(parents=True, exist_ok=True)
+    with (Path(work) / LOG).open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "ts": time.time(), "type": "set_lightness", "value": value},
+                           ensure_ascii=False) + "\n")
+
+
 def set_tokens(work: Path, value: str):
     Path(work).mkdir(parents=True, exist_ok=True)
     with (Path(work) / LOG).open("a", encoding="utf-8") as f:
@@ -482,6 +501,13 @@ def main(argv=None):
             return 1
         set_tokens(work, argv[k + 1])
         print(f"トークンの上限を、ユーザーの言った「{argv[k + 1]}」で記録した（設計メモ・構成案のオプションより先に使う）")
+    if "--set-lightness" in argv:
+        k = argv.index("--set-lightness")
+        if len(argv) <= k + 1 or argv[k + 1].startswith("-"):
+            print("--set-lightness のあとに 標準 か 念入り を書く")
+            return 1
+        set_lightness(work, argv[k + 1])
+        print(f"軽さを「{argv[k + 1]}」で記録した（構成案・設計メモの設定より後ろに見る）")
     if "--allow-role" in argv:
         k = argv.index("--allow-role")
         conv = argv[k + 1] if len(argv) > k + 1 and not argv[k + 1].startswith("-") else "all"
