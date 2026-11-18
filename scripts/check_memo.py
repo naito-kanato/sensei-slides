@@ -493,7 +493,7 @@ def check(memo: Path, require_review: bool = False):
                         + "（中身まで設計メモに書く。表なら行ごとのセル、判定なら はい・いいえ の行き先）"))
     except Exception:
         pass
-    try:   # 軽量の回（裏取りの担当がいない）：確認がまだの事実を残さない（試しで、「一般」にした数値の行が2回とも残り、往復が増えた）
+    try:   # 標準の回：確認がまだの事実は、設計のあとに最安のモデルの裏取りの担当が確かめる（next_step が facts.py split と起動を案内する）
         import budget
         import facts
         if budget.light(memo.parent):
@@ -501,9 +501,8 @@ def check(memo: Path, require_review: bool = False):
             i_ok = next((k for k, h in enumerate(fh) if "確認" in h), 3)
             todo = [r for r in frows if facts.unchecked(r, i_ok)]
             if todo:
-                res.append(("✘", "事実の確かめ", f"確認がまだの行が {len(todo)} 行（軽量の回は設計の担当が確かめる）："
-                            + " / ".join(f"「{r[0][:16]}」" for r in todo[:5])
-                            + "。数値・年・固有の名前を含む行は「一般」にできない。確かめて ○・△ にするか、確かめきれなければ ×（確かめられず）"))
+                res.append(("・", "事実の確かめ", f"確認がまだの行が {len(todo)} 行（設計のあとに、裏取りの担当（最安のモデル）が確かめる）。"
+                            "数値・年・固有の名前を含む行は「一般」にしない（確認は「未確認」のままでよい）"))
     except Exception:
         pass
     import check_outline  # 関数の中で読む（check_outline → check_memo の循環を避ける）

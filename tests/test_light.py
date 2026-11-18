@@ -24,10 +24,14 @@ def test_light_is_read_from_the_course_readme(tmp_path):
     assert not budget.light(_course(b, light=False))
 
 
-def test_next_step_sends_the_light_design_role_first(tmp_path):
+def test_next_step_sends_the_cheap_data_role_first(tmp_path):
+    """講座の標準の回：数字は最安のモデルの数字を探す担当が先に集め、そのあと設計の担当（Web は使わない）。"""
     w = _course(tmp_path)
     _, nxt = next_step.steps_for(w)
-    assert "軽量の設計の担当" in nxt and "数字を探す" not in nxt.split("：")[0]
+    assert nxt.startswith("数字を探す担当1人を起動") and "haiku" in nxt
+    (w / "data_1.md").write_text("## 見つからなかった：x\n", encoding="utf-8")
+    _, nxt = next_step.steps_for(w)
+    assert "軽量の設計の担当" in nxt and "Web は使わない" in nxt
 
 
 def test_light_briefs_are_whole(tmp_path, monkeypatch):
@@ -37,7 +41,7 @@ def test_light_briefs_are_whole(tmp_path, monkeypatch):
     d = brief.build("軽量の設計の担当", str(w), count=False)
     own = d.split("\n---\n# 手順書の節")[0]
     assert "{" not in own and "[講座]" not in own and "[節]" not in own
-    assert "① **数字**" in d and "facts.py split はしない" in d and "split --n" not in d
+    assert "① **数字**" in d and "Web を使わない" in d and "split --n" not in d
     assert "4a. 流れと設計メモの中身" in d                     # 設計の担当と同じ節を写す
     m = brief.build("軽量の制作の担当", str(w), count=False)
     assert "scaffold.py" in m and "--light" in m and "1回の応答で書く" in m and "3回まで" in m and "## 5. 描画して確認する" in m
@@ -50,8 +54,8 @@ def test_light_make_deck_cap(tmp_path):
     assert make_deck.run_budget(w)[2] == budget.LIGHT_MAKE_DECK
 
 
-def test_light_memo_stops_on_unchecked_facts(tmp_path):
-    """軽量の回は裏取りの担当がいないので、確認がまだの事実を check_memo が ✘ にする（標準の回は裏取りの段で見る）。"""
+def test_light_memo_sends_unchecked_facts_to_the_cheap_checker(tmp_path):
+    """標準の回：確認がまだの事実は ✘ にせず（「・」）、設計のあとに最安のモデルの裏取りの担当へ（next_step が split と起動を案内）。"""
     import check_memo
     src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
     m = src.replace("| 1750億、2048 トークン | T. Brown et al., \"Language Models are Few-Shot Learners\", NeurIPS 2020（GPT-3） | ○ |",
@@ -61,7 +65,9 @@ def test_light_memo_stops_on_unchecked_facts(tmp_path):
     lw = _course(tmp_path / "l")
     (lw / "memo.md").write_text(m, encoding="utf-8")
     items = {item: mk for mk, item, _ in check_memo.check(lw / "memo.md")}
-    assert items.get("事実の確かめ") == "✘"
+    assert items.get("事実の確かめ") == "・"
+    nxt = next_step.steps_for(lw)[1]
+    assert "facts.py split" in nxt and "裏取りの担当" in nxt and "haiku" in nxt
     (tmp_path / "s").mkdir()
     sw = _course(tmp_path / "s", light=False)
     (sw / "memo.md").write_text(m, encoding="utf-8")
