@@ -201,7 +201,8 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
             no_review = not require_review and budget.light(outline.parent)
         except Exception:
             no_review = False
-        if no_review:
+        if no_review:   # 標準（担当2人）：推論距離の担当が設計のあとに見る（next_step が起動を案内する）。抜けているのが見えるように1行出す
+            res.append(("・", "推論距離の手当て", f"まだ（標準の回は、設計のあとに推論距離の担当が {REVIEW} に書く。そのあと手当てを入れる）"))
             return res
         res.append(("✘" if require_review else "・", "推論距離の手当て",
                     f"{REVIEW} が無い（{what}のレビューの結果をそのまま残す）" if require_review else

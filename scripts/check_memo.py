@@ -304,6 +304,47 @@ def fact_count(text: str):
     return sum(1 for l in rows if any(c.strip() for c in l.strip("|").split("|")))
 
 
+LATIN_NAME = re.compile(r"(?<![A-Za-z0-9])(?=[A-Za-z0-9.-]*[A-Za-z]{2})[A-Za-z][A-Za-z0-9.-]*[A-Za-z0-9]|[A-Za-z]+-?\d[\w.-]*")
+
+
+EVERYDAY_NAMES = ("PowerPoint", "Word", "Excel", "Google", "Windows", "Mac", "iPhone", "Android", "YouTube", "LINE", "ChatGPT", "Wikipedia", "PDF", "URL", "Web")   # 説明の要らない身近な名前
+
+
+def term_order(text: str, rows, scaffold):
+    """用語の初出（推論距離の網。スクリプトで安く見られる所だけ。深い監査は推論距離の担当・レビュー担当がする）：
+    4節の用語が、本文の枚の青帯・要点に初めて出る枚で説明されているか（「語：」「語（」「語＝」が無く、あとの枚にあれば △）と、
+    青帯・要点の英字の名前（3字以上か数字入り）が4節にも前提知識の「知っている」にも無い（△）。
+    試しで、3枚目で「2048トークン」と使ってから4枚目でトークンを説明し、「BLOOM」は説明が無かった。"""
+    sec4 = re.search(r"^##\s*4\..*?(?=^##\s|\Z)", text, re.S | re.M)
+    gloss = sec4.group(0) if sec4 else ""
+    known = re.search(r"知っている\s*[＝=]\s*([^／\n]*)", text)
+    known = known.group(1) if known else ""
+    terms = [t.strip() for t in re.findall(r"(?:^-\s*|、)\s*([^\s、（(：:]{2,12})（", gloss, re.M)]
+    body = [(r["#"], scaffold.TAG.sub("", " / ".join(scaffold.col(r, *c) or "" for c in (("青帯（結論）", "青帯"), ("本文の要点",), ("図で見せるもの", "図")))))
+            for r in rows if (scaffold.col(r, "役割") or "本文") == "本文"]
+    late = []
+    for t in terms:
+        hits = [n for n, s in body if t in s]
+        if len(hits) < 2:
+            continue
+        defs = [n for n, s in body if re.search(r"(?:^|[/／]\s*|[（(])★?" + re.escape(t) + r"\s*[：:＝=（(]", s)]   # 要点の頭の「語：…」「語（…」
+        if defs and hits[0] not in defs and defs[0] > hits[0]:
+            late.append(f"{t}（{hits[0]}枚目で使い、{defs[0]}枚目で説明）")
+    names = []
+    for n, s in body:
+        for m in LATIN_NAME.findall(s):
+            if len(m) >= 3 or any(c.isdigit() for c in m):
+                if m not in gloss and m not in known and m not in EVERYDAY_NAMES and m not in [x for x, _ in names]:
+                    names.append((m, n))
+    out = []
+    if late:
+        out.append(("△", "用語の初出", "説明より前の枚で使っている：" + "・".join(late[:5]) + "（初めて出る枚で一言説明するか、言い方を変える。推論距離の担当も見る）"))
+    if names:
+        out.append(("△", "説明の無い英字の名前", "4節にも前提知識にも無い：" + "・".join(f"{m}（{n}枚目）" for m, n in names[:8])
+                    + "（4節に一言の説明を足し、初めて出る枚でも言う。知っている側の名前なら前提知識に足す）"))
+    return out
+
+
 def check(memo: Path, require_review: bool = False):
     """[(✔/✘/△, 項目, 説明)] を返す。require_review＝レビュー結果が無ければ ✘（渡す前の確認）。"""
     text = memo.read_text(encoding="utf-8")
@@ -394,6 +435,7 @@ def check(memo: Path, require_review: bool = False):
         if many:
             res.append(("✘", "文の塊の数", "塊が3つを超える枚：" + "・".join(many[:6]) + "。要点（行）は3〜4個のまま、見出しは2〜3つに："
                         "同じ見出しの下に2行まとめる（「例：a」「例：b」）か、補足の要点は原稿へ（描画の検査は塊4つで ERROR。制作の担当が全部の枚を組み直していた）"))
+        res += term_order(text, srows, scaffold)
         import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
         bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
         if bad:

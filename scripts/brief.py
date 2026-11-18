@@ -225,7 +225,8 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
                      "ほかの人の図・figs_N.py は読まない・書かない")
     vals = {"skill": rel(SKILL), "work": Path(work).as_posix(), "course": course, "plan_name": plan_name,
             "review_name": review_name, "n": n, "role": role, "kind": k, "cwd": Path.cwd().as_posix(),
-            "cards": cards, "part_note": part_note, "figfile": figfile, "figpart": figpart}
+            "cards": cards, "part_note": part_note, "figfile": figfile, "figpart": figpart,
+            "check_kind": "memo" if k == "講座" else "outline"}
     text = HEAD.format(**vals) + "\n" + "\n".join(lines).format(**vals)
     readme = (Path(target).resolve().parents[1] / course / "00_README.md") if role not in NO_WORK and k == "講座" else None
     lang = plan_language(plan, note, readme)

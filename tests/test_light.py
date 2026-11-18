@@ -104,7 +104,7 @@ def test_light_presentation_shows_the_outline_first(tmp_path):
     root = Path(__file__).resolve().parents[1]
     w = tmp_path / "_work" / "ゼミ"
     w.mkdir(parents=True)
-    for f in ("outline.md", "data_1.md"):
+    for f in ("outline.md", "data_1.md", "outline_review.md"):
         if (root / "examples" / "zemi" / f).exists():
             shutil.copy(root / "examples" / "zemi" / f, w / f)
     p = w / "outline.md"
@@ -164,13 +164,14 @@ def test_scaffold_lists_todos_and_fills_notes(tmp_path):
     assert done == [2] and left == [1] and "二枚目の原稿\n\n※ 出典：A" in t and "もう書いた" in t
 
 
-def test_light_memo_has_no_review_pending_line(tmp_path):
+def test_light_memo_shows_the_audit_is_pending(tmp_path):
     """担当2人の回はレビューが無いので、「推論距離の手当て：まだレビュー前」を出さない。"""
     import check_memo
     src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
     w = _course(tmp_path)
     (w / "memo.md").write_text(src, encoding="utf-8")
-    assert "推論距離の手当て" not in {item for _, item, _ in check_memo.check(w / "memo.md")}
+    got = {item: (mk, msg) for mk, item, msg in check_memo.check(w / "memo.md")}
+    assert got["推論距離の手当て"][0] == "・" and "推論距離の担当" in got["推論距離の手当て"][1]   # ✘ にはしない（next_step が起動を案内する）
 
 
 def test_scaffold_builds_parts_from_the_memo():
@@ -254,3 +255,32 @@ def test_deepen_the_question():
     assert story.deepen_check(dict(ok, それで=("—", None)), "outline")[0] == "✘"
     assert story.deepen_check(dict(base, 対立=("なし（理由：教科書の輪読で、結果を比べない）", None)), "outline")[0] == "✔"
     assert story.deepen_check(dict(base, 対立=("なし", None)), "outline")[0] == "✘"
+
+
+def test_light_flow_runs_the_inference_audit(tmp_path):
+    """標準（担当2人）でも推論距離は見る：設計の検査が通ったら推論距離の担当、穴が出たら設計の担当に手当てを頼む。"""
+    import shutil
+    root = Path(__file__).resolve().parents[1]
+    w = tmp_path / "_work" / "ゼミ"
+    w.mkdir(parents=True)
+    for f in ("outline.md", "data_1.md"):
+        shutil.copy(root / "examples" / "zemi" / f, w / f)
+    p = w / "outline.md"
+    p.write_text(p.read_text(encoding="utf-8").replace("| 軽さ | 念入り |", "| 軽さ | 標準 |"), encoding="utf-8")
+    assert next_step.steps_for(w)[1].startswith("推論距離の担当1人を起動")
+    (w / "outline_review.md").write_text("## 推論距離\n\n- [4] 「A ⇒ B」｜用語｜語｜補う前提：x｜使う所：4｜架け方：括弧\n", encoding="utf-8")
+    nxt = next_step.steps_for(w)[1]
+    assert nxt.startswith("軽量：設計の担当に続けて頼む") and "推論距離の手当て" in nxt and "inference-distance 5" in nxt
+    d = brief.build("推論距離の担当", str(w), count=False)
+    assert "## 3. 監査" in d and "outline_review.md" in d and "資料の文" not in d
+
+
+def test_term_order_net():
+    """用語の初出：説明より前の枚で使った語と、説明の無い英字の名前を △。"""
+    import check_memo
+    import scaffold
+    text = "## 1. x\n\n- 聞き手の前提知識：知っている＝AI／知らない＝x\n\n## 4. 用語\n\n- トークン（語の一部）\n\n## 5. y\n"
+    rows = [{"#": 2, "役割": "本文", "本文の要点": "文脈は2048トークン / BLOOM の結果"},
+            {"#": 3, "役割": "本文", "本文の要点": "トークン：語・語の一部"}]
+    res = {item: msg for _, item, msg in check_memo.term_order(text, rows, scaffold)}
+    assert "トークン（2枚目で使い、3枚目で説明）" in res["用語の初出"] and "BLOOM（2枚目）" in res["説明の無い英字の名前"]
