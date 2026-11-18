@@ -139,20 +139,12 @@ def light_steps(work: Path, kind: str):
     w = work.as_posix()
     launched = {r.get("role") for r in budget.load(work)}
     plan = work / ("memo.md" if kind == "memo" else "outline.md")
-    cheap = "モデルはいちばん安いもの（Claude Code なら Agent の model: haiku。データ取りだけは必ず最安）"
     if not plan.exists():
-        if kind == "memo" and not list(work.glob("data_*.md")):   # 講座：数字は最安のモデルの担当が先に集める（設計の担当は Web を使わない）
-            add(False, "数字（最安のモデル）", "まだ")
-            if "数字を探す担当" in launched:
-                return out, "数字を探す担当が書き終えるのを待つ（終わりの知らせを待つ）"
-            return out, (f"数字を探す担当1人を起動（`brief.py 数字を探す担当 {w} --n 1`。{cheap}）。"
-                         "戻ったら next_step をもう一度")
         add(False, "設計（軽量）", "まだ")
         if "軽量の設計の担当" in launched:
             return out, "軽量：設計の担当が書き終えるのを待つ（終わりの知らせを待つ。コマンドで様子を見ない）"
-        return out, (f"標準：設計の担当1人を起動（`brief.py 軽量の設計の担当 {w}`）。"
-                     + ("data_N.md を読んで筋・設計メモまで（Web は使わない。事実の確かめは裏取りの担当）、検査の ✘ 0 まで" if kind == "memo"
-                        else "筋・事実の確かめまで1人で、検査の ✘ 0 まで"))
+        return out, (f"標準（担当2人）：設計の担当1人を起動（`brief.py 軽量の設計の担当 {w}`）。"
+                     "数字・筋・事実の確かめまで1人で、検査の ✘ 0 まで")
     if kind == "memo":
         import check_memo
         import facts
@@ -163,29 +155,15 @@ def light_steps(work: Path, kind: str):
     else:
         import check_outline
         bad, todo = _fails(check_outline.check(plan)), []
-    add(not bad, "設計（軽量）", "；".join(bad[:3]))
+    add(not bad and not todo, "設計（軽量）", "；".join(bad[:3]) + (f"（確認がまだの事実 {len(todo)} 行）" if todo else ""))
     review = work / ("memo_review.md" if kind == "memo" else "outline_review.md")
-    if bad:
+    if bad or todo:
         if review.exists() and "推論距離の担当" in launched and not (work / "build.py").exists():
             # 推論距離の担当が手当てまで入れる（設計の担当の長い会話を読み直さない）。手当てで出た ✘ もこの担当が直す
             return out, ("推論距離の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
                          + "（手当ては `guide.py inference-distance 5`。青帯・話の筋を変えないと直らない筋の穴だけは、設計の担当に【続けて頼む】）")
-        return out, ("軽量：設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3]))
-    # 講座：事実の確かめは最安のモデルの裏取りの担当（設計の担当の長い会話で Web を読まない）
-    parts = sorted(p for p in work.glob("facts_*.md") if p.name != "facts_diff.md")
-    add(not todo, "事実の確かめ（最安のモデル）", f"確認がまだの行 {len(todo)}" if todo else "")
-    if todo:
-        if not parts:
-            return out, (f"`python {SKILL}/scripts/facts.py split {w} --n 1` を走らせ、裏取りの担当1人を起動（`brief.py 裏取りの担当 {w} --n 1`。{cheap}）。"
-                         "戻ったら next_step をもう一度")
-        if "裏取りの担当" not in launched:
-            return out, f"裏取りの担当1人を起動（`brief.py 裏取りの担当 {w} --n 1`。{cheap}）。戻ったら next_step をもう一度"
-        return out, (f"裏取りの担当が戻ったら `python {SKILL}/scripts/facts.py merge {w}` で設計メモに戻し、next_step をもう一度"
-                     "（確認がまだの行が残っていれば merge が止まって知らせる：そのときは裏取りの担当に残った行を【続けて頼む】）")
-    diff = work / "facts_diff.md"
-    if diff.exists() and diff.read_text(encoding="utf-8").strip() and not _newer(plan, diff):
-        return out, ("軽量：設計の担当に続けて頼む（【続けて頼む】）：facts_diff.md の、確かめた値が要点と違った行に合わせて、"
-                     "その行を使う枚の青帯・要点を直す（check_memo の ✘ 0 まで）")
+        return out, ("軽量：設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
+                     + (f"。確認がまだの事実 {len(todo)} 行をその場で確かめる" if todo else ""))
     build = work / "build.py"
     # 推論距離（スキルの要）：設計の担当とは別の目で推論距離を見て、手当てまで入れる小さな担当（会話が短いので、設計の担当に続けて頼むより安い）
     if not build.exists():
@@ -376,9 +354,8 @@ def course_next(course: Path):
     n = max(int(m[:2]) for m in made) + 1 if made else 1
     w = f"_work/{course.name}_{n:02d}"
     import budget
-    if budget.light(root / f"{course.name}_{n:02d}"):   # 既定（軽さ：標準）：数字は最安のモデルの担当が集め、設計の担当は Web を使わない
-        first = (f"数字を探す担当1人を起動（`brief.py 数字を探す担当 {w} --n 1`。モデルはいちばん安いもの：Claude Code なら haiku）→ "
-                 f"軽量の設計の担当が data_N.md を読んで {w}/memo.md を書く（next_step が順に案内する）")
+    if budget.light(root / f"{course.name}_{n:02d}"):   # 既定（軽さ：標準）：設計の担当が数字も探す
+        first = f"軽量の設計の担当を起動（`brief.py 軽量の設計の担当 {w}`）。数字・筋・事実の確かめまで1人で {w}/memo.md を書く"
     else:
         first = ((ONE if source_based(readme) else ANY).replace("<work>", w) + " → "
                  f"設計の担当が data_N.md を見て {w}/memo.md を書く（references/course.md 手順4）")
