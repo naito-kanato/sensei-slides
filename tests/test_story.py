@@ -16,7 +16,7 @@ def marks(text):
 
 
 def test_example_has_story(outline):
-    assert marks(outline) == {"話の筋": "✔", "前の枚から": "✔", "話の型": "✔", "型と図": "✔"}
+    assert marks(outline) == {"問いの深め": "✔", "話の筋": "✔", "前の枚から": "✔", "話の型": "✔", "型と図": "✔"}
 
 
 def test_missing_story_blocks(outline):
