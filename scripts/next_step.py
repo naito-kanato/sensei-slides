@@ -174,18 +174,18 @@ def light_steps(work: Path, kind: str):
     # 講座：事実の確かめは最安のモデルの裏取りの担当（設計の担当の長い会話で Web を読まない）
     parts = sorted(p for p in work.glob("facts_*.md") if p.name != "facts_diff.md")
     add(not todo, "事実の確かめ（最安のモデル）", f"確認がまだの行 {len(todo)}" if todo else "")
-    if todo:
-        if not parts:
-            return out, (f"`python {SKILL}/scripts/facts.py split {w} --n 1` を走らせ、裏取りの担当1人を起動（`brief.py 裏取りの担当 {w} --n 1`。{cheap}）。"
-                         "戻ったら next_step をもう一度")
+    if todo:   # split・確かめ・merge は裏取りの担当が1人で（メインが取り次ぐと、長いメインの会話の呼び出しが増えた）
         if "裏取りの担当" not in launched:
-            return out, f"裏取りの担当1人を起動（`brief.py 裏取りの担当 {w} --n 1`。{cheap}）。戻ったら next_step をもう一度"
-        return out, (f"裏取りの担当が戻ったら `python {SKILL}/scripts/facts.py merge {w}` で設計メモに戻し、next_step をもう一度"
-                     "（確認がまだの行が残っていれば merge が止まって知らせる：そのときは裏取りの担当に残った行を【続けて頼む】）")
+            return out, (f"裏取りの担当1人を起動（`brief.py 裏取りの担当 {w} --n 1`。{cheap}）。split から merge まで担当がする。"
+                         "メインは facts.py を走らせない。戻ったら next_step をもう一度")
+        return out, ("裏取りの担当が戻るのを待つ。戻ったのに確認がまだの行が残るなら、裏取りの担当に【続けて頼む】（merge が通るまで）")
     diff = work / "facts_diff.md"
-    if diff.exists() and diff.read_text(encoding="utf-8").strip() and not _newer(plan, diff):
+    dtext = diff.read_text(encoding="utf-8") if diff.exists() else ""
+    if re.search(r"^- 事実", dtext, re.M) and not re.search(r"^- 直した", dtext, re.M):
+        # 直したかは facts_diff.md の「- 直した：…」の行で見る（merge は memo.md と facts_diff.md を同じ秒に書くので、時刻では分からない）
+        add(False, "裏取りで違った値の直し", "まだ")
         return out, ("軽量：設計の担当に続けて頼む（【続けて頼む】）：facts_diff.md の、確かめた値が要点と違った行に合わせて、"
-                     "その行を使う枚の青帯・要点を直す（check_memo の ✘ 0 まで）")
+                     "その行を使う枚の青帯・要点を直し（check_memo の ✘ 0 まで）、facts_diff.md の終わりに「- 直した：[枚] 何をどう」を1行ずつ足す")
     build = work / "build.py"
     # 推論距離（スキルの要）：設計の担当とは別の目で推論距離を見て、手当てまで入れる小さな担当（会話が短いので、設計の担当に続けて頼むより安い）
     if not build.exists():

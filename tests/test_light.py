@@ -67,7 +67,9 @@ def test_light_memo_sends_unchecked_facts_to_the_cheap_checker(tmp_path):
     items = {item: mk for mk, item, _ in check_memo.check(lw / "memo.md")}
     assert items.get("事実の確かめ") == "・"
     nxt = next_step.steps_for(lw)[1]
-    assert "facts.py split" in nxt and "裏取りの担当" in nxt and "haiku" in nxt
+    assert nxt.startswith("裏取りの担当1人を起動") and "split から merge まで担当がする" in nxt and "haiku" in nxt
+    d = brief.build("裏取りの担当", str(lw), n="1", count=False)   # 標準の回の依頼文：split・確かめ・merge を1人で
+    assert 'facts.py" split' in d and 'facts.py" merge' in d and "1字だけ" in d and "[標準]" not in d and "facts_{n}" not in d
     (tmp_path / "s").mkdir()
     sw = _course(tmp_path / "s", light=False)
     (sw / "memo.md").write_text(m, encoding="utf-8")
@@ -309,3 +311,16 @@ def test_copying_the_bundled_example_is_stopped(tmp_path, monkeypatch):
     cw = _course(tmp_path / "c") if (tmp_path / "c").mkdir() is None else None
     shutil.copy(root / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md", cw / "memo.md")
     assert "見本の写し" in {item for mk, item, _ in check_memo.check(cw / "memo.md") if mk == "✘"}
+
+
+def test_fact_diffs_go_back_to_the_designer_until_marked(tmp_path):
+    """裏取りで値が違った行（facts_diff.md）は、「- 直した」の行が付くまで設計の担当に戻す（時刻では見ない）。"""
+    src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
+    w = _course(tmp_path)
+    (w / "memo.md").write_text(src, encoding="utf-8")
+    (w / "facts_diff.md").write_text("# 裏取り\n\n- 事実8（使う枚：7）：締め切り｜2023年12月｜違う\n", encoding="utf-8")
+    nxt = next_step.steps_for(w)[1]
+    assert nxt.startswith("軽量：設計の担当に続けて頼む") and "facts_diff.md" in nxt and "直した" in nxt
+    with (w / "facts_diff.md").open("a", encoding="utf-8") as f:
+        f.write("- 直した：[7] 締め切りを2023年12月に\n")
+    assert "facts_diff" not in next_step.steps_for(w)[1]

@@ -196,6 +196,15 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
                 continue
             line = line[4:]
         line = line[len(mine):] if line.startswith(mine) else line
+        if line.startswith("[標準]") or line.startswith("[念入り]"):   # オプション「軽さ」で変わる行
+            try:
+                import budget
+                is_light = role in NO_WORK or budget.light(Path(target))
+            except Exception:
+                is_light = True
+            if line.startswith("[標準]") != is_light:
+                continue
+            line = line[4:] if line.startswith("[標準]") else line[5:]
         if line.startswith("[直す]") or line.startswith("[測る]"):   # 推論距離：直す回と、測るだけの回（inference-distance.md 8節）
             if line.startswith("[測る]") != measure:
                 continue
