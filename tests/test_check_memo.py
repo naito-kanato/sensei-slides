@@ -105,7 +105,9 @@ def test_course_default_level_is_zero(memo):
     assert "[2]" in msg and "[3]" not in msg     # 深（3枚目）は手当てを求めない
 
 
-def test_memo_review_required_only_at_the_end(memo):
+def test_memo_review_required_only_at_the_end(memo, monkeypatch):
+    import budget
+    monkeypatch.setattr(budget, "light", lambda work: False)   # 念入り（レビューがある流れ）
     assert marks(cm.check(memo))["推論距離の手当て"] == "・"
     assert marks(cm.check(memo, require_review=True))["推論距離の手当て"] == "✘"
 

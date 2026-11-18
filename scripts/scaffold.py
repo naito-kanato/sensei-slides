@@ -807,6 +807,67 @@ def merge(work: Path):
     return sorted(set(done)), refused
 
 
+NOTE_SEC = re.compile(r"^## (\d+)\s*\n(.*?)(?=^## \d+|\Z)", re.S | re.M)
+TODO_LINE = re.compile(r"^TODO[ \t]*$", re.M)
+
+
+def notes_todo(work: Path) -> list:
+    """notes.md の TODO の枚：「[N] 目安…」（枚の頭のコメントを1行に縮めて）。"""
+    f = work / "notes.md"
+    if not f.exists():
+        return []
+    out, seen = [], []
+    for m in NOTE_SEC.finditer(f.read_text(encoding="utf-8")):
+        if TODO_LINE.search(m.group(2)):
+            c = re.search(r"<!--(.*?)-->", m.group(2), re.S)
+            parts = [x.strip() for x in re.sub(r"\s+", " ", c.group(1) if c else "").split("／") if x.strip()]
+            keep = []
+            for x in parts:   # どの枚にも同じ言い方（目安・「1文目で…」）は最初の1回だけ出す
+                x2 = x.replace("（1文目でこの語のつながりを言う）", "")
+                if x2.startswith("目安"):
+                    if x2 in seen:
+                        continue
+                    seen.append(x2)
+                keep.append(x2)
+            out.append(f"[{m.group(1)}] " + " ／ ".join(keep)[:220])
+    if out:
+        out.append("（前の枚から：1文目でこの語のつながりを言う。目安が書かれていない枚は、上の枚と同じ目安）")
+    return out
+
+
+def figs_todo(work: Path) -> list:
+    """figs.py の TODO の図：「f_s02（14行目）：図の案…」。"""
+    f = work / "figs.py"
+    if not f.exists():
+        return []
+    t = f.read_text(encoding="utf-8").splitlines()
+    out = []
+    for i, l in enumerate(t):
+        m = re.match(r"def (f_\w+)\(", l)
+        if m and i + 1 < len(t) and "TODO" in t[i + 1]:
+            out.append(f"{m.group(1)}（{i + 1}行目）：" + t[i + 1].strip().strip('"').replace("TODO ", "", 1)[:200])
+    return out
+
+
+def fill_notes(work: Path, src: Path):
+    """「## N」ごとの原稿を、notes.md のその枚の TODO の行に入れる（ほかの行はそのまま）。入れた枚と、まだ TODO の枚を返す。"""
+    f = work / "notes.md"
+    text = f.read_text(encoding="utf-8")
+    new = {int(m.group(1)): m.group(2).strip() for m in NOTE_SEC.finditer(src.read_text(encoding="utf-8")) if m.group(2).strip()}
+    done = []
+
+    def put(m):
+        n, body = int(m.group(1)), m.group(2)
+        if n in new and TODO_LINE.search(body):
+            done.append(n)
+            body = TODO_LINE.sub(lambda _: new[n], body, count=1)
+        return f"## {m.group(1)}\n" + body
+    text = NOTE_SEC.sub(put, text)
+    f.write_text(text, encoding="utf-8")
+    left = [int(m.group(1)) for m in NOTE_SEC.finditer(text) if TODO_LINE.search(m.group(2))]
+    return done, left
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if not argv:
@@ -859,7 +920,7 @@ def main(argv=None):
                 return code
         main([str(work), "--figs"])
         for title, cmd in (("図の下書きの雛形", py + [str(HERE / "figdraft.py"), str(work)]),
-                           ("設計メモの話の順番・事実と出典・確認問題", py + [str(HERE / "guide.py"), str(work / "memo.md"), "2", "3", "6"])):
+                           ("設計メモの話の順番・事実と出典", py + [str(HERE / "guide.py"), str(work / "memo.md"), "2", "3"])):   # 確認問題（6節）はもう build.py・notes.md に入れた
             if title.startswith("設計メモ") and not (work / "memo.md").exists():
                 cmd = py + [str(HERE / "guide.py"), str(work / "outline.md"), "2"]
             r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -868,15 +929,38 @@ def main(argv=None):
         b = btxt.splitlines()
         todo = [f"{i}: {l.strip()[:120]}" for i, l in enumerate(b, 1) if "TODO" in l and not l.startswith('"""')]
         print("\n===== build.py に残った TODO\n" + ("\n".join(todo) or "なし"))
+        # notes.md・figs.py の TODO も、ここに並べる（担当がファイルを全文で開かなくて済むように。コミュニケーション講座の試しで、
+        # 制作の担当が build.py・figs.py・notes.md を cat して、その約4万字を以後の毎回読み直していた）
+        print("\n===== notes.md の TODO の枚（原稿を書く枚と、その枚の目安）\n" + ("\n".join(notes_todo(work)) or "なし")
+              + f"\n→ 原稿は「## N」の見出しごとに1つのファイルに書き、`python \"{HERE.as_posix()}/scaffold.py\" {work.as_posix()} --fill-notes <そのファイル>` で"
+              "入れる（notes.md は開かない。TODO の所だけ置き換わり、※ の行・確認問題の原稿は残る）")
+        print("\n===== figs.py の TODO の図\n" + ("\n".join(figs_todo(work)) or "なし"))
         common = work / "cards" / "00_共通.md"
         if common.exists():
             print("\n===== 書き方の共通の決まり（cards/00_共通.md）\n" + common.read_text(encoding="utf-8").strip())
-        for k, (x0, y0) in sorted(blocks(btxt).items()):   # TODO の枚だけ、その枚の部品の書き方（カードの節）
+        # TODO の枚の部品の書き方（カードの節）を、同じ行は1回だけにまとめて出す（枚ごとに出すと s.block などが7回並んだ）
+        uses, seen, ks = [], set(), []
+        for k, (x0, y0) in sorted(blocks(btxt).items()):
             card = work / "cards" / f"{k:02d}.md"
             if "TODO" in btxt[x0:y0] and card.exists():
                 m = re.search(r"^## 使う部品の書き方.*?(?=^## |\Z)", card.read_text(encoding="utf-8"), re.S | re.M)
                 if m:
-                    print(f"\n===== {k}枚目の部品の書き方\n" + m.group(0).strip())
+                    ks.append(k)
+                    for line in m.group(0).strip().splitlines()[1:]:
+                        if line.strip() and line not in seen:
+                            seen.add(line)
+                            uses.append(line)
+        if uses:
+            print(f"\n===== TODO の枚（{'・'.join(map(str, ks))}）で使う部品の書き方（これ以上の説明は要るときだけ `guide.py structures`）\n"
+                  + "\n".join(uses))
+        return 0
+    if "--fill-notes" in argv:
+        k = argv.index("--fill-notes")
+        if k + 1 >= len(argv):
+            print("✘ --fill-notes <「## N」ごとに原稿を書いたファイル>")
+            return 1
+        done, left = fill_notes(work, Path(argv[k + 1]))
+        print(f"入れた：{'・'.join(map(str, done)) or 'なし'}" + (f"。まだ TODO の枚：{'・'.join(map(str, left))}" if left else "。notes.md の TODO は無い"))
         return 0
     if "--figs" in argv:   # 軽量の回：figs.py の出発点（データの棒グラフは描き上げ、ほかは TODO）。もうあれば書かない
         fp = work / "figs.py"

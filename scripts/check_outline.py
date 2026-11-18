@@ -196,6 +196,13 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
                 else f"詳しさ {fam}・前提知識あり・丁寧さ {lv}"))
     rv = outline.with_name(REVIEW)
     if not rv.exists():
+        try:   # 標準（担当2人）にはレビューが無いので、「まだレビュー前」は出さない（雑音になる）
+            import budget
+            no_review = not require_review and budget.light(outline.parent)
+        except Exception:
+            no_review = False
+        if no_review:
+            return res
         res.append(("✘" if require_review else "・", "推論距離の手当て",
                     f"{REVIEW} が無い（{what}のレビューの結果をそのまま残す）" if require_review else
                     f"まだレビュー前（レビューのあと、結果を {REVIEW} に残してもう一度走らせる）"))

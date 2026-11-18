@@ -135,3 +135,39 @@ def test_opening_mystery_points_to_the_surprise():
     assert [m for m, _, _ in res] == ["✔"], res                # 謎の枚の約55%は、4枚目のグラフと くり返しに数えない
     ends = teaser.replace("| 表面は弱まり P は TI より低い |", "| 混成の抑制がトポロジーを抑える？ |")
     assert {i: m for m, i, _ in check_memo.design_content(head + ends + tail, True)}.get("結びの答え") == "△"
+
+
+def test_quoted_speech_is_not_prose():
+    """会話の例（かぎかっこの中）と、動詞の形の名前を＋で並べた行は、文章調・動詞止めに数えない。"""
+    import check_layout as c
+    c.LANG = "ja"
+    assert not c.SENTENCE_END.search(c.unquoted("例：「趣味は？」「映画です」"))
+    assert c.SENTENCE_END.search(c.unquoted("話が止まってしまいます"))
+    assert c.unquoted("「すごい！」") == ""
+
+
+def test_scaffold_lists_todos_and_fills_notes(tmp_path):
+    """scaffold --light の準備：notes.md・figs.py の TODO を一覧にし、--fill-notes で原稿を TODO の所に入れる（※ の行は残す）。"""
+    import scaffold
+    w = tmp_path / "w"
+    w.mkdir()
+    (w / "notes.md").write_text("## 1\n<!-- 表紙の枚 -->\n\nTODO\n\n## 2\n<!-- 目安 400字前後（導入） ／ 前の枚から：そして（詳しく）（1文目でこの語のつながりを言う） -->\n\nTODO\n\n※ 出典：A\n\n## 3\n<!-- 目安 400字前後（導入） ／ 前の枚から：しかし（壁）（1文目でこの語のつながりを言う） -->\n\nもう書いた\n", encoding="utf-8")
+    (w / "figs.py").write_text('def f_s02():\n    """TODO 図の案：仕組み：模式図：x\n    """\n    raise NotImplementedError\n', encoding="utf-8")
+    todo = scaffold.notes_todo(w)
+    assert todo[0].startswith("[1]") and todo[1].startswith("[2] 目安") and not any(t.startswith("[3]") for t in todo)
+    assert "1文目でこの語" not in todo[1]
+    assert scaffold.figs_todo(w)[0].startswith("f_s02（1行目）：図の案：仕組み")
+    src = tmp_path / "n.md"
+    src.write_text("## 2\n二枚目の原稿\n", encoding="utf-8")
+    done, left = scaffold.fill_notes(w, src)
+    t = (w / "notes.md").read_text(encoding="utf-8")
+    assert done == [2] and left == [1] and "二枚目の原稿\n\n※ 出典：A" in t and "もう書いた" in t
+
+
+def test_light_memo_has_no_review_pending_line(tmp_path):
+    """担当2人の回はレビューが無いので、「推論距離の手当て：まだレビュー前」を出さない。"""
+    import check_memo
+    src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
+    w = _course(tmp_path)
+    (w / "memo.md").write_text(src, encoding="utf-8")
+    assert "推論距離の手当て" not in {item for _, item, _ in check_memo.check(w / "memo.md")}

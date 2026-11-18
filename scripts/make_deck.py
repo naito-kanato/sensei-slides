@@ -284,7 +284,14 @@ def main(argv=None):
     if runs > 6 and (n_err or n_warn or n_x):
         print(f"△ make_deck は {runs} 回目。出た所を1回で全部直す（直す前に、上の一覧を全部読んでから手を付ける）。"
               "同じ枚が何度も出るなら、本文を削るか図を小さくするなど、形を変える")
-    last = final or not (n_err or n_warn or n_x or "←" in lay) or used + 1 >= cap
+    # 標準（担当2人）は ERROR 0・✘ 0 で止める。WARN・← は返答に並べるだけ（念入りは WARN まで直す）。
+    # コミュニケーション講座の試しで、合格のあと WARN を追った3回が新しい ✘・ERROR を生み、制作の担当の読み直しの4割を使った
+    try:
+        stop_at_pass = stage == "仕上げ" and budget.light(work)
+    except Exception:
+        stop_at_pass = False
+    todo = n_err or n_x or (not stop_at_pass and (n_warn or "←" in lay))
+    last = final or not todo or used + 1 >= cap
     if last:
         code, text = run([sys.executable, "-X", "utf8", str(HERE / "notes_html.py"), str(pptx)], pptx.parent)
         saved = re.findall(r"saved (.+?\.html)", text)
@@ -301,9 +308,15 @@ def main(argv=None):
         print(f"原稿HTML：作った（{Path(saved[-1]).name}）" if code == 0 and saved
               else "✘ 原稿HTMLが作れなかった：" + " / ".join(short(text, 3) or text.strip().splitlines()[-3:])
               + f"（python {HERE.as_posix()}/notes_html.py \"{pptx.name}\" を単独で走らせる）")
-    nxt = ("上に出た所を**全部**（ERROR・WARN・←・✘、直せる △ も）直してから、もう一度だけ make_deck.py（1か所ずつ回さない）"
-           if (n_err or n_warn or n_x or "←" in lay)
-           else "完成後のレビュー（手順5b。レビュー担当には render/grid-*.jpg を見せる）")
+    if todo:
+        nxt = ("上に出た ERROR・✘ を**全部**直してから、もう一度だけ make_deck.py（1か所ずつ回さない。WARN・← は直さなくてよい：標準の流れは ERROR 0・✘ 0 で止める）"
+               if stop_at_pass else
+               "上に出た所を**全部**（ERROR・WARN・←・✘、直せる △ も）直してから、もう一度だけ make_deck.py（1か所ずつ回さない）")
+    elif stop_at_pass:
+        nxt = ("できあがり。ここで止めて返答を書く（WARN・← は直さず、返答に1行ずつ並べる。直すかはユーザーが決める）"
+               if (n_warn or "←" in lay) else "できあがり。ここで止めて返答を書く")
+    else:
+        nxt = "完成後のレビュー（手順5b。レビュー担当には render/grid-*.jpg を見せる）"
     print(f"\n=> ERROR {n_err}・WARN {n_warn}・原稿と構成案どおりか ✘ {n_x}・△ {len(notes) - n_x}（{stage} {used + 1}/{cap} 回目"
           + ("。完成後のレビューのあとの直しは別に数える" if stage == "仕上げ" else "") + f"）。次：{nxt}")
     return 1 if (n_err or n_x or lay_code) else 0

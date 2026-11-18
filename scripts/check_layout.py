@@ -196,6 +196,15 @@ def body_amount(items):
 SENTENCE_END = re.compile(r"(ます|です|する|しない|できる|できない|ない|いる|ある|れる|られる|なる|える|める|った|だ|。)$")
 
 
+QUOTED = re.compile(r"「[^」]*」|『[^』]*』|“[^”]*”")
+
+
+def unquoted(t):
+    """かぎかっこの中（会話の例・人の言葉の引用）を除いた行。話し言葉の例は文章調・動詞止めに数えない
+    （コミュニケーション講座で「趣味は？」「映画です」が文章調の WARN になり、直しを1回むだにした）。"""
+    return QUOTED.sub("", t).rstrip("）)]：: 　")
+
+
 def sentence_lines(items):
     """文章調の行（文末が動詞・助動詞・「。」で終わる本文の行）。スライドの本文は体言止め・短い言い切りにする（style-guide 2節）。
     過去の質問回答デッキが「〜できない」「〜でいられる」の文章調で書かれ、読みにくいと指摘された反省。"""
@@ -204,8 +213,8 @@ def sentence_lines(items):
         if not is_body(s):
             continue
         for t in paragraphs(s):
-            u = t.rstrip("）」』)]")
-            if (SENTENCE_END.search(u) if LG.is_japanese(LANG) else LG.is_sentence(t, LANG)):
+            u = unquoted(t)
+            if u and (SENTENCE_END.search(u) if LG.is_japanese(LANG) else LG.is_sentence(t, LANG)):
                 out.append(t)
     return out
 
@@ -223,8 +232,10 @@ def verb_lines(items):
         if not is_body(s):
             continue
         for t in paragraphs(s):
-            u = t.rstrip("）」』)]")
-            if not SENTENCE_END.search(u) and VERB_END.search(u):
+            u = unquoted(t)
+            if re.search(r"[＋+][^＋+：:]*$", u):   # 「受ける＋掘る」のように、動詞の形の名前を並べた行は数えない
+                continue
+            if u and not SENTENCE_END.search(u) and VERB_END.search(u):
                 out.append(t)
     return out
 
