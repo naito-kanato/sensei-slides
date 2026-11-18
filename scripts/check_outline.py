@@ -250,8 +250,13 @@ def check(outline: Path, require_review: bool = False):
     ut = untagged_numbers(rows, "構成案「## 構成」") if rows else None
     fw = fullwidth_alnum(rows, "構成案「## 構成」") if rows else None
     import story
+    try:   # 同梱の見本の写し（check_memo と同じ物差し）
+        import check_memo
+        copied = check_memo.example_copy(text, "outline", outline)
+    except Exception:
+        copied = []
     return (count(text, body) + ([tp] if tp else []) + ([ut] if ut else []) + ([fw] if fw else []) + story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")
-            + flows(text, outline.parent) + reasoning(outline, text, require_review and not small, small))
+            + copied + flows(text, outline.parent) + reasoning(outline, text, require_review and not small, small))
 
 
 def flows(text: str, folder=None):

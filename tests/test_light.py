@@ -286,3 +286,20 @@ def test_term_order_net():
             {"#": 3, "役割": "本文", "本文の要点": "トークン：語・語の一部"}]
     res = {item: msg for _, item, msg in check_memo.term_order(text, rows, scaffold)}
     assert "トークン（2枚目で使い、3枚目で説明）" in res["用語の初出"] and "BLOOM（2枚目）" in res["説明の無い英字の名前"]
+
+
+def test_copying_the_bundled_example_is_stopped(tmp_path, monkeypatch):
+    """同梱の見本の設計メモ・構成案を写した物は ✘（見本そのものは通す）。"""
+    import shutil
+    import check_memo
+    import check_outline
+    monkeypatch.delenv("SENSEI_SKIP_EXAMPLE_COPY", raising=False)
+    root = Path(__file__).resolve().parents[1]
+    w = tmp_path / "_work" / "ゼミ"
+    w.mkdir(parents=True)
+    shutil.copy(root / "examples" / "zemi" / "outline.md", w / "outline.md")
+    assert "見本の写し" in {item for mk, item, _ in check_outline.check(w / "outline.md") if mk == "✘"}
+    assert "見本の写し" not in {item for _, item, _ in check_outline.check(root / "examples" / "zemi" / "outline.md")}
+    cw = _course(tmp_path / "c") if (tmp_path / "c").mkdir() is None else None
+    shutil.copy(root / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md", cw / "memo.md")
+    assert "見本の写し" in {item for mk, item, _ in check_memo.check(cw / "memo.md") if mk == "✘"}

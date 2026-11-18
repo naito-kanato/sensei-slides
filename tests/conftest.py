@@ -23,6 +23,7 @@ def no_agent_records(tmp_path_factory, monkeypatch):
     home = tmp_path_factory.mktemp("records")
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(home / "claude"))
     monkeypatch.setenv("CODEX_HOME", str(home / "codex"))
+    monkeypatch.setenv("SENSEI_SKIP_EXAMPLE_COPY", "1")   # テストは見本の設計メモ・構成案を写して使う（見本の写しの検査は、その検査のテストだけで見る）
 
 
 @pytest.fixture

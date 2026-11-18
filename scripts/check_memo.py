@@ -307,6 +307,55 @@ def fact_count(text: str):
 LATIN_NAME = re.compile(r"(?<![A-Za-z0-9])(?=[A-Za-z0-9.-]*[A-Za-z]{2})[A-Za-z][A-Za-z0-9.-]*[A-Za-z0-9]|[A-Za-z]+-?\d[\w.-]*")
 
 
+def _heads_and_bands(text: str, kind: str):
+    """話の順番・構成の表の本文の枚の (●見出し, 青帯) のリスト（記号・数字を外して比べやすく）。"""
+    import structures
+    rows = structures._plan_table(text, kind) or []
+    if not rows:
+        return []
+    head = rows[0]
+    i_h = next((k for k, h in enumerate(head) if "見出し" in h), None)
+    i_b = next((k for k, h in enumerate(head) if "青帯" in h or "結論" in h), None)
+    norm = lambda s: re.sub(r"[\s、。・,.「」（）()〔〕\[\]0-9０-９%％]", "", s or "")   # noqa: E731
+    out = []
+    for r in rows[1:]:
+        if not (r and r[0].strip().isdigit()):
+            continue
+        h = norm(r[i_h]) if i_h is not None and len(r) > i_h else ""
+        b = norm(r[i_b]) if i_b is not None and len(r) > i_b else ""
+        if (h or b) and b not in ("—", "-", ""):
+            out.append((h, b))
+    return out
+
+
+def example_copy(text: str, kind: str, path):
+    """同梱の見本（examples/ の設計メモ・構成案）の写し：本文の枚の●見出しか青帯が、見本のどれかの枚とほぼ同じ
+    （似ている度合い 0.8 以上）枚が3枚以上か本文の3割以上なら ✘。見本と同じテーマの依頼で、Antigravity の設計が
+    見本の見出し・つなぎ・青帯をほぼそのまま写した。"""
+    import difflib
+    import os
+    root = Path(__file__).resolve().parents[1]
+    if "examples" in Path(path).resolve().parts or os.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):   # テストは見本を写して使うので切る
+        return []
+    mine = _heads_and_bands(text, kind)
+    if len(mine) < 4:
+        return []
+    sim = lambda a, b: difflib.SequenceMatcher(None, a, b).ratio()   # noqa: E731
+    worst = (0, None)
+    for ex in sorted((root / "examples").glob("*/_work/*/memo.md")) + sorted((root / "examples").glob("*/outline.md")):
+        theirs = _heads_and_bands(ex.read_text(encoding="utf-8"), "memo" if ex.name == "memo.md" else "outline")
+        same = sum(1 for h, b in mine if any((len(h) >= 4 and h2 and sim(h, h2) >= 0.8) or (len(b) >= 8 and b2 and sim(b, b2) >= 0.8)
+                                             for h2, b2 in theirs))
+        if same > worst[0]:
+            worst = (same, ex)
+    n, ex = worst
+    if n >= 3 or (ex and n / len(mine) >= 0.3):
+        name = ex.parent.name if ex.name == "memo.md" else ex.parent.name + "/outline.md"
+        return [("✘", "見本の写し", f"本文 {len(mine)} 枚のうち {n} 枚の●見出しか青帯が、同梱の見本（{name}）とほぼ同じ。"
+                 "見本は形（表の列・書き方）だけを見る。話の順番・見出し・青帯は、この依頼の聞き手・ゴール・集めた事実から組み直す")]
+    return []
+
+
 EVERYDAY_NAMES = ("PowerPoint", "Word", "Excel", "Google", "Windows", "Mac", "iPhone", "Android", "YouTube", "LINE", "ChatGPT", "Wikipedia", "PDF", "URL", "Web")   # 説明の要らない身近な名前
 
 
@@ -436,6 +485,7 @@ def check(memo: Path, require_review: bool = False):
             res.append(("✘", "文の塊の数", "塊が3つを超える枚：" + "・".join(many[:6]) + "。要点（行）は3〜4個のまま、見出しは2〜3つに："
                         "同じ見出しの下に2行まとめる（「例：a」「例：b」）か、補足の要点は原稿へ（描画の検査は塊4つで ERROR。制作の担当が全部の枚を組み直していた）"))
         res += term_order(text, srows, scaffold)
+        res += example_copy(text, "memo", memo)
         import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
         bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
         if bad:
