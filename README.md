@@ -6,7 +6,7 @@
 
 ![Sample slides from the English course and talk examples (animated)](docs/demo-en.gif)
 
-Version 0.7.0 (2026-11-12). **[Download the latest release](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)** (a ready-to-use work folder with the skill inside). Changes: [CHANGELOG.md](CHANGELOG.md) (in Japanese).
+Version 0.8.0 (2026-11-18). **[Download the latest release](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)** (a ready-to-use work folder with the skill inside). Changes: [CHANGELOG.md](CHANGELOG.md) (in Japanese).
 
 > **The instructions and check messages are in Japanese; the slides can be in another language.** Ask in English (or another language) and the slides, speaker notes, quiz and script page are made in the language of your request (you can also name a language), while the plans and the agents' instructions stay in Japanese. The checks count text by display width, so the same targets work for English. The samples on this page were made by asking in English ([examples/course_en](examples/course_en), [examples/zemi_en](examples/zemi_en)).
 
