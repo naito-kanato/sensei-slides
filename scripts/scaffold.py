@@ -1150,6 +1150,10 @@ def main(argv=None):
             continue
         p.write_text(text, encoding="utf-8")
         made.append(name)
+    script = work / "script.md"   # 設計の担当が書いた原稿（標準の回）：notes.md の TODO の枚に入れる（制作の担当は書き直さない）
+    if "notes.md" in made and script.exists():
+        done, left = fill_notes(work, script)
+        made.append(f"原稿を script.md から {len(done)} 枚入れた" + (f"（まだ TODO：{'・'.join(map(str, left))}）" if left else ""))
     if made:
         print(f"作った：{'・'.join(made)}（{len(rows)}枚）。確認問題・解答・図の置き方・比較は設計メモから入れた。残った TODO を書き換えてから make_deck.py")
     return 0

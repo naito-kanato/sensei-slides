@@ -486,6 +486,19 @@ def check(memo: Path, require_review: bool = False):
                         "同じ見出しの下に2行まとめる（「例：a」「例：b」）か、補足の要点は原稿へ（描画の検査は塊4つで ERROR。制作の担当が全部の枚を組み直していた）"))
         res += term_order(text, srows, scaffold)
         res += example_copy(text, "memo", memo)
+        import budget as _bud   # 標準の回：原稿は設計の担当が script.md に書く（制作の担当は書き直さない）
+        import os as _os
+        if _bud.light(memo.parent) and "examples" not in Path(memo).resolve().parts and not _os.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):
+            sp = memo.parent / "script.md"
+            body_n = [r["#"] for r in srows if (scaffold.col(r, "役割") or "本文") == "本文"]
+            if not sp.exists():
+                res.append(("△", "原稿", "script.md が無い（本文の枚ごとに「## N」と読み上げる原稿。設計の担当が書き、scaffold が notes.md に入れる）"))
+            else:
+                got = {int(m.group(1)): len(re.sub(r"\s", "", m.group(2))) for m in scaffold.NOTE_SEC.finditer(sp.read_text(encoding="utf-8"))}
+                short = [n for n in body_n if got.get(n, 0) < 150]
+                if short:
+                    res.append(("△", "原稿", "script.md に原稿が無いか短い枚（150字未満）：" + "・".join(map(str, short[:8]))
+                                + "（本文の枚は300〜400字。1文目で前の枚からつなぎ、図の読み方・根拠・橋渡し・次への予告）"))
         import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
         bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
         if bad:

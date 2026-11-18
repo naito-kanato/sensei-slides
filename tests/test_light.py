@@ -303,3 +303,20 @@ def test_copying_the_bundled_example_is_stopped(tmp_path, monkeypatch):
     cw = _course(tmp_path / "c") if (tmp_path / "c").mkdir() is None else None
     shutil.copy(root / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md", cw / "memo.md")
     assert "見本の写し" in {item for mk, item, _ in check_memo.check(cw / "memo.md") if mk == "✘"}
+
+
+def test_script_file_fills_the_notes(tmp_path, monkeypatch):
+    """標準の回：設計の担当が書いた script.md の原稿を、scaffold が notes.md に入れる。原稿が無い・短い枚は check_memo が △。"""
+    monkeypatch.delenv("SENSEI_SKIP_EXAMPLE_COPY", raising=False)   # 見本を写して使うテストの切り替え（ここでは見る）
+    import check_memo
+    import scaffold
+    src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
+    w = _course(tmp_path)
+    (w / "memo.md").write_text(src, encoding="utf-8")
+    assert {i: m for m, i, _ in check_memo.check(w / "memo.md")}.get("原稿") == "△"   # script.md が無い
+    body = "".join(f"## {n}\n" + "あ" * 200 + "\n\n" for n in range(1, 12))
+    (w / "script.md").write_text(body, encoding="utf-8")
+    assert "原稿" not in {i for _, i, _ in check_memo.check(w / "memo.md")}
+    assert scaffold.main([str(w)]) == 0
+    notes = (w / "notes.md").read_text(encoding="utf-8")
+    assert "あ" * 200 in notes
