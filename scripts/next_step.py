@@ -172,7 +172,8 @@ def light_steps(work: Path, kind: str):
             return out, ("構成案をユーザーに見せる（outline.md の話の順番の表。オプション「構成案の確認：見せる」）。直しは設計の担当に【続けて頼む】。"
                          f"OK が出たら、制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）")
         return out, (f"軽量：制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）。scaffold（設計メモから組む）→ 図 → 残った TODO と原稿 → --try → make_deck（3回まで）→ 原稿HTML")
-    return out, (f"手順7：python {SKILL}/scripts/check_done.py \"{pptx.as_posix()}\" を走らせる。「渡してよい」が出たらユーザーに渡す。"
+    return out, (f"手順7：制作の担当の返答に make_deck の「渡す前の確認：渡してよい」があれば、そのままユーザーに渡す（check_done は make_deck が最後の回に走らせ済み。"
+                 f"返答に無いときだけ python {SKILL}/scripts/check_done.py \"{pptx.as_posix()}\"）。"
                  "✘ が残ったら（制作の担当が make_deck の上限で止まったとき）、残った所を報告してユーザーに【質問】（越えて直す・このまま受け取る）。"
                  "越えて直すなら、制作の担当に【続けて頼む】（`make_deck.py <work> --over` で残った所だけ。"
                  "完成後のレビュー担当・直しの担当を新しく起動しない：起動のたびに資料と設計メモを読み直す分が丸ごと増える）")

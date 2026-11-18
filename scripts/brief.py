@@ -232,9 +232,47 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
     import language as LG
     if not LG.is_japanese(lang):
         text += "\n" + LANG_COMMON.format(lang=lang) + ("\n" + LANG_NOTES[role].format(lang=lang) if role in LANG_NOTES else "")
+    src = source_text_line(course if role in NO_WORK else str(Path(target).resolve().parents[1] / course) if k == "講座" else None, note) \
+        if role in SOURCE_READERS else ""
+    if src:
+        text += "\n" + src
     if note:
         text += "\n\nユーザーの答え・メインからの補足：" + note
     return text + embed(specs) + TAIL
+
+
+SOURCE_READERS = ("地図の担当", "数字を探す担当", "設計の担当", "軽量の設計の担当", "裏取りの担当", "レビュー担当", "直しの担当")   # 制作・仕上げは資料を開かない（要る文言は設計メモにある）
+
+
+def source_text_line(course_dir, note: str = "") -> str:
+    """資料の PDF（講座フォルダの 資料/ の下と、補足に名前の出た PDF）を頁ごとの文にして（1回だけ。pdf_pages.py text）、
+    依頼文に「資料の文はここ」の1行を足す。コミュニケーション講座の試しで、メイン・地図・設計・制作の4人が同じ PDF を別々に読み、
+    自分で書いた読み出しが文字コードで何度も止まった。文字の無い頁（スキャン）は extract で画像にして読む。"""
+    pdfs = []
+    if course_dir and Path(course_dir).is_dir():
+        pdfs += sorted((Path(course_dir) / "資料").rglob("*.pdf"))
+    for name in re.findall(r"[^\s`「」『』（）()：:、,]+\.pdf", note or ""):
+        p = Path(name)
+        if p.exists() and p.resolve() not in [x.resolve() for x in pdfs]:
+            pdfs.append(p)
+    if not pdfs:
+        return ""
+    import io
+    from contextlib import redirect_stdout
+    out = []
+    for p in pdfs[:4]:
+        try:
+            import pdf_pages
+            with redirect_stdout(io.StringIO()):
+                pdf_pages.text(p)
+            out.append(f"`{rel(p.with_name(p.stem + '_text'))}/`（目次 index.md・頁ごとの pNN.txt）")
+        except Exception:
+            continue
+    if not out:
+        return ""
+    return ("- **資料の文**：" + "・".join(out) + "。まず目次 index.md を読み、要る頁の pNN.txt だけ開く（`python \"" + rel(SKILL) +
+            "/scripts/pdf_pages.py\" text <PDF> --pages 3-5` でも出る）。**PDF を Read で開かない・読み出しのコードを自分で書かない**"
+            "（文字の無い頁と、図を見るときだけ `pdf_pages.py extract` の画像）")
 
 
 def main(argv=None):

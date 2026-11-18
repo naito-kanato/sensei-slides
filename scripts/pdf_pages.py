@@ -4,6 +4,10 @@
     python pdf_pages.py extract 資料.pdf out_dir
       -> out_dir/p01.png, p01_L.png, p01_R.png（見開きのとき）, p01.txt（テキスト層があるとき）
 
+  文だけを頁ごとに（テキスト層のある PDF。1回だけ作り、メインと担当はみなこれを読む。PDF を Read で開かない・読み出しを自分で書かない）:
+    python pdf_pages.py text 資料.pdf [out_dir]          -> out_dir（既定は 資料_text/）に pNN.txt と目次 index.md。目次を出す
+    python pdf_pages.py text 資料.pdf [out_dir] --pages 3-5   -> その頁の文を出す
+
   図の切り出し（黄ばんだ紙を白に、余白を自動トリム）:
     python pdf_pages.py crop out_dir/p05_L.png figs/fig7_14.png --box 380 1820 2200 2990
       --box は元画像のピクセル座標 (x0 y0 x1 y1)。--frac を付けると 0〜1 の比率で指定。
@@ -48,6 +52,42 @@ def extract(pdf, outdir, dpi=200):
         if text.strip():
             msg += f"  text={len(text)}chars"
         print(msg)
+
+
+def text(pdf, outdir=None, pages=None):
+    """テキスト層を頁ごとに pNN.txt へ（画像は作らない）。1回だけ作り、あとの担当はそれを読む。
+    コミュニケーション講座の試しで、メイン・地図・設計・制作の4人が同じ PDF を別々に読み、自分で書いた読み出しが文字コードで何度も止まった。
+    pages（「3-5」「2,7」）を渡すと、その頁の文を出す（作ったファイルから読む）。"""
+    import pymupdf as fitz
+    pdf = Path(pdf)
+    out = Path(outdir) if outdir else pdf.with_name(pdf.stem + "_text")
+    index = out / "index.md"
+    if not (index.exists() and index.stat().st_mtime >= pdf.stat().st_mtime):
+        out.mkdir(parents=True, exist_ok=True)
+        doc = fitz.open(str(pdf))
+        rows = []
+        for i, page in enumerate(doc, 1):
+            t = page.get_text().strip()
+            if t:
+                (out / f"p{i:02d}.txt").write_text(t + "\n", encoding="utf-8")
+            first = next((x.strip() for x in t.splitlines() if x.strip()), "")
+            rows.append(f"| {i} | {len(t)} | {first[:40] if t else '（文字なし：スキャンなら extract で画像に）'} |")
+        index.write_text(f"# {pdf.name} の頁（{len(rows)}頁。文は pNN.txt）\n\n| 頁 | 字数 | 最初の行 |\n|---|---|---|\n" + "\n".join(rows) + "\n",
+                         encoding="utf-8")
+        made = True
+    else:
+        made = False
+    if pages:
+        want = []
+        for part in str(pages).split(","):
+            a, _, b = part.partition("-")
+            want += list(range(int(a), int(b or a) + 1))
+        for n in want:
+            f = out / f"p{n:02d}.txt"
+            print(f"--- p{n}\n" + (f.read_text(encoding="utf-8").strip() if f.exists() else "（文字なし）"))
+        return
+    print(("作った" if made else "もうある（作り直さない）") + f"：{out.as_posix()}（頁ごとの文 pNN.txt と目次 index.md）")
+    print(index.read_text(encoding="utf-8"))
 
 
 def clean_scan(im: Image.Image) -> Image.Image:
@@ -102,8 +142,11 @@ if __name__ == "__main__":
     c = sub.add_parser("crop"); c.add_argument("src"); c.add_argument("dst")
     c.add_argument("--box", type=float, nargs=4, required=True); c.add_argument("--frac", action="store_true")
     c.add_argument("--no-clean", action="store_true"); c.add_argument("--no-trim", action="store_true")
+    t = sub.add_parser("text"); t.add_argument("pdf"); t.add_argument("outdir", nargs="?"); t.add_argument("--pages")
     a = ap.parse_args()
     if a.cmd == "extract":
         extract(a.pdf, a.outdir, a.dpi)
+    elif a.cmd == "text":
+        text(a.pdf, a.outdir, a.pages)
     else:
         crop(a.src, a.dst, a.box, a.frac, not a.no_clean, not a.no_trim)

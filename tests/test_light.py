@@ -215,3 +215,29 @@ def test_memo_counts_text_blocks_like_the_layout_check(tmp_path):
     (w / "memo.md").write_text(src.replace(r2, "|".join(cells), 1), encoding="utf-8")
     res = {item: (mk, msg) for mk, item, msg in check_memo.check(w / "memo.md")}
     assert res["文の塊の数"][0] == "✘" and "[2] 見出し4つ" in res["文の塊の数"][1]
+
+
+def test_source_pdf_is_read_once_as_text(tmp_path, monkeypatch):
+    """資料の PDF は brief.py が1回だけ頁ごとの文にし、読む担当の依頼文に場所を書く（制作の担当には書かない）。"""
+    import fitz
+    import brief
+    import pdf_pages
+    monkeypatch.chdir(tmp_path)
+    w = _course(tmp_path)
+    src = tmp_path / "X講座" / "資料"
+    src.mkdir()
+    doc = fitz.open()
+    for t in ("Chapter 1 basics", "Chapter 2 types"):
+        doc.new_page().insert_text((72, 72), t)
+    doc.save(str(src / "book.pdf"))
+    (w / "memo.md").write_text("# 設計メモ\n", encoding="utf-8")
+    d = brief.build("軽量の設計の担当", str(w), count=False)
+    assert "資料の文" in d and "book_text/" in d and "PDF を Read で開かない" in d
+    assert (src / "book_text" / "p02.txt").read_text(encoding="utf-8").startswith("Chapter 2")
+    assert "資料の文" not in brief.build("軽量の制作の担当", str(w), count=False)
+    import io
+    from contextlib import redirect_stdout
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        pdf_pages.text(src / "book.pdf")
+    assert buf.getvalue().startswith("もうある")
