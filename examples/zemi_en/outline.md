@@ -37,6 +37,8 @@ Phys. Rev. Lett. **116**, 061102 (2016), DOI 10.1103/PhysRevLett.116.061102。CC
 | 複雑化 | 壁 | A wave of strain 10⁻²¹ changes the arm-length difference of 4 km arms by only ~4×10⁻¹⁸ m, about 1/400 of a proton | 6 |
 | 問い | どうやって | How can a stretch this tiny be caught on Earth, and told apart from noise? | 3 |
 | 答え | — | The two LIGO detectors recorded the same chirp 6.9 ms apart, and noise alone would mimic it less than once in 203,000 years (5.1σ) | 14 |
+| 対立 | — | Is the signal both detectors saw a gravitational wave, or a chance coincidence of noise? | 12 |
+| それで | — | Time-shifted comparisons put chance noise at less than once in 203,000 years, so the noise explanation is ruled out: the wave was caught directly | 14 |
 | 語り手 | — | The LIGO team: they read a stretch smaller than a proton with 100 kW of light and four-stage pendulums, then cleared the doubt of chance noise with 608,000 years of time-shifted background | — |
 
 話の型：論文紹介（方法から）

@@ -241,3 +241,16 @@ def test_source_pdf_is_read_once_as_text(tmp_path, monkeypatch):
     with redirect_stdout(buf):
         pdf_pages.text(src / "book.pdf")
     assert buf.getvalue().startswith("もうある")
+
+
+def test_deepen_the_question():
+    """問いの深め：筋の表の「対立」（2つの説明）と「それで」。発表は無ければ ✘、講座は △。「なし（理由：…）」は通る。"""
+    import story
+    base = {"状況": ("a", 2), "複雑化": ("b", 3), "問い": ("P はいくつか？", 3), "答え": ("約55%", 9)}
+    assert story.deepen_check(base, "outline")[0] == "✘" and story.deepen_check(base, "memo")[0] == "△"
+    ok = dict(base, 対立=("P が低いのは、手法のせいか、物理のせいか？", 8), それで=("手法の誤りではなかった。低いのは物理", 9))
+    assert story.deepen_check(ok, "outline")[0] == "✔"
+    assert story.deepen_check(dict(ok, 対立=("手法のせい", 8)), "outline")[0] == "✘"      # 2つになっていない
+    assert story.deepen_check(dict(ok, それで=("—", None)), "outline")[0] == "✘"
+    assert story.deepen_check(dict(base, 対立=("なし（理由：教科書の輪読で、結果を比べない）", None)), "outline")[0] == "✔"
+    assert story.deepen_check(dict(base, 対立=("なし", None)), "outline")[0] == "✘"

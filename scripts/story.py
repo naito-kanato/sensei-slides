@@ -474,6 +474,36 @@ def body_numbers(text: str, kind: str):
 METHOD_ANSWER = re.compile(r"(で|を)(比べ|見れば|読め|読む|確かめ|調べ|判断す)[るれ]?(ばよい|とよい|る|。|$)|として扱う|を見ればよい|で判断する|に注目する")
 
 
+RIVAL = re.compile(r"か[、,]|それとも|どちら|[／/]|\bvs\.?\b|\bor\b|対", re.I)
+NO_RIVAL = re.compile(r"^\s*(なし|無し|none)", re.I)
+
+
+def deepen_check(st: dict, kind: str):
+    """問いの深め（references/story.md 1b節）：筋の表の「対立」（結果がどちらかを消す、2つの説明）と「それで」（どちらが消え、何が言えるか）。
+    発表（構成案）は無ければ ✘、講座（設計メモ）は △。対立する説明の無い回（教科書の輪読・入門）は「対立：なし（理由：…）」で通る。
+    論文紹介で、問いが「P はいくつか？」（事実を聞く問い）のまま止まり、先生に「P が低いのは手法のせいか、物理のせいか？」と深められた反省。"""
+    mark = "✘" if kind == "outline" else "△"
+    rival = st.get("対立", ("", None))[0]
+    sowhat = st.get("それで", ("", None))[0]
+    how = ("筋の表に2行足す：「対立」＝結果がどちらかを消す2つの説明（「P が低いのは、手法のせいか、物理のせいか？」）、"
+           "「それで」＝結果でどちらが消え、聞き手に何が言えるか（「手法のせいではなかった。低いのは物理」）。"
+           "対立する説明が無い回は「対立｜—｜なし（理由：…）」。references/story.md 1b節")
+    if NO_RIVAL.match(rival or "") and rival not in ("なし", "無し"):
+        ok = bool(re.search(r"理由|reason", rival, re.I))
+        return ("✔" if ok else mark, "問いの深め",
+                "対立なし（理由あり）" if ok else "「対立：なし」に理由が無い（「なし（理由：教科書の輪読で、結果を比べない）」）")
+    if rival in EMPTY:
+        return (mark, "問いの深め", "対立する説明が無い（問いが事実を聞くだけだと、答えが出て終わる）。" + how)
+    notes = []
+    if not RIVAL.search(rival):
+        notes.append("「対立」が2つの説明になっていない（「A のせいか、B のせいか？」の形で、2つを名指す）")
+    if sowhat in EMPTY:
+        notes.append("「それで」が空（結果でどちらの説明が消え、聞き手に何が言えるか）")
+    if notes:
+        return (mark, "問いの深め", "。".join(notes) + "。" + how)
+    return ("✔", "問いの深め", f"対立「{rival[:30]}」→ それで「{sowhat[:30]}」")
+
+
 def check(text: str, kind: str, body_no: list, where: str):
     """[(印, 項目, 説明)]。kind は "outline" か "memo"。body_no は本文の枚の番号（並び順）。"""
     import structures
@@ -521,6 +551,8 @@ def check(text: str, kind: str, body_no: list, where: str):
                 if pos == "先" and (an not in head or an < qn):
                     notes.append(f"答えの枚 {an} が前のほうに無い（答えの位置「先」：問いの枚か、そのすぐ後の本文 {head[0]}〜{head[-1]} 枚目で答えを言い、"
                                  "あとの枚はその根拠を順に。答えを後ろで回収するなら一覧の「答えの位置」を「後」に）")
+            if not small:
+                res.append(deepen_check(st, kind))
             ty = story_types(text) or {}
             res.append(("△" if notes else "✔", "話の筋", "。".join(notes) if notes else
                         f"複雑化（{ty.get('複雑化')}）→ 問い（{qn}枚目・{ty.get('問い')}）「{q[:24]}」→ 答え（{an}枚目、答えの位置「{pos}」）"))
