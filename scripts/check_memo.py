@@ -371,6 +371,36 @@ def check(memo: Path, require_review: bool = False):
         res += design_content(text, _b.light(memo.parent))
     except Exception:
         pass
+    try:   # PowerPoint の部品で組む図の案を、スクリプトが読める書き方か（読めないと、制作の担当が中身を考えて手で組む。
+        # コミュニケーション講座の試しで、表の中身・判定の書き方が読めず、制作の担当が本文12枚を丸ごと書き直した）
+        import scaffold
+        _, _, srows, _ = scaffold.plan(memo.parent)
+        many = []   # 1枚の文の塊（見出しの違う要点＋比較・前後・カード）が3つを超える枚。描画の検査は4つで ERROR
+        for r in srows:
+            if (scaffold.col(r, "役割") or "本文") != "本文":
+                continue
+            pts = scaffold.items_of(scaffold.col(r, "本文の要点"))
+            heads = {p.partition("：")[0].strip("★ ") for p in pts if "：" in p and "→" not in p.partition("：")[0]}
+            loose = sum(1 for p in pts if "：" not in p or "→" in p.partition("：")[0])   # 展開（A → B）・見出しの無い文は1つずつ
+            fig = scaffold.col(r, "図で見せるもの", "図")
+            pname = scaffold.part_name(fig)
+            part = pname == "s.compare"   # 描画の検査（check_layout.text_units）と同じ数え方：比較は1つ、前後・カード・表の中の文字は数えない
+            if len(heads) + loose + part > 3:
+                many.append(f"[{r['#']}] 見出し{len(heads)}つ" + (f"＋見出しの無い要点{loose}つ" if loose else "") + ("＋部品" if part else ""))
+            if pname == "s.compare":   # 比較の各列は3行以上（描画の検査）。図の案に各列3つ書いてあれば、スクリプトがそのまま組める
+                m = re.search(r"（([^（）]{2,80})）\s*と\s*[^（）：。、]{1,16}（([^（）]{2,80})）", fig)
+                if m and min(len([x for x in re.split(r"[、／/]", g) if x.strip()]) for g in m.groups()) < 3:
+                    many.append(f"[{r['#']}] 比較の列が3つ未満（各列3つ：根拠の数値・例・よくある間違い）")
+        if many:
+            res.append(("✘", "文の塊の数", "塊が3つを超える枚：" + "・".join(many[:6]) + "。要点（行）は3〜4個のまま、見出しは2〜3つに："
+                        "同じ見出しの下に2行まとめる（「例：a」「例：b」）か、補足の要点は原稿へ（描画の検査は塊4つで ERROR。制作の担当が全部の枚を組み直していた）"))
+        import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
+        bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
+        if bad:
+            res.append(("✘", "部品の図の書き方", "スクリプトが組めない図の案：" + "；".join(f"[{n}] {name} は「{form}」の形で" for n, name, form in bad[:5])
+                        + "（中身まで設計メモに書く。表なら行ごとのセル、判定なら はい・いいえ の行き先）"))
+    except Exception:
+        pass
     try:   # 軽量の回（裏取りの担当がいない）：確認がまだの事実を残さない（試しで、「一般」にした数値の行が2回とも残り、往復が増えた）
         import budget
         import facts

@@ -62,7 +62,12 @@ def red(p: str) -> str:
         seg = m.group(1).rstrip()
         return (p[:m.start()] + "{r:" + seg + "}" + p[m.start() + 1 + len(seg):]).replace("★", "")
     h, sep, rest = core.partition("：")
-    return f"{h}：{{r:{rest.strip()}}}" if sep and rest.strip() else f"{{r:{core}}}"
+    # 「⇒ 帰結」は部品が別に赤字で出すので、赤字のかっこに入れない（入れると ⇒ で分けたときに } が閉じなくなる）
+    body, arrow, then = (rest if sep else core).partition("⇒")
+    tail = f"⇒{then}" if arrow else ""
+    if not body.strip():
+        return core
+    return (f"{h}：{{r:{body.strip()}}}" if sep else f"{{r:{body.strip()}}}") + tail
 
 
 def plan(work: Path):
@@ -172,12 +177,17 @@ def form_code(forms: str, pts, lim: float = 0):
             else:
                 out.append(f's.lead_down("{q(chr(10).join(pre[:3]))}", "{q(then)}")')
         elif k == "ラベル":
+            # 見出しが同じ要点（「例：a」「例：b」）は1つの塊に（塊は2つまで・多くて3つ。要点を1つずつ塊にすると4つになって ERROR だった）
+            groups = {}
             for p in (ps or ["TODO 見出し：説明"])[:4]:
                 h, _, rest = p.partition("：")   # 半角の「:」は文字の書式 {r:…} に使うので、全角の「：」だけで分ける
                 body, _, then = rest.partition("⇒")
-                then_arg = f', then="{q(then.strip())}"' if then.strip() else ""
-                then_arg = f', then="{q(w(then.strip()))}"' if then.strip() else ""
-                out.append(f's.block("{q(h.strip())}：", ["{q(w(body.strip())) or "TODO 説明"}"]{then_arg})')
+                g = groups.setdefault(h.strip(), [[], ""])
+                g[0].append(w(body.strip()) or "TODO 説明")
+                g[1] = then.strip() or g[1]
+            for h, (bodies, then) in groups.items():
+                then_arg = f', then="{q(w(then))}"' if then else ""
+                out.append(f's.block("{q(h)}：", [' + qs(bodies) + f"]{then_arg})")
         elif k == "場合分け":
             pairs = [p.partition("：")[::2] for p in ps] or [("TODO 条件", "TODO 説明")]
             out.append("s.cases([" + ", ".join(f'("{q(c.strip())}", "{q(w(d.strip())) or "TODO 説明"}")' for c, d in pairs[:3]) + "])")
@@ -261,10 +271,136 @@ def decision_code(fig: str):
     body = fig.split("：", 2)[-1]
     steps = re.findall(r"([^？?：／→（(]{3,40}[？?])\s*→\s*はい\s*[：:]\s*([^／)）]{1,30})", body)
     last = re.findall(r"いいえ\s*[：:]\s*([^／？?)）]{1,30})(?:[)）]|$|。)", body)
+    if not steps:   # 「問い1？→ 結論1、問い2？→ 結論2、全部いいえ → 最後」の書き方（見本の講座の書き方）
+        steps = [(a.strip("、／ "), b.strip()) for a, b in re.findall(r"([^、／？?→（(：]{3,40}[？?])\s*→\s*([^、／→？?（(]{1,30})(?=[、／。）)]|$)", body)]
+        last = re.findall(r"(?:全部|すべて|どれも)\s*いいえ\s*(?:→|[：:])\s*([^、／。）)]{1,30})", body)
     if not 1 <= len(steps) <= 3 or not last:
         return None
     st = ", ".join('("' + q(_fold(a, 3.0)) + '", "' + q(_fold(b, 2.2)) + '")' for a, b in steps)
     return f's.decision([{st}], "{q(_fold(last[-1], 2.2))}", x=deck.area["fig_x"] - 1.3, y=deck.area["top"], q_w=3.0, out_w=2.2)'
+
+
+def _fig_body(fig: str) -> str:
+    """図の案の「目的：種類：」より後ろ。「（外す理由：…）」と〔事実N〕の印は外す。"""
+    body = fig.split("：", 2)[-1]
+    body = re.sub(r"[（(]\s*外す理由[：:][^）)]*[）)]", "", body)
+    return TAG.sub("", body).strip(" 。")
+
+
+def _top_split(s: str, seps: str) -> list:
+    """かっこ・かぎかっこの外にある区切り（seps のどれか）で分ける。"""
+    out, cur, depth = [], "", 0
+    for ch in s:
+        if ch in "（(「『":
+            depth += 1
+        elif ch in "）)」』":
+            depth = max(0, depth - 1)
+        if ch in seps and depth == 0:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    out.append(cur)
+    return [x.strip() for x in out if x.strip()]
+
+
+def _head_inner(part: str):
+    """「見出し（a、b）」→ ("見出し", "a、b")。かっこが無ければ (part, "")。"""
+    m = re.match(r"^(.*?)[（(](.*)[）)]\s*$", part.strip())
+    return (m.group(1).strip(), m.group(2).strip()) if m and m.group(1).strip() else (part.strip(), "")
+
+
+def before_after_code(fig: str):
+    """図の案「…：前後：A（a、b）→ B（c）」から s.before_after の行。見出しが長ければ「前」「後」を見出しに。読めなければ None。"""
+    parts = _top_split(_fig_body(fig), "→⇒")
+    if len(parts) != 2:
+        return None
+    sides = []
+    for p, label in zip(parts, ("前", "後")):
+        h, inner = _head_inner(p)
+        lines = [x.strip() for x in re.split(r"[、／/]", inner) if x.strip()] if inner and "→" not in inner else ([inner] if inner else [])
+        if len(h) > 12:
+            h, lines = label, [h] + lines
+        sides.append('("' + q(h) + '", [' + qs([_fold(x, 4.6, 22) for x in lines[:3]]) + "])")
+    # 帯のすぐ下に置き、本文はその下へ（本文のあとに置くと、要点の多い枚で下にはみ出して高さが負になった）
+    return f's.cur_y = s.before_after({sides[0]}, {sides[1]}, y=deck.area["top"] + 0.1, h=1.5).bottom + 0.4'
+
+
+def cards_code(fig: str):
+    """図の案「…：カード：題（見出し1＝説明1／見出し2＝説明2）」か「題（「a」「b」「c」）」から s.cards の行（2〜4枚）。読めなければ None。"""
+    _, inner = _head_inner(_fig_body(fig))
+    if not inner:
+        return None
+    if "＝" in inner:
+        items = [tuple(x.strip() for x in it.split("＝", 1)) for it in _top_split(inner, "／/") if "＝" in it]
+    else:
+        quoted = re.findall(r"「([^」]+)」", inner)
+        texts = quoted or [x.strip() for x in re.split(r"[、／/]", inner) if x.strip()]
+        items = [(f"{'①②③④'[i]}", t) for i, t in enumerate(texts[:4])]
+    if not 2 <= len(items) <= 4:
+        return None
+    its = ", ".join('("' + q(h) + '", "' + q(_fold(d, 3.4, 20)) + '")' for h, d in items)
+    return f's.cards([{its}], layout="row", y=s.cur_y + 0.3, size=20)'
+
+
+def key_message_code(fig: str):
+    """図の案「…：大きな数字：17%（説明の一言）」から s.key_message の行（帯の下に置き、本文はその下へ）。読めなければ None。"""
+    h, inner = _head_inner(_fig_body(fig))
+    m = re.search(r"[0-9０-９][0-9０-９.,，．]*\s*(?:%|％|倍|人|件|万|億|円|点|年|割|回|分|時間)?", h)
+    if not m:
+        return None
+    sub = f', sub="{q(_fold(inner, 9.0, 22))}"' if inner else ""
+    return f's.cur_y = s.key_message("{q(m.group(0).strip())}"{sub}, y=deck.area["top"] + 0.1).bottom + 0.45'
+
+
+def table_code(fig: str, beside: bool = True):
+    """図の案「…：表：列1×列2（行1＝セル／行2＝セル）」（セルが2つ以上なら「｜」で区切る）から s.table の行。
+    行の中身が無ければ None（担当が中身を考えることになるので、設計メモに書く）。"""
+    h, inner = _head_inner(_fig_body(fig))
+    rows = [tuple(x.strip() for x in it.split("＝", 1)) for it in _top_split(inner, "／/") if "＝" in it] if inner else []
+    if len(rows) < 2:
+        return None
+    header = [x.strip() for x in re.split(r"[×xX]", h) if x.strip()] or ["", ""]
+    ncell = max(len(c.split("｜")) for _, c in rows)
+    total = 5.4 if beside else 11.5
+    label_w = 1.5 if beside else 1.8
+    col_w = round((total - label_w) / ncell, 2)
+    cells = [(lab, [_fold(c, col_w - 0.2, 16) for c in cell.split("｜")]) for lab, cell in rows[:7]]
+    nl = max(c.count("\n") + 1 for _, cs in cells for c in cs)   # 行の高さは、いちばん行の多いセルに合わせる（固定だと2行のセルが重なった）
+    row_h = round(0.2 + 0.28 * nl, 2)
+    rr = ", ".join('("' + q(lab) + '", [' + qs(cs) + "])" for lab, cs in cells)
+    x, y = ('deck.area["fig_x"] - 0.7', 'deck.area["top"]') if beside else ('deck.area["x"]', "s.cur_y + 0.3")
+    return f"s.table({x}, {y}, {col_w}, {row_h}, [{qs(header[:ncell + 1])}], [{rr}], label_w={label_w}, size=16)"
+
+
+PART_CODE = {"s.compare": compare_code, "s.flow": flow_code, "s.decision": decision_code,
+             "s.before_after": before_after_code, "s.cards": cards_code, "s.key_message": key_message_code, "s.table": table_code}
+PART_FORMS = {   # スクリプトが読める書き方（check_memo が、読めない図の案を ✘ にするときに出す）
+    "s.compare": "違い：比較：A（a、b）と B（c、d）",
+    "s.flow": "流れ：流れ図：A → B → C（3〜5段）",
+    "s.decision": "判定：判定の流れ図：問い1？→ はい：結論1／いいえ：問い2？→ はい：結論2／いいえ：最後",
+    "s.before_after": "違い：前後：A（a、b）→ B（c、d）",
+    "s.cards": "並び：カード：題（見出し1＝説明1／見出し2＝説明2／見出し3＝説明3）",
+    "s.key_message": "印象：大きな数字：17%（説明の一言）",
+    "s.table": "観点：表：列1×列2（行1＝セル／行2＝セル。セルが2つ以上なら「｜」で区切る）",
+}
+
+
+def part_name(fig: str):
+    import figplan
+    ppt = figplan.pptx_part(fig) if fig not in EMPTY else None
+    return ppt.split("（")[0].strip() if ppt else None
+
+
+def unbuildable(rows) -> list:
+    """[(枚, 部品, 書き方)]：PowerPoint の部品で組む図の案のうち、スクリプトが読めない物（担当が手で組むことになる）。"""
+    out = []
+    for r in rows:
+        fig = col(r, "図で見せるもの", "図")
+        name = part_name(fig)
+        if name in PART_CODE and PART_CODE[name](fig) is None:
+            out.append((r["#"], name, PART_FORMS[name]))
+    return out
 
 
 def quiz_slices(text: str, rows):
@@ -504,9 +640,16 @@ def build_py(work: Path, kind, title, rows) -> str:
             if place.get(n) == "main":   # 図が主役：図を先に置き、文は右の細い列（1行13字前後。補足は図の読み方と言えること）
                 L.append(f'if (FIG / "s{n:02d}.png").exists(): s.figure_main(FIG / "s{n:02d}.png"{cap_arg})   # 図：{fig[:60]}（図が主役の型。scaffold.py が左文右図を半分までにするため選んだ）')
             lim = 13 if place.get(n) == "main" else 13 if ppt and ppt.startswith("s.decision") else 16 if ppt and ppt.startswith("s.compare") else 19
+            pname = ppt.split("（")[0].strip() if ppt else None
+            if pname == "s.table":
+                cc = table_code(fig, beside=len(pts) >= 2)
+            else:
+                cc = PART_CODE.get(pname, lambda _f: None)(fig) if ppt else None
+            first_part = pname in ("s.key_message", "s.before_after")   # 帯のすぐ下に置き、本文はその下へ
+            if cc and first_part:
+                L.append(cc + "   # 図の案から scaffold.py が組んだ（言い方を確かめる）")
             L += form_code(col(r, "本文の形"), pts, lim)
-            if ppt:
-                cc = {"s.compare": compare_code, "s.flow": flow_code, "s.decision": decision_code}.get(ppt.split("（")[0].strip(), lambda _f: None)(fig)
+            if ppt and not first_part or (ppt and not cc):
                 L.append(cc + "   # 図の案から scaffold.py が組んだ（言い方を確かめる）" if cc else f'# TODO {fig[:60]}（画像ではなく {ppt} で組む）')
             elif fig not in EMPTY and place.get(n) != "main":
                 L.append(f'if (FIG / "s{n:02d}.png").exists(): s.figure_beside(FIG / "s{n:02d}.png"{cap_arg})   # 図：{fig[:60]}（図は figs/s{n:02d}.png）')

@@ -171,3 +171,47 @@ def test_light_memo_has_no_review_pending_line(tmp_path):
     w = _course(tmp_path)
     (w / "memo.md").write_text(src, encoding="utf-8")
     assert "推論距離の手当て" not in {item for _, item, _ in check_memo.check(w / "memo.md")}
+
+
+def test_scaffold_builds_parts_from_the_memo():
+    """前後・カード・大きな数字・表・判定（見本の書き方）を図の案から組む。読めない図の案は unbuildable が拾う。"""
+    import scaffold
+    ba = scaffold.before_after_code("違い：前後：面接型（質問→回答→別の質問）→ 続く会話（受ける→掘る）")
+    assert ba.startswith("s.cur_y = s.before_after((\"面接型\"") and "続く会話" in ba
+    assert scaffold.cards_code("並び：カード：言い出し（同じ＝自分も〜で。／逆＝自分は逆に〜。）").startswith('s.cards([("同じ"')
+    assert "①" in scaffold.cards_code("並び：カード：言い出し3つ（「自分も〜で。」「逆に〜。」「この前〜。」）")
+    km = scaffold.key_message_code("印象：大きな数字：17%（手放した報酬）〔事実16〕（外す理由：一つの数字）")
+    assert 's.key_message("17%", sub="手放した報酬"' in km
+    t = scaffold.table_code("観点：表：話者×発言×型（相手＝行ってました｜—／自分＝どうでした？｜掘る）")
+    assert t.startswith("s.table(") and '["話者", "発言", "型"]' in t
+    assert scaffold.table_code("観点：表：掘る方向×キャンプの例") is None
+    d = scaffold.decision_code("判定：判定の流れ図：確かめられない？→ 保留、禁止？→ 入れない、全部いいえ → 入力してよい")
+    assert d and '"入力してよい"' in d
+    rows = [{"#": 3, "図で見せるもの": "観点：表：掘る方向×キャンプの例"}, {"#": 4, "図で見せるもの": "違い：前後：A（a）→ B（b）"}]
+    assert [n for n, _, _ in scaffold.unbuildable(rows)] == [3]
+
+
+def test_red_mark_keeps_the_arrow_outside():
+    """★の要点に「⇒ 帰結」があっても、赤字のかっこを ⇒ の前で閉じる（閉じないと組めなかった）。"""
+    import scaffold
+    assert scaffold.red("★謎：質問の多い人が好感 ⇒ なぜ面接に？") == "謎：{r:質問の多い人が好感}⇒ なぜ面接に？"
+    code = scaffold.form_code("ラベル", ["例：a", "例：b", "目安：c"])
+    assert code == ['s.block("例：", ["a", "b"])', 's.block("目安：", ["c"])']   # 見出しの同じ要点は1つの塊に
+
+
+def test_memo_counts_text_blocks_like_the_layout_check(tmp_path):
+    """1枚の塊（見出しの違う要点＋見出しの無い要点＋比較）が3つを超える枚と、比較の列が3つ未満の枚を ✘。"""
+    import check_memo
+    src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
+    w = _course(tmp_path)
+    (w / "memo.md").write_text(src, encoding="utf-8")
+    assert "文の塊の数" not in {item for _, item, _ in check_memo.check(w / "memo.md")}
+    lines = src.splitlines()
+    head = next(l for l in lines if l.startswith("| #") and "本文の要点" in l)
+    k = [c.strip() for c in head.split("|")].index("本文の要点")
+    r2 = next(l for l in lines if l.startswith("| 2 |"))
+    cells = r2.split("|")
+    cells[k] = " 甲：a / 乙：b / 丙：c / 丁：d "
+    (w / "memo.md").write_text(src.replace(r2, "|".join(cells), 1), encoding="utf-8")
+    res = {item: (mk, msg) for mk, item, msg in check_memo.check(w / "memo.md")}
+    assert res["文の塊の数"][0] == "✘" and "[2] 見出し4つ" in res["文の塊の数"][1]
