@@ -270,9 +270,11 @@ def test_light_flow_runs_the_inference_audit(tmp_path):
     assert next_step.steps_for(w)[1].startswith("推論距離の担当1人を起動")
     (w / "outline_review.md").write_text("## 推論距離\n\n- [4] 「A ⇒ B」｜用語｜語｜補う前提：x｜使う所：4｜架け方：括弧\n", encoding="utf-8")
     nxt = next_step.steps_for(w)[1]
-    assert nxt.startswith("軽量：設計の担当に続けて頼む") and "推論距離の手当て" in nxt and "inference-distance 5" in nxt
-    d = brief.build("推論距離の担当", str(w), count=False)
-    assert "## 3. 監査" in d and "outline_review.md" in d and "資料の文" not in d
+    assert nxt.startswith("軽量：設計の担当に続けて頼む")   # 推論距離の担当をまだ起動していない（記録が無い）なら設計の担当へ
+    d = brief.build("推論距離の担当", str(w), count=True)   # 起動を記録する
+    assert "## 3. 監査" in d and "## 5. 手当て" in d and "outline_review.md" in d and "資料の文" not in d
+    nxt = next_step.steps_for(w)[1]
+    assert nxt.startswith("推論距離の担当に続けて頼む") and "推論距離の手当て" in nxt   # 手当ては推論距離の担当がそのまま入れる
 
 
 def test_term_order_net():

@@ -156,21 +156,23 @@ def light_steps(work: Path, kind: str):
         import check_outline
         bad, todo = _fails(check_outline.check(plan)), []
     add(not bad and not todo, "設計（軽量）", "；".join(bad[:3]) + (f"（確認がまだの事実 {len(todo)} 行）" if todo else ""))
-    if bad or todo:
-        return out, ("軽量：設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
-                     + (f"。確認がまだの事実 {len(todo)} 行をその場で確かめる" if todo else "")
-                     + ("。推論距離の手当ての決まりは `guide.py inference-distance 5`（推論距離の担当が書いた穴から採るものを選び、設計メモを直して「## 引っかかりへの手当て」に1行ずつ）"
-                        if any("推論距離" in b for b in bad) else ""))
-    build = work / "build.py"
-    # 推論距離（スキルの要）：設計の担当とは別の目で、推論距離だけを見る小さな担当。手当ては設計の担当が入れる（check_memo・check_outline が ✘ で出す）
     review = work / ("memo_review.md" if kind == "memo" else "outline_review.md")
+    if bad or todo:
+        if review.exists() and "推論距離の担当" in launched and not (work / "build.py").exists():
+            # 推論距離の担当が手当てまで入れる（設計の担当の長い会話を読み直さない）。手当てで出た ✘ もこの担当が直す
+            return out, ("推論距離の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
+                         + "（手当ては `guide.py inference-distance 5`。青帯・話の筋を変えないと直らない筋の穴だけは、設計の担当に【続けて頼む】）")
+        return out, ("軽量：設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
+                     + (f"。確認がまだの事実 {len(todo)} 行をその場で確かめる" if todo else ""))
+    build = work / "build.py"
+    # 推論距離（スキルの要）：設計の担当とは別の目で推論距離を見て、手当てまで入れる小さな担当（会話が短いので、設計の担当に続けて頼むより安い）
     if not build.exists():
         add(review.exists(), "推論距離", "" if review.exists() else "まだ")
         if not review.exists():
             if "推論距離の担当" in launched:
                 return out, "推論距離の担当が書き終えるのを待つ（終わりの知らせを待つ）"
-            return out, (f"推論距離の担当1人を起動（`brief.py 推論距離の担当 {w}`）。設計の担当とは別の目で、推論距離だけを見て {review.name} に書く。"
-                         "戻ったら next_step をもう一度（手当ては設計の担当に【続けて頼む】）")
+            return out, (f"推論距離の担当1人を起動（`brief.py 推論距離の担当 {w}`）。設計の担当とは別の目で推論距離を見て {review.name} に書き、"
+                         "手当てまで入れる。戻ったら next_step をもう一度")
     pptx = find_pptx(work) if build.exists() else None
     import language
     html = language.sibling(pptx, "slides", "script") if pptx else None
