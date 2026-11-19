@@ -33,6 +33,7 @@ if hasattr(sys.stdout, "reconfigure"):
 SKILL = Path(__file__).resolve().parents[1]
 BRIEFS = SKILL / "assets" / "briefs"
 NO_WORK = ("地図の担当",)
+FIRST_ROLES = ("数字を探す担当", "設計の担当", "軽量の設計の担当")   # 作業フォルダがまだ無くても起動できる担当
 SPLIT_AT = 8   # カードがこの枚数以上なら、制作役を前半と後半の2人に分ける（1つの会話が長くなると、呼び出しごとに読み直す量が増える）
 
 
@@ -165,8 +166,8 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
             raise SystemExit(f"✘ _work/ が講座フォルダ {course}/ の中にある。作業ディレクトリ直下（{course}/ と並ぶ所）の _work/{work.name}/ に移してから")
         if work.parent.name != "_work":
             raise SystemExit(f"✘ 作業フォルダ {target} が _work/ の直下に無い（作業ディレクトリ直下の _work/<名前>/ に置く）")
-        if role == "数字を探す担当":
-            work.mkdir(parents=True, exist_ok=True)   # 設計の前に動く最初の担当（作業フォルダはまだ無い）
+        if role in FIRST_ROLES:
+            work.mkdir(parents=True, exist_ok=True)   # 回の最初に動く担当（作業フォルダはまだ無い。地図の担当は作らない）
         if count:   # 回数の予算（budget.py）：上限なら依頼文を出さずに止める
             import budget
             msg = budget.check_tokens(work, over) or budget.check_role(work, role, part or (n if role in ("裏取りの担当", "数字を探す担当") else ""), over)
