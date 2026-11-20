@@ -347,3 +347,22 @@ def test_scaffold_copies_memo_terms_into_the_readme(tmp_path):
     t = readme.read_bytes().decode("utf-8")
     assert t.count("- （第1回）予知＝日時を当てること") == 1 and "- （第1回）M＝マグニチュード\r\n" in t
     assert "<回を作るたびに足す>" not in t and "\r\n\r\n## つまずき一覧" in t and "\n\n" not in t.replace("\r\n", "")
+
+
+def test_script_length_and_position_words(tmp_path, monkeypatch):
+    """script.md の本文の枚が300〜400字から外れた枚と、図の中の位置で指す言い方（「右端の棒」）を check_memo が △。
+    比べで、最大501字の枚があり、「右端の〜」が横棒の一番下を指していた（図の向きは制作の担当があとで決める）。"""
+    monkeypatch.delenv("SENSEI_SKIP_EXAMPLE_COPY", raising=False)
+    import check_memo
+    src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
+    w = _course(tmp_path)
+    (w / "memo.md").write_text(src, encoding="utf-8")
+    ok = "あ" * 350 + "\n※（出典）" + "い" * 200 + "\n"   # ※ の行は数えない
+    (w / "script.md").write_text("".join(f"## {n}\n{ok}\n" for n in range(1, 12)), encoding="utf-8")
+    items = {i: m for m, i, _ in check_memo.check(w / "memo.md")}
+    assert "原稿の字数" not in items and "原稿の図の指し方" not in items
+    body = "".join(f"## {n}\n" + ("あ" * 500 if n == 3 else ok) + ("棒グラフの右端が南海トラフです。" if n == 4 else "") + "\n\n" for n in range(1, 12))
+    (w / "script.md").write_text(body, encoding="utf-8")
+    out = {i: (m, t) for m, i, t in check_memo.check(w / "memo.md")}
+    assert out["原稿の字数"][0] == "△" and "3（500字）" in out["原稿の字数"][1]
+    assert out["原稿の図の指し方"][0] == "△" and "4「右端」" in out["原稿の図の指し方"][1]

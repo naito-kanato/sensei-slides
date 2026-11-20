@@ -65,6 +65,8 @@ def not_body_heading(h: str) -> bool:
             or h.strip() in ("まとめ", "Summary"))   # まとめの枚（役割「まとめ」）は本文の枚数に数えない
 
 
+SCRIPT_MIN, SCRIPT_MAX = 280, 420   # 標準の回の script.md：本文の枚の読み上げの字数（目安は300〜400字。少しの外れは知らせない）
+SCRIPT_POS = re.compile(r"右端|左端|一番上|一番下|いちばん上|いちばん下|[上下左右]から[1-9１-９一二三四五]番目")   # 図の中の位置で指す言い方
 RECAP_MIN_BODY = 6   # 本文がこの枚数以上の講座は、最後にまとめの枚（輪読の型は、最後の拍が節のまとめなので要らない）
 
 
@@ -538,11 +540,24 @@ def check(memo: Path, require_review: bool = False):
             if not sp.exists():
                 res.append(("△", "原稿", "script.md が無い（本文の枚ごとに「## N」と読み上げる原稿。設計の担当が書き、scaffold が notes.md に入れる）"))
             else:
-                got = {int(m.group(1)): len(re.sub(r"\s", "", m.group(2))) for m in scaffold.NOTE_SEC.finditer(sp.read_text(encoding="utf-8"))}
+                secs = {int(m.group(1)): m.group(2) for m in scaffold.NOTE_SEC.finditer(sp.read_text(encoding="utf-8"))}
+                # 読み上げる字数（※ の出典・要確認の行は数えない）
+                got = {n: len(re.sub(r"\s", "", "\n".join(l for l in t.splitlines() if not l.strip().startswith("※")))) for n, t in secs.items()}
                 short = [n for n in body_n if got.get(n, 0) < 150]
                 if short:
                     res.append(("△", "原稿", "script.md に原稿が無いか短い枚（150字未満）：" + "・".join(map(str, short[:8]))
                                 + "（本文の枚は300〜400字。1文目で前の枚からつなぎ、図の読み方・根拠・橋渡し・次への予告）"))
+                # 本文の枚の字数の幅（比べの4本で、300〜400字に入ったのは 3〜10 枚/10 とばらつき、最大 501 字の枚があった。少しの外れは許す）
+                body_only = [r["#"] for r in srows if (scaffold.col(r, "役割") or "本文") == "本文"]
+                off = [f"{n}（{got[n]}字）" for n in body_only if got.get(n, 0) >= 150 and not SCRIPT_MIN <= got[n] <= SCRIPT_MAX]
+                if off:
+                    res.append(("△", "原稿の字数", "本文の枚の原稿が300〜400字から外れた枚：" + "・".join(off[:8])
+                                + "（長い枚は1文を短くして補足を削る。短い枚は根拠の数字・例か、学習者の経験への橋渡しを足す）"))
+                # 図の中の位置で指す言い方（図の向き・並びは制作の担当があとで決めるので、原稿と食い違う。比べで「右端の〜」が横棒の一番下だった）
+                pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for m in [SCRIPT_POS.search(t)] if m]
+                if pos:
+                    res.append(("△", "原稿の図の指し方", "図の中の位置で指している枚：" + "・".join(pos[:6])
+                                + "（図の向き・並びは組むときに決まる。位置ではなく中身で指す：「右端の棒」→「南海トラフの棒」）"))
         import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
         bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
         if bad:

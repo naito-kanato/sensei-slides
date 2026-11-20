@@ -2,7 +2,8 @@
 
     python <skill>/scripts/next_step.py                    # スライドを作るフォルダの一番上で：作業の一覧と、それぞれの次の手順
     python <skill>/scripts/next_step.py _work/<資料名>     # その作業フォルダの、済んだ手順と次の手順
-    python <skill>/scripts/next_step.py <講座フォルダ>      # 講座：次に作る回と、その作業フォルダ
+    python <skill>/scripts/next_step.py <講座フォルダ>      # 講座：次に作る回と、その作業フォルダ（途中の回があれば、その回の次の手順）
+    python <skill>/scripts/next_step.py --start 講座 [--set 項目=値 ...]   # メインが最初に1回：道具の読み替え・環境・最初の質問・設定の一覧・次の1手
 
 会話が長くなって前半を忘れたとき、途中で止まったあと、別の AI に引き継いだときに走らせる。
 判断はしない（ファイルの有無・日時と、検査のスクリプトの ✘ だけを見る）。「次」に書いた手順書の節を読んでから進める。
@@ -117,6 +118,16 @@ def usage_line(work: Path):
             + (f"。{'・'.join(over)}の枠が上限を超えた：続ける前にユーザーに【質問】で聞く（続ける・ここで止める）" if over else ""))
 
 
+def _shown(work: Path) -> str:
+    """次の手順の文に書く作業フォルダ：作業ディレクトリからの相対（担当が返答の最後の行に写し、メインがそのまま brief.py に渡す）。"""
+    import os
+    try:
+        r = Path(os.path.relpath(Path(work).resolve(), Path.cwd()))
+        return (r if not r.as_posix().startswith("..") else Path(work)).as_posix()
+    except ValueError:
+        return Path(work).as_posix()
+
+
 def leave_outline(work: Path) -> bool:
     """オプション「構成案の確認」が「任せる」（見せずに完成まで）か。"""
     try:
@@ -136,7 +147,7 @@ def light_steps(work: Path, kind: str):
         out.append((ok, step, msg))
         return ok
 
-    w = work.as_posix()
+    w = _shown(work)
     launched = {r.get("role") for r in budget.load(work)}
     plan = work / ("memo.md" if kind == "memo" else "outline.md")
     if not plan.exists():
@@ -172,7 +183,7 @@ def light_steps(work: Path, kind: str):
             if "推論距離の担当" in launched:
                 return out, "推論距離の担当が書き終えるのを待つ（終わりの知らせを待つ）"
             return out, (f"推論距離の担当1人を起動（`brief.py 推論距離の担当 {w}`）。設計の担当とは別の目で推論距離を見て {review.name} に書き、"
-                         "手当てまで入れる。戻ったら next_step をもう一度")
+                         "手当てまで入れる。戻ったら、その返答の最後の「次：」の行のとおりに（無ければ next_step をもう一度）")
     pptx = find_pptx(work) if build.exists() else None
     import language
     html = language.sibling(pptx, "slides", "script") if pptx else None
@@ -351,7 +362,7 @@ def course_next(course: Path):
     unfinished = [w for w in works if not any(m.startswith(w.name[-2:] + "_") for m in made)]
     if unfinished:
         w = unfinished[0]
-        return lines, f"{w.name} の途中：python {SKILL}/scripts/next_step.py {(root / w.name).as_posix()} で続きを見る"
+        return lines, f"{w.name} の途中：{steps_for(root / w.name)[1]}"   # その回の次の1手まで（メインが next_step をもう1回呼ばずに済む）
     n = max(int(m[:2]) for m in made) + 1 if made else 1
     w = f"_work/{course.name}_{n:02d}"
     import budget
@@ -386,8 +397,68 @@ def overview(top: Path):
     return out
 
 
+def tool_lines() -> list:
+    """references/agents.md「道具」の表を、道具ごとの1行にする（メインが表を丸ごと読まずに、自分の道具の行だけ見る）。"""
+    import guide
+    t = guide.section("agents", "道具") or ""
+    rows = [[c.strip() for c in ln.strip().strip("|").split("|")] for ln in t.splitlines() if ln.startswith("|")]
+    if len(rows) < 3:
+        return []
+    head, body = rows[0], [r for r in rows[2:] if len(r) == len(rows[0])]
+    return [f"- {tool}：" + "／".join(f"{r[0]}＝{r[j]}" for r in body) for j, tool in enumerate(head[2:], start=2)]
+
+
+START_ASK = {
+    "講座": ("① 詳しさ（必須）：初学者・多少知っている／かなり知っている（問いに「学習者が自分でない（後輩・受講者など）ときは、その他にどんな人かを書く」と添える）"
+            "　② 回数：3回／5回／おまかせ　③ 資料：テーマだけ／手元の PDF を土台に／あとで決める。"
+            "答えのあとに、学習者のプロフィール（専門・研究テーマ）を一言で勧める（任意）。受講者が本人だけでない・手元の資料を橋渡しに使うときだけ `guide.py course 1`"),
+    "発表": ("① 詳しさ（必須）：初学者・多少知っている／かなり知っている　② 発表時間：15分／30分／決まっていない　③ 構成案：見せる（おすすめ）／任せる。"
+            "資料は、フォルダの一番上を `materials.py --scan <フォルダ>` で見て、同じ質問の中で使うかを確かめる。細部は `guide.py steps 0`"),
+}
+START_NEXT = {
+    "講座": ("答えがそろったら（聞かない回はすぐ）、地図の担当を【別のエージェント】で起動：依頼は「`python <skill>/scripts/brief.py 地図の担当 <講座名>` を走らせ、出た依頼のとおりに進める」の1行と、"
+            "その下の「ユーザーの答え：…」（テーマ・詳しさ・回数・資料・ゴール・軽さ。講座名は講座フォルダの名前になる）。"),
+    "発表": ("答えがそろったら（聞かない回はすぐ）、設計の担当を【別のエージェント】で起動：依頼は「`python <skill>/scripts/brief.py 軽量の設計の担当 _work/<資料名>` を走らせ、出た依頼のとおりに進める」の1行と、"
+            "その下の「ユーザーの答え：…」（詳しさ・発表時間・構成案・資料の場所）。念入りなら先に `budget.py _work/<資料名> --set-lightness 念入り` で、担当は next_step のとおり。"),
+}
+
+
+def start_text(kind: str, sets: dict) -> str:
+    """メインが最初に1回だけ走らせる：道具の読み替え・環境・最初の【質問】・設定の一覧・次の1手（guide.py agents・course 1・slide_profile を別に呼ばない）。"""
+    import io
+    from contextlib import redirect_stdout
+    import slide_profile
+    kind = "講座" if "講" in kind else "発表"
+    out = [f"## 始める（{kind}。この出力で足りる。guide.py agents・course 1・steps 0・slide_profile を別に走らせない）", "",
+           "道具の読み替え（【】の言葉を、使っている道具の行で読む。表に無い道具・細部は `guide.py agents 道具`）："]
+    out += tool_lines()
+    try:
+        import check_env
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            check_env.main()
+        bad = [ln for ln in buf.getvalue().splitlines() if ln[:1] in ("✘", "△")]
+        out += ["", "環境：" + ("そろっている" if not bad else "足りない所がある（`check_env.py` の表を見せ、`guide.py steps 0` のとおりに）")] + bad
+    except Exception:
+        pass
+    out += ["", "最初の【質問】（ボタンで1回・3問・各3択。依頼文で分かる問いは省く。依頼に「質問はせず」「既定で」とあれば聞かない。言語は聞かない：依頼文の言語）：",
+            START_ASK[kind], "",
+            "設定の一覧（ユーザーへの文に、そのまま貼る。答えで値が変わったら `slide_profile.py --table"
+            + (" --kind 講座" if kind == "講座" else "") + " --set 項目=値` で出し直す）：",
+            slide_profile.language_line(None, sets), "",
+            slide_profile.options_table(None, sets, "講座" if kind == "講座" else "ゼミ"), "",
+            "次：" + START_NEXT[kind] + "起動と同じ応答の文に設定の一覧を貼り「この設定で進めます。変えたい所があれば言ってください」と添え、"
+            "応答を一言で終えて担当の知らせを待つ（sleep・ls・next_step で様子を見ない）。担当の返答の最後の「次：」の行のとおりに、次の担当を起動する"]
+    return "\n".join(out)
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "--start":
+        kind = argv[1] if len(argv) > 1 and not argv[1].startswith("--") else "講座"
+        sets = dict(argv[i + 1].split("=", 1) for i, a in enumerate(argv) if a == "--set" and i + 1 < len(argv) and "=" in argv[i + 1])
+        print(start_text(kind, sets))
+        return 0
     p = Path(argv[0]) if argv else Path.cwd()
     if not p.exists():
         print(f"{p} が無い")

@@ -104,3 +104,26 @@ def test_final_review_asking_for_fixes_comes_before_check_done(tmp_path):
     review.write_text("- 判定: 直してから渡す\n\n## 採否と直した点\n\n", encoding="utf-8")   # 見出しだけで中身が無いのは、まだ
     os.utime(review, (t + 40, t + 40))
     assert next_step.needs_final_fix(review, pptx)
+
+
+def test_start_gives_the_main_everything_once(capsys):
+    """メインが最初に1回：道具の読み替え・最初の質問・設定の一覧・次の1手（guide.py agents・course 1・slide_profile を別に呼ばない）。"""
+    assert next_step.main(["--start", "講座", "--set", "聞き手のテーマへの詳しさ=初学者"]) == 0
+    out = capsys.readouterr().out
+    assert "Claude Code：" in out and "sensei-slides-worker" in out
+    assert "① 詳しさ" in out and "| 聞き手のテーマへの詳しさ | 初学者 |" in out
+    assert "brief.py 地図の担当" in out and "sleep" in out
+    assert len(out.encode("utf-8")) < 27000
+    assert next_step.main(["--start", "発表"]) == 0
+    assert "brief.py 軽量の設計の担当" in capsys.readouterr().out
+
+
+def test_course_folder_gives_the_lesson_step_when_in_progress(tmp_path, monkeypatch):
+    """途中の回があれば、講座フォルダの next_step がその回の次の1手まで出す（メインがもう1回呼ばずに済む）。"""
+    monkeypatch.chdir(tmp_path)
+    c = tmp_path / "焼き肉講座"
+    c.mkdir()
+    (c / "00_README.md").write_text("# 焼き肉講座（全1回）\n\n## 全体の地図\n\n| 回 | 題 |\n|---|---|\n| 1 | はじめに |\n", encoding="utf-8")
+    (tmp_path / "_work" / "焼き肉講座_01").mkdir(parents=True)
+    _, nxt = next_step.course_next(c)
+    assert nxt.startswith("焼き肉講座_01 の途中：") and "軽量の設計の担当" in nxt and "_work/焼き肉講座_01" in nxt
