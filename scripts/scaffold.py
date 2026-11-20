@@ -682,6 +682,20 @@ def qa_split(work: Path, kind, rows):
     return {n: items[i * k:(i + 1) * k] for i, n in enumerate(slides)}
 
 
+# 出典の列に、作り手の確かめのメモ（「検索の抜粋で確認」「強さは原稿で…と断る」「本文は未読」など）が括弧で入ることがある。
+# 原稿の ※ の行は講師が読む所なので、書名・URL・頁や図の場所だけを残す（試しで、採点者に「読み上げにくい・作り手のメモが混ざる」と言われた）
+MAKER_NOTE = re.compile(r"確認|確か|未読|未開封|未取得|未参照|取得|検索|担当|メイン側|原稿|断る|断定|スライド|載せ|載る|書く|本文で|頁は|ページは|一致|資料外|記載|割れる|写した")
+
+
+def clean_source(src: str) -> str:
+    """出典の文から、作り手のメモの括弧と「検索で確かめた」の前置きを外す。"""
+    t = re.sub(r"[（(]([^（）()]*)[）)]", lambda m: "" if MAKER_NOTE.search(m.group(1)) else m.group(0), src)
+    t = re.sub(r"^(?:ウェブ|Web|web)?(?:検索で|で)?確かめた", "", t.strip())
+    head, *rest = re.split(r"(?<=。)", t)   # 2文目からの作り手のメモ（「一次資料は未確認」など）も外す
+    t = head + "".join(x for x in rest if not MAKER_NOTE.search(x))
+    return re.sub(r"\s{2,}", " ", t).strip(" 、，,。")
+
+
 def note_sources(text: str, cells: str) -> list:
     """本文の要点・図の案の〔事実N〕〔データN〕から、3節・3b節の出典の「※ 出典：…」の行（スクリプトが原稿に入れる）。"""
     out = []
@@ -704,8 +718,9 @@ def note_sources(text: str, cells: str) -> list:
             src = ds[n]["fields"].get("出典", "")
         else:
             continue
-        line = f"※ 出典：{src.strip()}"
-        if src.strip() and line not in out:
+        src = clean_source(src)
+        line = f"※ 出典：{src}"
+        if src and line not in out:
             out.append(line)
     return out
 

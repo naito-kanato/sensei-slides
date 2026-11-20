@@ -320,3 +320,12 @@ def test_script_file_fills_the_notes(tmp_path, monkeypatch):
     assert scaffold.main([str(w)]) == 0
     notes = (w / "notes.md").read_text(encoding="utf-8")
     assert "あ" * 200 in notes
+
+
+def test_note_source_lines_drop_maker_notes():
+    import scaffold
+    # 出典の列の確かめのメモは、原稿の ※ の行に出さない（睡眠の比べで「作り手のメモが混ざる」と言われた）
+    assert scaffold.clean_source("睡眠と免疫の総説・観察研究（強さは原稿で「関連の報告」と断る）") == "睡眠と免疫の総説・観察研究"
+    assert scaffold.clean_source("検索で確かめた複数の解説（例：Simply Psychology https://x）。一次資料は未確認") == "複数の解説（例：Simply Psychology https://x）"
+    assert scaffold.clean_source("厚生労働省 2020年 https://b 第3章 図37（p.27）") == "厚生労働省 2020年 https://b 第3章 図37（p.27）"
+    assert scaffold.clean_source("Nofzinger et al. https://a（要旨）") == "Nofzinger et al. https://a（要旨）"
