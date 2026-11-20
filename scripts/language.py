@@ -49,9 +49,12 @@ def lang_name(v) -> str:
     v = (v or "").strip()
     if not v:
         return DEFAULT
-    for u in (v, re.sub(r"\s*[（(].*?[)）]\s*$", "", v).strip()):   # 「英語（スライドと原稿）」のような注記を外して引き直す
+    head = re.split(r"[（(。、,;；:：\s]", v, maxsplit=1)[0].strip()   # 先頭の語（「日本語（スライド…）。16:9」の「日本語」）
+    for u in (v, re.sub(r"\s*[（(].*?[)）]\s*$", "", v).strip(), head):   # 「英語（スライドと原稿）」のような注記を外して引き直す
         if u.lower() in ALIASES:
             return ALIASES[u.lower()]
+    # 注記のあとに別の文が続いても先頭の語で読む（地図の担当が「言語：日本語（スライド・原稿・確認問題）。16:9」と書き、
+    # 読めずに日本語のデッキが英語の名前（_slides.pptx）・英語の部品で組まれ、制作の担当が全部の枚を直していた）
     return re.sub(r"\s*[（(].*?[)）]\s*$", "", v).strip() or DEFAULT
 
 

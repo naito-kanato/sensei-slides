@@ -16,6 +16,8 @@ W, H = 960, 540
 
 def test_names_codes_and_width():
     assert LG.lang_name("") == "日本語" and LG.lang_name("English") == "英語" and LG.lang_name("英語（スライドと原稿）") == "英語"
+    assert LG.lang_name("日本語（スライド・原稿・確認問題）。16:9") == "日本語"   # 注記のあとに文が続いても先頭の語で読む（英語の名前で組まれた）
+    assert LG.lang_name("中国語（繁体字）") == "中国語（繁体字）" and LG.lang_name("English (slides). 16:9") == "英語"
     assert LG.lang_code("英語") == "en-US" and LG.lang_code("en") == "en-US" and LG.lang_code("日本語") == "ja-JP"
     assert LG.lang_code("スワヒリ語") == "en-US"                       # 知らない言語も作れる（つづりの検査は英語）
     assert LG.name_of_code("en-US") == "英語" and LG.name_of_code("") == "日本語"   # 印の無い今までのデッキは日本語
