@@ -20,7 +20,7 @@
 表の道具の名前は、それぞれのツールでこのスキルを試したときの記録から取った。道具の名前はツールの版で変わることがある。名前が違っても、同じ働きの道具を使う。
 どのエージェントでも、モデルが分からなければユーザーに聞く。`render_check.ps1`・`export_pdf.ps1` は、どのエージェントでも Windows の PowerShell で動かす。
 
-**PowerPoint を使うスクリプト（`render_check.ps1`・`export_pdf.ps1`・`notes_html.py`・`make_deck.py`）は、サンドボックスの中では止められることがある**（PowerPoint が無い PC では、代わりに LibreOffice 版の `render_check_lo.py` を使う。references/tools.md「PowerPoint の決まり」）（Codex では「Retrieving the COM class factory … 80070005 Access is denied」）。Codex なら exec_command に `sandbox_permissions: "require_escalated"` を付けて、ユーザーの許可を得てサンドボックスの外で動かす（試験ではこれで通った）。毎回の許可を省くには、同梱の `assets/codex/sensei-slides.rules` を、スライドを作るフォルダの `.codex/rules/` に置いてもらう（Codex がそのフォルダを信頼しているときに読む。この3つのスクリプトだけを、確認なしでサンドボックスの外で動かす決まり）。止められても、自作の HTML や別の描き方で代えない（SKILL.md）。また、画面操作の機能（Codex の Computer Use など）で PowerPoint を開かない。サンドボックスの外での実行は、画面は変わらず、コマンドの許可を求める確認が出るだけ。
+**PowerPoint を使うスクリプト（`render_check.ps1`・`export_pdf.ps1`・`notes_html.py`・`make_deck.py`）は、サンドボックスの中では止められることがある**（`make_deck.py` はふだん PowerPoint を使わない描画で検査し、ERROR 0 の回にだけ PowerPoint で確かめる。止められたらそう出して、新しい描画の結果のまま進む。references/tools.md「PowerPoint の決まり」）（Codex では「Retrieving the COM class factory … 80070005 Access is denied」）。Codex なら exec_command に `sandbox_permissions: "require_escalated"` を付けて、ユーザーの許可を得てサンドボックスの外で動かす（試験ではこれで通った）。毎回の許可を省くには、同梱の `assets/codex/sensei-slides.rules` を、スライドを作るフォルダの `.codex/rules/` に置いてもらう（Codex がそのフォルダを信頼しているときに読む。この3つのスクリプトだけを、確認なしでサンドボックスの外で動かす決まり）。止められても、自作の HTML や別の描き方で代えない（SKILL.md）。また、画面操作の機能（Codex の Computer Use など）で PowerPoint を開かない。サンドボックスの外での実行は、画面は変わらず、コマンドの許可を求める確認が出るだけ。
 
 **表にないツール（VS Code の Copilot など）**では、同じ働きの道具を探して使う。無いときは次のようにする。
 - 【質問】：チャットに問いと選択肢を番号つきで並べて（「1-a, 2-c のように答えてください」）、答えを待つ

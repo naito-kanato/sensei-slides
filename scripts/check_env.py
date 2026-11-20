@@ -4,12 +4,14 @@
 
 調べること
   1. Python の版（3.10 以上）と部品（python-pptx・PyMuPDF・Pillow・matplotlib・numpy・lxml）
-  2. 描画の検査と原稿のページに使うもの：Windows の PowerPoint、無ければ LibreOffice（どちらか1つあればよい）
+  2. 描画の検査と原稿のページに使うもの：描画の検査は PowerPoint を使わない描画（render_check_py.py）でどの PC でもできる。
+     Windows の PowerPoint があれば、ERROR 0 の回に PowerPoint で確かめ、原稿のページの画像も PowerPoint で作る。
+     描画に使う書体（MS PGothic・Segoe UI・Arial など）が無い PC では代わりの書体で測るので、幅が PowerPoint とずれうる
   3. 図の日本語フォント（Meiryo・Yu Gothic・ヒラギノ・Noto Sans CJK など）
   4. Claude Code で使うとき：道具を絞った担当の型（.claude/agents/sensei-slides-worker.md）があるか（無くても作れる。あると軽い）
 足りないものがあれば、入れ方を出す。Python の部品は、エージェントが【質問】で聞いて許可をもらってから、作業フォルダの .venv に入れる。
-PC 全体に入るもの（Python 本体・LibreOffice・フォント）は、入れるのはユーザー（頼まれたときだけ、確認を出してから入れる）。
-終了コード：部品が足りなければ 1（スライドが作れない）。描画のもの・フォントが無いだけなら 0（スライドまでは作れる）。
+PC 全体に入るもの（Python 本体・フォント）は、入れるのはユーザー（頼まれたときだけ、確認を出してから入れる）。LibreOffice は要らない。
+終了コード：部品が足りなければ 1（スライドが作れない）。PowerPoint・フォントが無いだけなら 0（スライドと検査までは作れる）。
 """
 import importlib
 import platform
@@ -77,6 +79,15 @@ def libreoffice():
         return None
 
 
+def render_fonts():
+    """描画の検査で文字の幅を測る書体のうち、この PC に無いもの（テンプレートのテーマの書体）。"""
+    try:
+        import render_check_py
+        return [n for n in render_check_py.CHECK_FONTS if render_check_py.find_face(n, False, False) is None]
+    except Exception:
+        return None
+
+
 def ja_font():
     try:
         from matplotlib import font_manager
@@ -114,11 +125,16 @@ def main():
         todo.append("部品を入れる（エージェントが聞いて、許可があれば .venv に入れる）：python -m venv .venv → .venv の python -m pip install -r <skill>/requirements.txt（Windows は .venv\\Scripts\\python、Mac・Linux は .venv/bin/python）")
     ppt = has_powerpoint()
     lo = libreoffice()
-    rows.append(("✔" if ppt else "－", "PowerPoint", "あり（描画の検査と原稿のページはこれで）" if ppt else "なし"))
-    rows.append(("✔" if lo else "－", "LibreOffice", (f"あり（{lo}）" + ("" if ppt else "。描画の検査と原稿のページはこれで（やや甘め。最後は画像を目で見る）")) if lo else "なし"))
-    if not ppt and not lo:
-        rows.append(("✘", "描画の検査・原稿のページ", "どちらも無いので作れない（スライドの .pptx までは作れる）"))
-        todo.append("LibreOffice（無料）を入れる：" + INSTALL_LO.get(OS, INSTALL_LO["Linux"]))
+    rows.append(("✔" if not miss else "✘", "描画の検査", "PowerPoint を使わない描画（render_check_py.py）で、どの回も描いて検査する"
+                 + ("。ERROR 0 の回に PowerPoint で1回描いて確かめる" if ppt else "")))
+    rows.append(("✔" if ppt else "－", "PowerPoint", "あり（ERROR 0 の回の確かめと、原稿のページの画像はこれで）" if ppt else
+                 "なし（検査と原稿のページの画像は、PowerPoint を使わない描画で作る。見た目は近いが同じではないので、最後は画像を目で見る）"))
+    if lo and not ppt:
+        rows.append(("✔", "LibreOffice", f"あり（{lo}。原稿のページの画像はこれで）"))
+    fonts = render_fonts() if not miss else None
+    if fonts is not None:
+        rows.append(("✔" if not fonts else "△", "描画の書体", "PowerPoint と同じ書体で測る" if not fonts else
+                     f"{'・'.join(fonts)} が無い。代わりの書体で測るので、文字の幅が PowerPoint と少しずれうる（最後は画像を目で見る）"))
     font = ja_font()
     no_mpl = "matplotlib" in miss
     rows.append(("✔" if font else "－" if no_mpl else "△", "図の日本語フォント",
@@ -139,8 +155,6 @@ def main():
         print("\n足りないもの（部品は、聞いて許可をもらってから .venv に入れる。PC 全体に入るものは、入れるのはユーザー）：")
         for t in todo:
             print(f"  - {t}")
-        if not ppt and not lo:
-            print("  入れなくても、pptx だけは作れる（make_deck.py --no-render。描画の検査と原稿のページは、LibreOffice を入れればあとから）")
     else:
         print("\n全部そろっている")
     return 1 if (miss or not py_ok) else 0

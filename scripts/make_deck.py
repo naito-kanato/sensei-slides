@@ -1,25 +1,31 @@
 """図 → 組む → 描く → 検査 を1回で（手順3〜5の往復を1つのコマンドに）。出力は直す所だけ。
 
     python <skill>/scripts/make_deck.py <work>               # 作業フォルダ（_work/<資料名>/）
-    python <skill>/scripts/make_deck.py <work> --no-render   # 描かずに組むだけ（PowerPoint も LibreOffice も無いとき）
-    python <skill>/scripts/make_deck.py <work> --lo          # PowerPoint があっても LibreOffice で描く（ふだんは使わない）
+    python <skill>/scripts/make_deck.py <work> --no-render   # 描かずに組むだけ（ふだんは使わない）
+    python <skill>/scripts/make_deck.py <work> --pp          # 毎回 PowerPoint で描く（前のやり方。ふだんは使わない）
+    python <skill>/scripts/make_deck.py <work> --no-pp       # ERROR 0 の回も PowerPoint で確かめない
+    python <skill>/scripts/make_deck.py <work> --lo          # LibreOffice で描く（ふだんは使わない）
     python <skill>/scripts/make_deck.py <work> --over        # 回数の上限を超えて回す（ユーザーが許したときだけ）
     python <skill>/scripts/make_deck.py <work> --final       # 上限のあと、直したものを描いて確かめるだけの1回（段階ごとに1回。回数に数えない）
 
 回数の上限：仕上げは4回、完成後のレビューのあとの直しは2回（budget.py。オプション「回数の上限」で多め・なしにできる）。上限に来たら組まずに止まる。
-PowerPoint があるのに描けないときは、LibreOffice に代えずに止まる（描き方が変わると検査の数値が変わるため）。
+描くのは、ふだんは PowerPoint を使わない描画（render_check_py.py。pptx だけから文字の配置を計算し、PowerPoint と同じ形の
+shapes.json と画像を作る）。PowerPoint がある PC では、それで ERROR 0 になった回にだけ PowerPoint で1回描いて確かめ、
+PowerPoint の結果を検査の結果にする（食い違った所は出す）。PowerPoint が無い PC（Mac・Linux など）は新しい描画だけで最後まで進む。
+PowerPoint で確かめられなかったとき（サンドボックスで止められたなど）は、新しい描画の結果のまま進む（そう出す）。
 
 やること（どれも作業フォルダの中で）
   1. figs.py が figs/ の画像より新しければ、python figs.py（図の WARN だけ出す）
   2. python build.py（WARN と、できた pptx の場所だけ出す）
-  3. PowerPoint で描く（render_check.ps1。無ければ LibreOffice の render_check_lo.py）→ render/
-  4. 一覧の画像 render/grid-N.jpg（6枚ずつ。レビューと目視はこれで見る。1枚ずつ開かない）
-  5. 描画の検査（check_layout.py --brief：直す所だけ）と、原稿の確認（check_notes.py：✘・△ だけ）
+  3. 描く（render_check_py.py）→ render/
+  4. 描画の検査（check_layout.py --brief：直す所だけ）。ERROR 0 なら、PowerPoint があれば render_check.ps1 で描いて確かめ、
+     PowerPoint の検査の結果を使う（PowerPoint の画像と shapes.json を render/ に置き、新しい描画の分は render/python/ に移す）
+  5. 一覧の画像 render/grid-N.jpg（6枚ずつ。レビューと目視はこれで見る。1枚ずつ開かない）と、原稿の確認（check_notes.py：✘・△ だけ）
   6. 最後に1行：ERROR・WARN・原稿の ✘ の数と、次にやること
   7. 組みの記録：枚ごとの指紋を <work>/build_log.jsonl に1行足す（何枚作り直したか。build_log.py）
   8. 最後の回（ERROR・WARN・✘ が0、回数の上限の回、--final）なら、原稿HTML（notes_html.py）も作る（担当が別に走らせる1回を省く）
 
-直すときは、出た所を全部まとめて直してから、もう一度これだけを走らせる（render_check・check_layout を別々に呼ばない）。
+直すときは、出た所を全部まとめて直してから、もう一度これだけを走らせる（render_check_py・render_check・check_layout を別々に呼ばない）。
 会話に載る出力を短くして、使用量を抑えるための部品。終了コード：ERROR か原稿の ✘ があれば 1。
 """
 from __future__ import annotations
@@ -87,25 +93,121 @@ def why_pp_failed(text: str) -> str:
     return "PowerPoint で描けなかった"
 
 
-def render(pptx: Path, out: Path, allow_lo: bool = False):
-    """PowerPoint で描く。PowerPoint が無いとき（か --lo）だけ LibreOffice。戻り値 (成功, 使った道具, 失敗の行)。
-    PowerPoint があるのに描けないときは LibreOffice に代えない（描き方が変わると検査の数値が変わり、無い問題を追いかけることになる）。"""
-    if platform.system() == "Windows" and not allow_lo:
-        code, text = run(["powershell", "-ExecutionPolicy", "Bypass", "-File", str(HERE / "render_check.ps1"),
-                          "-Pptx", str(pptx), "-OutDir", str(out)], pptx.parent)
-        if code == 0 and (out / "shapes.json").exists():
-            return True, "PowerPoint", []
-        if has_powerpoint():
-            return False, "", [why_pp_failed(text)] + short(text, 3)
-        bad = short(text, 4)
-    else:
-        bad = []
+def render_py(pptx: Path, out: Path):
+    """PowerPoint を使わない描画（render_check_py.py）。戻り値 (成功, 失敗の行)。"""
+    try:
+        import render_check_py
+        with redirect_stdout(io.StringIO()):
+            render_check_py.render(pptx, out)
+        return True, []
+    except Exception as e:   # 描けない pptx（壊れた図形など）。PowerPoint・LibreOffice に代える
+        return False, [f"新しい描画で描けなかった（{type(e).__name__}: {e}）"]
+
+
+def render_pp(pptx: Path, out: Path):
+    """PowerPoint で描く（render_check.ps1）。戻り値 (成功, 失敗の行)。"""
+    if platform.system() != "Windows":
+        return False, ["PowerPoint で描けるのは Windows だけ"]
+    code, text = run(["powershell", "-ExecutionPolicy", "Bypass", "-File", str(HERE / "render_check.ps1"),
+                      "-Pptx", str(pptx), "-OutDir", str(out)], pptx.parent)
+    if code == 0 and (out / "shapes.json").exists():
+        return True, []
+    return False, [why_pp_failed(text)] + short(text, 3)
+
+
+def render_lo(pptx: Path, out: Path):
     code, text = run([sys.executable, "-X", "utf8", str(HERE / "render_check_lo.py"), "-Pptx", str(pptx), "-OutDir", str(out)], pptx.parent)
     if code == 0 and (out / "shapes.json").exists():
-        return True, "LibreOffice", []
-    return False, "", bad + short(text, 4)
+        return True, []
+    return False, short(text, 4)
 
 
+def render(pptx: Path, out: Path, mode: str = "py"):
+    """描く。mode："py"（ふだん。PowerPoint を使わない描画）・"pp"（PowerPoint）・"lo"（LibreOffice）。
+    戻り値 (成功, 使った道具, 失敗の行)。新しい描画で描けないときだけ、PowerPoint（無ければ LibreOffice）に代える。"""
+    if mode == "lo":
+        ok, bad = render_lo(pptx, out)
+        return ok, "LibreOffice" if ok else "", bad
+    if mode == "pp":
+        ok, bad = render_pp(pptx, out)
+        return ok, "PowerPoint" if ok else "", bad
+    ok, bad = render_py(pptx, out)
+    if ok:
+        return True, "新しい描画（PowerPoint を使わない）", []
+    if platform.system() == "Windows" and has_powerpoint():
+        ok, bad2 = render_pp(pptx, out)
+        return ok, "PowerPoint" if ok else "", bad + bad2
+    ok, bad2 = render_lo(pptx, out)
+    return ok, "LibreOffice" if ok else "", bad + bad2
+
+
+def layout_items(text: str):
+    """check_layout の出力から (枚, 種類, 中身) の一覧（→ から後の直し方は除く）。"""
+    items, slide = [], None
+    for line in text.splitlines():
+        m = re.match(r"--- slide (\d+)", line)
+        if m:
+            slide = int(m.group(1))
+            continue
+        m = re.search(r"\[(ERROR|WARN)\] (.*)", line)
+        if m:
+            items.append((slide, m.group(1), m.group(2).split(" → ")[0]))
+    return items
+
+
+def run_layout(out: Path, pptx: Path):
+    """check_layout.py --brief を走らせる。戻り値 (出力, 終了コード)。"""
+    import check_layout
+    check_layout.BRIEF = True
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        code = check_layout.main(str(out / "shapes.json"), str(pptx))
+    return buf.getvalue().strip(), code
+
+
+def line_diffs(a: Path, b: Path, limit: int = 6):
+    """2つの shapes.json（a：PowerPoint、b：新しい描画）で、行数が違う図形。"""
+    import json
+    try:
+        A = json.loads(a.read_text(encoding="utf-8-sig"))["shapes"]
+        B = json.loads(b.read_text(encoding="utf-8-sig"))["shapes"]
+    except Exception:
+        return []
+    out = []
+    for x, y in zip(A, B):
+        if x.get("slide") == y.get("slide") and x.get("name") == y.get("name") and (x.get("text") or y.get("text")) \
+                and x.get("lines") != y.get("lines"):
+            out.append(f"スライド {x['slide']}「{x['name']}」の行数：PowerPoint {x.get('lines')}行・新しい描画 {y.get('lines')}行")
+    return out[:limit] + ([f"…ほか {len(out) - limit} 個"] if len(out) > limit else [])
+
+
+def verify_with_powerpoint(pptx: Path, out: Path, lay_py: str):
+    """新しい描画で ERROR 0 の回に、PowerPoint で1回描いて確かめる。
+    描けたら、PowerPoint の画像と shapes.json を render/ に置き（新しい描画の分は render/python/ へ）、
+    戻り値 (PowerPoint の検査の出力, 終了コード, 食い違いの行)。描けなければ (None, None, 理由の行)。"""
+    import shutil
+    from collections import Counter
+    tmp = out / "powerpoint"
+    shutil.rmtree(tmp, ignore_errors=True)
+    ok, bad = render_pp(pptx, tmp)
+    if not ok:
+        shutil.rmtree(tmp, ignore_errors=True)
+        return None, None, bad
+    keep = out / "python"
+    shutil.rmtree(keep, ignore_errors=True)
+    keep.mkdir(parents=True, exist_ok=True)
+    for f in list(out.glob("slide-*.png")) + [out / "shapes.json"]:
+        if f.exists():
+            shutil.move(str(f), str(keep / f.name))
+    for f in tmp.iterdir():
+        shutil.move(str(f), str(out / f.name))
+    shutil.rmtree(tmp, ignore_errors=True)
+    lay_pp, code = run_layout(out, pptx)
+    a, b = Counter(layout_items(lay_pp)), Counter(layout_items(lay_py))
+    diffs = [f"PowerPoint だけ：スライド {s_} [{k}] {m[:100]}" for s_, k, m in (a - b).elements()]
+    diffs += [f"新しい描画だけ：スライド {s_} [{k}] {m[:100]}" for s_, k, m in (b - a).elements()]
+    diffs += line_diffs(out / "shapes.json", keep / "shapes.json")
+    return lay_pp, code, diffs
 
 
 def budget_tokens(work: Path, over: bool):
@@ -230,25 +332,37 @@ def main(argv=None):
         return 0
     # 3. 描く
     out = work / "render"
-    ok, tool, bad = render(pptx, out, "--lo" in argv)
+    if (out / "python").exists():   # 前の回の PowerPoint の確かめで移した新しい描画の分（この回は描き直す）
+        import shutil
+        shutil.rmtree(out / "python", ignore_errors=True)
+    mode = "lo" if "--lo" in argv else ("pp" if "--pp" in argv else "py")
+    ok, tool, bad = render(pptx, out, mode)
     if not ok:
         print("✘ 描けなかった。" + "\n  ".join(bad or ["check_env.py で確かめる"]))
         return 1
-    # 4. 一覧の画像
+    # 4. 描画の検査（新しい描画で ERROR 0 なら、PowerPoint で1回描いて確かめ、PowerPoint の結果を使う）
+    lay, lay_code = run_layout(out, pptx)
+    pp_note = []
+    if tool.startswith("新しい描画") and not re.search(r"\[ERROR\]", lay) and "--no-pp" not in argv \
+            and platform.system() == "Windows" and has_powerpoint():
+        lay_pp, code_pp, diffs = verify_with_powerpoint(pptx, out, lay)
+        if lay_pp is None:
+            pp_note = ["△ PowerPoint で確かめられなかった（新しい描画の結果のまま進める）：" + " / ".join(diffs[:2])]
+        else:
+            lay, lay_code = lay_pp, code_pp
+            tool = "新しい描画で ERROR 0 → PowerPoint で確かめた"
+            pp_note = (["PowerPoint と新しい描画が食い違った所（検査は PowerPoint の結果を使う）："] + ["  " + d for d in diffs]) if diffs \
+                else ["PowerPoint で確かめた：新しい描画と同じ判定"]
+    # 5. 一覧の画像（PowerPoint で確かめた回は、PowerPoint の画像で）
     import grid
     with redirect_stdout(io.StringIO()):
         grid.main(str(out), str(out / "grid"), 2, 6, 800)
     sheets = sorted(out.glob("grid-*.jpg"))
-    # 5. 検査
-    import check_layout
-    check_layout.BRIEF = True
-    buf = io.StringIO()
-    with redirect_stdout(buf):
-        lay_code = check_layout.main(str(out / "shapes.json"), str(pptx))
-    lay = buf.getvalue().strip()
     n_err = len(re.findall(r"\[ERROR\]", lay))
     n_warn = len(re.findall(r"\[WARN\]", lay))
     print(f"描いた（{tool}）：一覧の画像 {len(sheets)}枚（{', '.join(s.name for s in sheets)}）")
+    for line in pp_note:
+        print(line)
     if n_err or n_warn or "←" in lay:
         print(lay)
     import check_notes

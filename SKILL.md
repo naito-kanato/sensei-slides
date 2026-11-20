@@ -69,6 +69,6 @@ description: 資料やテーマから、スライド（PowerPoint .pptx）・読
 
 - コマンドは作業ディレクトリから `python <skill>/scripts/<名前>.py ...`。作業ディレクトリに `.venv` があれば、いつもその Python をパスで書く（`guide.py tools コマンドの書き方`）
 - 組む・描く・検査は `make_deck.py <work>` の1回で。出た所をまとめて直してから、もう一度だけ走らせる
-- PowerPoint が開けないときに、描画の検査や原稿HTMLを別の方法（自作の HTML・PIL の画像）で代えない（`guide.py tools PowerPoint`）
+- PowerPoint が開けないときに、描画の検査や原稿HTMLをスキルの部品以外の方法（自作の HTML・PIL の画像）で代えない（`guide.py tools PowerPoint`）
 - 上限（回数・トークン・使用量）の中身と再開のしかたは `guide.py tools 上限`
 - 小さな依頼（本文5枚以下・既存デッキの一部の直し）は `guide.py tools 依頼の大きさ`。小さくても描画の検査・完成後のレビュー・原稿HTMLは省かない

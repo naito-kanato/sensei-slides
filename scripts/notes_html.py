@@ -4,6 +4,7 @@
     python notes_html.py deck.pptx --pdf deck.pdf -o out.html  # 既にあるスライドPDFを使う・出力先を指定
 
 - スライド画像は、PowerPoint で一時フォルダに書き出した PDF から作って HTML に埋め込み（1ファイルで完結）、PDF は消す
+  （PowerPoint が無い PC では LibreOffice の PDF、それも無ければ PowerPoint を使わない描画 render_check_py.py の画像）
   （原稿HTMLがあるのでスライドの PDF はユーザーのフォルダに残さない）
 - 各スライド：左にスライド画像、右に「番号・●見出し・青帯の結論・原稿」。幅が狭い画面では縦に並ぶ
 - 原稿は1文ずつ段落に分け、「（資料外の補足）」「（教科書外の補足）」は灰色、「（要確認）」は橙で目立たせる
@@ -649,9 +650,25 @@ def build_html(deck_title, items, imgs, qs=None, save=None, cid="", lang=None):
 <script>{JS}</script></body></html>""", lang)
 
 
+def python_images(pptx, width=1400, quality=82):
+    """PowerPoint を使わない描画（render_check_py.py）でスライドの画像を作る（PowerPoint も LibreOffice も無い PC のため）。"""
+    import tempfile
+    import render_check_py
+    imgs = []
+    with tempfile.TemporaryDirectory() as td:
+        render_check_py.render(pptx, td, width)
+        for f in sorted(Path(td).glob("slide-*.png")):
+            buf = io.BytesIO()
+            with Image.open(f) as im:
+                im.convert("RGB").save(buf, "JPEG", quality=quality, optimize=True)
+            imgs.append(base64.b64encode(buf.getvalue()).decode())
+    return imgs
+
+
 def export_temp_pdf(pptx, tmpdir):
     """一時フォルダに PDF を書き出す（ユーザーのフォルダには PDF を残さない）。
-    Windows では PowerPoint 本体で。PowerPoint が無い・開けないときは LibreOffice で（render_check_lo.py）。"""
+    Windows では PowerPoint 本体で。PowerPoint が無い・開けないときは LibreOffice で（render_check_lo.py）。
+    PowerPoint が入っていない PC で LibreOffice も無ければ None（呼ぶ側が PowerPoint を使わない描画の画像で代える）。"""
     import platform
     import shutil
     import subprocess
@@ -670,6 +687,13 @@ def export_temp_pdf(pptx, tmpdir):
         print("スライド画像は LibreOffice で書き出した（PowerPoint が無い・開けないため）")
         return pdf
     except SystemExit as e:
+        try:
+            import check_env
+            has_pp = check_env.has_powerpoint()
+        except Exception:
+            has_pp = False
+        if not has_pp:   # PowerPoint が入っていない PC：PowerPoint を使わない描画の画像で作る
+            return None
         sys.exit(f"スライド画像を作れませんでした。{msg}LibreOffice でも書き出せない：{e}")
 
 
@@ -692,7 +716,11 @@ def main():
         imgs = slide_images(Path(a.pdf))
     else:
         with tempfile.TemporaryDirectory() as td:
-            imgs = slide_images(export_temp_pdf(pptx, td))
+            pdf = export_temp_pdf(pptx, td)
+            imgs = slide_images(pdf) if pdf else None
+        if imgs is None:
+            imgs = python_images(pptx)
+            print("スライド画像は PowerPoint を使わない描画で作った（PowerPoint も LibreOffice も無いため。見た目は近いが、同じではない）")
     if len(imgs) != len(items):
         print(f"注意: スライド {len(items)} 枚に対し画像 {len(imgs)} 枚。--pdf で渡した PDF が古い可能性あり")
     deck_title = prs.core_properties.title or items[0][0] or stem

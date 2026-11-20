@@ -204,7 +204,7 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     # 2. 描画の検査
     shapes = work / "render" / "shapes.json" if work else None
     if not shapes or not shapes.exists():
-        res.append(("✘", "描画の検査", "render/shapes.json が無い（render_check.ps1 → check_layout.py を走らせる）"))
+        res.append(("✘", "描画の検査", "render/shapes.json が無い（make_deck.py を走らせる）"))
     else:
         data = json.loads(shapes.read_text(encoding="utf-8-sig"))
         items = data["shapes"] if isinstance(data["shapes"], list) else [data["shapes"]]
@@ -217,7 +217,8 @@ def check(pptx: Path, work: Path | None, record: bool = True):
             m = re.search(r"(\d+) errors, (\d+) warnings", out.getvalue())
             errs = int(m.group(1)) if m else (1 if code else 0)
             warns = int(m.group(2)) if m else 0
-            eng = "（LibreOffice で描画。最後は画像を目で見て確かめる）" if data.get("engine") == "libreoffice" else ""
+            eng = {"libreoffice": "（LibreOffice で描画。最後は画像を目で見て確かめる）",
+                   "python": "（PowerPoint を使わない描画。PowerPoint では確かめていない。最後は画像を目で見て確かめる）"}.get(data.get("engine"), "")
             res.append(("✘" if errs else "✔", "描画の検査", f"ERROR {errs}・WARN {warns}" + ("（直してから渡す）" if errs else "") + eng))
 
     # 3. 読み上げ原稿

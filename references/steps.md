@@ -48,7 +48,7 @@ SKILL.md には地図と決まりだけを置き、手順の中身はここに�
      続けて `.venv/Scripts/python -m pip install -r <skill>/requirements.txt`（Mac・Linux は `.venv/bin/python`。`uv` が入っていれば `uv venv --seed .venv` と `uv pip install --python <その python> -r ...` のほうが速い）、終わったら同じ Python で check_env をもう一度走らせ、そろったことを確かめてから進む。
      通信を止める道具（サンドボックス）では、この2つのコマンドだけ外で動かす許可を求める。許可が無いうちは入れない
    - **PC 全体に入るもの**（Python 本体が無い・古い、PowerPoint も LibreOffice も無い、日本語フォントが無い）：作る前に伝え、表のコマンドを見せて**ユーザーに入れてもらう**
-     （「入れて」と頼まれたときだけ、確認を出してから動かす）。PowerPoint も LibreOffice も無いだけなら、**聞かずに pptx だけで進める**（`make_deck.py <work> --no-render`）。渡すときに、検査をしていないことと、LibreOffice を入れればあとから検査できることを伝える
+     （「入れて」と頼まれたときだけ、確認を出してから動かす）。PowerPoint が無いだけなら、**聞かずにそのまま進める**（描画の検査は PowerPoint を使わない描画で行う。LibreOffice は要らない）
 1. **最初の【質問】**（新しいデッキを始めるとき。ボタンで**1回・3問・各3択**。どの道具でも出せる大きさ。「その他」の自由記入は道具が付ける）。
    依頼文で分かる問いは省く。依頼文に「質問はせず既定値で」とあれば聞かずに既定値で進める
    - ① **聞き手のテーマへの詳しさ**（必須）：初学者・多少知っている／かなり知っている
@@ -270,8 +270,8 @@ deck.save("../教科書_3.2_スライド.pptx", title=T, author=AUTHOR)
 python <skill>/scripts/make_deck.py <work>
 ```
 
-図（figs.py が新しければ）→ 組む → PowerPoint で描く（無ければ LibreOffice）→ 一覧の画像 → 描画の検査（直す所だけ）→ 原稿の確認、を1回で行う。
-個別に動かすとき（自分で足したテンプレートの `--template` など）は render_check.ps1・check_layout.py・grid.py を直接使う。
+図（figs.py が新しければ）→ 組む → 描く（PowerPoint を使わない描画。ERROR 0 の回は PowerPoint があれば PowerPoint で確かめる）→ 描画の検査（直す所だけ）→ 一覧の画像 → 原稿の確認、を1回で行う。
+個別に動かすとき（自分で足したテンプレートの `--template` など）は render_check_py.py（PowerPoint で描くなら render_check.ps1）・check_layout.py・grid.py を直接使う。
 
 - `check_layout.py` の ERROR は全部直す。WARN も出力の直し方に沿って直す（基準と直し方は出力にある）。自分で足したテンプレートなら `--template <そのテンプレート.pptx>` を渡す
 - **ERROR 0 は合格ではない。** 最後に出る**スライドごとの一覧**の「←」の付いた行を全部直してから次へ進む

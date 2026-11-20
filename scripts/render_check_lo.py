@@ -124,9 +124,10 @@ def first_run_size(shape):
     return None
 
 
-def shape_info(slide, idx):
+def shape_info(slide, idx, shapes=None):
+    """shapes：図形の並び（省けば slide.shapes。render_check_py.py は数式の枠（mc:AlternateContent）も入れて渡す）。"""
     rows = []
-    for sh in slide.shapes:
+    for sh in (slide.shapes if shapes is None else shapes):
         try:
             typ = int(sh.shape_type) if sh.shape_type is not None else 0
         except Exception:

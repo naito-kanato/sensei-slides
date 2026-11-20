@@ -19,7 +19,8 @@
 | `scripts/figkit.py`・`figlib.py`・`figgrid.py`・`catalog.py` | 図の共通設定と小道具・よく使う図の型・図の一覧画像・これまでの図のカタログ |
 | `scripts/figdraft.py` | 自分で描く図の下書きの雛形（模式図は実物・気づく・配置・ラベル、グラフは気づく）と、`--check` で下書きの抜け・箱と矢印だけの模式図 |
 | `scripts/zemi.py` | build.py で使う `Deck`・`Slide`・`Eq`（部品の一覧はファイル冒頭） |
-| `scripts/make_deck.py` | 図→組む→描く→検査を1回で（render_check.ps1・render_check_lo.py・check_layout.py・grid.py・check_notes.py をまとめて呼ぶ） |
+| `scripts/make_deck.py` | 図→組む→描く→検査を1回で（render_check_py.py・render_check.ps1・check_layout.py・grid.py・check_notes.py をまとめて呼ぶ） |
+| `scripts/render_check_py.py` | PowerPoint を使わない描画（pptx だけから render_check.ps1 と同じ形の shapes.json と画像を作る。make_deck.py がふだん使う） |
 | `scripts/notes_html.py`・`set_notes.py` | 原稿HTML・notes.md を発表者ノートに入れる |
 | `scripts/budget.py` | 回数の予算：担当の起動と make_deck の回数、上限（オプション「回数の上限」「使用量の上限」） |
 | `scripts/check_done.py` | 渡す前の確認（手順7）。最後に作った記録も残す（`build_log.py`：make_deck の回数と作り直した枚、`run_record.py`：会話ごとのモデル・思考の強さ・トークン → `<work>/run_record.md`） |
@@ -36,12 +37,14 @@
 
 ## PowerPoint の決まり
 
-- Windows 版 PowerPoint を使うのは `render_check.ps1`・`export_pdf.ps1`（と内部でそれを使う `notes_html.py`）だけ。画面に出さずに裏で使う。画面操作で開かない
-- **PowerPoint が開けない（アクセス拒否 0x80070005 など）ときに、描画の検査や原稿HTMLを別の方法（自作の HTML・PIL の画像）で代えない。**
+- 描画の検査は、ふだんは PowerPoint を使わない描画（`render_check_py.py`。`make_deck.py` が呼ぶ）で行う。PowerPoint がある PC では、
+  それで ERROR 0 になった回にだけ `make_deck.py` が PowerPoint で1回描いて確かめ、PowerPoint の検査の結果を使う（食い違った所を出す）。
+  PowerPoint が無い PC（Mac・Linux など）は、新しい描画だけで最後まで進む（LibreOffice は要らない。最後は画像を目で見る）
+- Windows 版 PowerPoint を使うのは `render_check.ps1`・`export_pdf.ps1`（と内部でそれを使う `make_deck.py`・`notes_html.py`）だけ。画面に出さずに裏で使う。画面操作で開かない
+- **PowerPoint が開けない（アクセス拒否 0x80070005 など）ときに、描画の検査や原稿HTMLをスキルの部品以外の方法（自作の HTML・PIL の画像）で代えない。**
+  `make_deck.py` は、PowerPoint で確かめられなければ新しい描画の結果のまま進む（そう出る。止まらない）。原稿HTML（`notes_html.py`）は PowerPoint が要るので、
   サンドボックスで止められているなら、ユーザーの許可を得てサンドボックスの外で同じスクリプトを動かす（`references/agents.md`）。動かせないなら止めて伝える
-- PowerPoint が無いとき（Mac・Linux など）だけ LibreOffice で代える（`render_check_lo.py`、原稿のページは `notes_html.py` が自動で）。最後は画像を目で見る
-- PowerPoint も LibreOffice も無いときは、聞かずに `make_deck.py <work> --no-render` で pptx だけを作る（作る前に一言伝える）。
-  渡すときに「描画の検査・原稿のページ・完成後の画像のレビューはしていない。LibreOffice（無料）を入れれば、あとから検査できる」とはっきり書く（このときだけ、check_done の描画・原稿のページ・レビューの ✘ は残ったままでよい。ほかの ✘ は直す）
+- PowerPoint が無いとき（Mac・Linux など）は、原稿のページの画像を `notes_html.py` が自動で LibreOffice（あれば）か新しい描画で作る
 
 ## コマンドの書き方
 
@@ -49,7 +52,7 @@
 - スキルの部品は、作業ディレクトリ（スライドを作るフォルダの一番上）から `python <skill>/scripts/<名前>.py ...` で呼ぶ。
   `<skill>` は作業ディレクトリからの相対パス（例 `.agents/skills/sensei-slides`）で、区切りは `/`。フルパスにしない
 - デッキごとの `figs.py`・`build.py` は、その作業フォルダ（`_work/<資料名>/`）に移ってから `python figs.py`・`python build.py` で動かす
-- PowerShell の部品は `powershell -ExecutionPolicy Bypass -File <skill>/scripts/render_check.ps1 ...`（`export_pdf.ps1` も同じ形）
+- PowerShell の部品は `powershell -ExecutionPolicy Bypass -File <skill>/scripts/render_check.ps1 ...`（`export_pdf.ps1` も同じ形。ふだんは `make_deck.py` が呼ぶ）
 - **作業ディレクトリに `.venv` があれば、いつもその Python をパスで書く**（仮想環境が有効かどうかは確かめない）：Windows は `.venv/Scripts/python <skill>/scripts/<名前>.py ...`、
   Mac・Linux は `.venv/bin/python ...`。デッキの作業フォルダに移ったときは `../../.venv/Scripts/python figs.py`（Mac・Linux は `../../.venv/bin/python`）。`.venv` が無ければ `python` のまま
 - 日本語を含む使い捨てのスクリプトは、ファイルに書いて `python -X utf8 <ファイル>` で動かす。ヒアドキュメント（`python - <<EOF`）で流さない

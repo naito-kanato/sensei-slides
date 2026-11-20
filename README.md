@@ -53,7 +53,7 @@ AI-made slides often look tidy but leave gaps that only the AI can fill. The ski
 ### Form and amount
 
 - **How text is laid out.** You choose a body form for each slide (cause → effect, labels, cases, steps, a question and its result…). Each form has fixed slots, and the facts go into those slots. Figures are chosen by purpose first (compare, trend, breakdown, mechanism…), then by kind.
-- **Amount and emphasis, checked on the rendered slides.** Overflow, overlaps, characters per slide and per line, and the gap between text and figures are measured on the actual PowerPoint (or LibreOffice) rendering. A deck is not called done until the final check passes.
+- **Amount and emphasis, checked on the rendered slides.** Overflow, overlaps, characters per slide and per line, and the gap between text and figures are measured on the rendered slides (the layout is computed from the .pptx the way PowerPoint lays it out; when PowerPoint is installed, the finished round is also rendered in PowerPoint to confirm). A deck is not called done until the final check passes.
 
 ## Quick start
 
@@ -61,7 +61,7 @@ AI-made slides often look tidy but leave gaps that only the AI can fill. The ski
 2. Open the folder in your agent (in Codex, mark it as trusted).
 3. Ask, for example "Make slides from paper.pdf" or "Make a course on …". The deck is made in the language you ask in (「〇〇.pdf のスライドを作って」 gives a Japanese deck). Before it starts, the agent posts the settings and says which language it will use.
 
-The agent first checks Python (3.10+), PowerPoint (or the free LibreOffice) and Japanese fonts. It asks before installing missing packages into a local `.venv`.
+The agent first checks Python (3.10+), whether PowerPoint is installed (optional) and Japanese fonts. It asks before installing missing packages into a local `.venv`.
 Full instructions are in the Japanese README ([README.ja.md](README.ja.md)) and in `how_to_use.html` inside the zip (switch it to English with the button at the top right).
 
 ## License

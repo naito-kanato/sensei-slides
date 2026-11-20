@@ -1,4 +1,6 @@
 """render_check.ps1 が書いた shapes.json（PowerPoint実描画の座標）を検査する。
+render_check_py.py（PowerPoint を使わない描画。"engine": "python"）の shapes.json も、PowerPoint と同じ基準で見る
+（文字の範囲を PowerPoint に合わせて計算しているので。LibreOffice の描画（"engine": "libreoffice"）だけ、間隔と下端をゆるめて見る）。
 
     python check_layout.py render/shapes.json [deck.pptx] [--template 自分のテンプレート.pptx]
 
@@ -773,19 +775,27 @@ def picture_ink(pptx_path):
 
 def ink_of(s, inks):
     """shapes.json の画像 s に当たる描いてある範囲 (上pt, 下pt, 面積pt²)。見つからなければ枠で。"""
-    for name, left, top, it, ib, area, *_ in inks:
-        if name == s["name"] and abs(left - s["left"]) < 3 and abs(top - s["top"]) < 3:
-            return it, ib, area
+    row = _ink_row(s, inks)
+    if row:
+        return row[3], row[4], row[5]
     return s["top"], s["top"] + s["height"], s["width"] * s["height"]
+
+
+def _ink_row(s, inks):
+    """inks の中で s に当たる行。名前と位置で探し、無ければ位置だけで（PowerPoint は日本語の既定の名前「図 23」を
+    英語の「Picture 23」で返すので、名前だけでは手作りのデッキの画像を見つけられなかった）。"""
+    near = [r for r in inks if abs(r[1] - s["left"]) < 3 and abs(r[2] - s["top"]) < 3]
+    return next((r for r in near if r[0] == s["name"]), near[0] if len(near) == 1 else None)
 
 
 def visible_rect(s, inks):
     """見えている範囲：画像は描いてある範囲（白い余白を除く）、文字は文字の範囲、ほかは枠。
     図の PNG は周りに白い余白を持つので、枠で測ると、描いた線は余白の内側なのにページの余白に出たと数えていた（講座の見本の第8枚）。"""
     if s.get("type") == MSO_PICTURE:
-        for name, left, top, it, ib, area, il, ir in inks:
-            if name == s["name"] and abs(left - s["left"]) < 3 and abs(top - s["top"]) < 3:
-                return (il, it, ir, ib) if ir > il and ib > it else rect_of(s)
+        row = _ink_row(s, inks)
+        if row:
+            name, left, top, it, ib, area, il, ir = row
+            return (il, it, ir, ib) if ir > il and ib > it else rect_of(s)
     return rect_of(s)
 
 
@@ -1298,7 +1308,8 @@ def main(path, pptx_path=None, template=None, lang=None):
     stale = stale_slides(pptx_path, data, shapes) if pptx_path and Path(pptx_path).exists() else []
     if stale:
         print(f"[ERROR] 描画結果が今の pptx と食い違う（スライド {', '.join(map(str, stale[:10]))}）: "
-              "PowerPoint が古い版を開いた。render_check.ps1 をやり直す（一時フォルダの複製から開く版か確かめる）")
+              + ("pptx を作り直したあとに描き直していない。make_deck.py をもう一度走らせる" if data.get("engine") == "python" else
+                 "PowerPoint が古い版を開いた。render_check.ps1 をやり直す（一時フォルダの複製から開く版か確かめる）"))
     scales = picture_scales(pptx_path, shapes)
     pic_fonts = picture_fonts(pptx_path)
     raster = raster_fonts(pptx_path) if pptx_path and Path(pptx_path).exists() else {}

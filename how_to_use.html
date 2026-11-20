@@ -519,9 +519,9 @@ main{position:relative}
       <tbody>
         <tr><td>AI エージェント</td><td>スキルを動かす本体です。Codex・Claude Code・Antigravity・GitHub Copilot で、短いデッキを最後まで作れることを確かめています。軽いモデルは図や事実の確認が甘くなるので、標準以上のモデルをおすすめします。</td></tr>
         <tr><td>Python 3.10 以上</td><td>スライドと図を作るプログラムを動かします。</td></tr>
-        <tr><td>PowerPoint か LibreOffice（どちらか）</td><td>できたスライドを実際に描いて検査するためと、原稿のページを作るために使います。Windows の PowerPoint があればそれを使います。
-          無ければ、無料の LibreOffice で代わりに描けます（検査はやや甘めなので、最後は画像を目で確かめます。Mac・Linux ではまだ試していません）。
-          どちらも無くても、スライド（.pptx）までは作れます。</td></tr>
+        <tr><td>PowerPoint（無くてもよい）</td><td>描画の検査は、PowerPoint を使わない描画（pptx から文字の配置を計算する）で行うので、無くても検査まで進みます。
+          Windows の PowerPoint があれば、仕上がった回に PowerPoint でも描いて確かめ、原稿のページの画像も PowerPoint で作ります
+          （無ければ、LibreOffice があればそれで、無ければ同じ描画で作ります。最後は画像を目で確かめます。Mac・Linux ではまだ試していません）。</td></tr>
         <tr><td>日本語フォント</td><td>Windows は Meiryo・Yu Gothic、Mac はヒラギノ（どちらも最初から入っています）。Linux は Noto Sans CJK を入れます。</td></tr>
       </tbody>
     </table>
@@ -625,9 +625,9 @@ main{position:relative}
       <tbody>
         <tr><td>An AI agent</td><td>The engine that runs the skill. We have confirmed that Codex, Claude Code, Antigravity and GitHub Copilot can make a short deck from start to finish. Light models are less careful with figures and fact checks, so a standard or stronger model is recommended.</td></tr>
         <tr><td>Python 3.10 or later</td><td>Runs the programs that make the slides and figures.</td></tr>
-        <tr><td>PowerPoint or LibreOffice (either one)</td><td>Used to actually render the finished slides for checking, and to make the script page. If you have PowerPoint on Windows, it is used.
-          If not, the free LibreOffice can render instead (its checks are a little looser, so check the images by eye at the end; not yet tried on Mac or Linux).
-          Even with neither, you still get the slides (.pptx).</td></tr>
+        <tr><td>PowerPoint (optional)</td><td>The render check computes the layout from the .pptx without PowerPoint, so the checks run even without it.
+          With PowerPoint on Windows, the finished round is also rendered in PowerPoint to confirm, and the script page uses PowerPoint's slide images
+          (without it, LibreOffice is used if installed, otherwise the same computed rendering; check the images by eye at the end; not yet tried on Mac or Linux).</td></tr>
         <tr><td>Japanese fonts</td><td>Meiryo and Yu Gothic on Windows, Hiragino on Mac (both come preinstalled). On Linux, install Noto Sans CJK.</td></tr>
       </tbody>
     </table>
@@ -1350,8 +1350,9 @@ main{position:relative}
         <p>スライドや原稿のページ（スライドの画像が入っています）をネットに上げる・研究室の外に配る・学会や会社で使うときは、
           論文のライセンス（CC BY など。論文の最初か最後のページに書いてあります）か、出版社の許可を確かめてください。</p></div></details>
     <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>Mac で使える？</summary>
-      <div class="in"><p>スライド（.pptx）と図までは作れます。描いて検査する部分と原稿のページ作りは、Windows の PowerPoint で確かめています。LibreOffice があれば Mac でも描けるはずですが、まだ試していません。</p>
-        <p>LibreOffice を使わないときは、できたスライドを PowerPoint で開いて目で確かめ、PDF に書き出してください。原稿のページは、その PDF を渡せば作れます
+      <div class="in"><p>スライド（.pptx）と図、描いて検査する部分（PowerPoint を使わない描画）と原稿のページまで作れるはずですが、Mac ではまだ試していません。
+          テンプレートの書体（MS PGothic・Segoe UI）が無いと代わりの書体で文字の幅を測るので、最後は画像を目で確かめてください。</p>
+        <p>PowerPoint for Mac で開いて PDF に書き出せば、その PDF で原稿のページを作り直せます
           （<code>python scripts/notes_html.py 〇〇_スライド.pptx --pdf 〇〇.pdf</code>）。</p></div></details>
     <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>図の文字が四角や別の字体になる</summary>
       <div class="in"><p>日本語フォント（Meiryo か Yu Gothic）が見つかっていないときに起きます。Windows 以外では、日本語フォントを入れてから図を描き直してください。</p></div></details>
@@ -1388,8 +1389,9 @@ main{position:relative}
         <p>If you post the slides or the script page (which contains the slide images) online, hand them out outside your lab, or use them at a conference or at work,
           check the paper's license (such as CC BY, written on the first or last page of the paper) or the publisher's permission.</p></div></details>
     <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>Does it work on a Mac?</summary>
-      <div class="in"><p>It can make the slides (.pptx) and the figures. The render check and the script page have been tested with PowerPoint on Windows. With LibreOffice it should render on a Mac too, but this has not been tried yet.</p>
-        <p>Without LibreOffice, open the finished slides in PowerPoint, check them by eye, and export a PDF. Give it that PDF to make the script page
+      <div class="in"><p>It should make the slides (.pptx), the figures, the render check (computed without PowerPoint) and the script page, but this has not been tried on a Mac yet.
+          Without the template's fonts (MS PGothic, Segoe UI), text widths are measured with substitute fonts, so check the images by eye at the end.</p>
+        <p>If you open the slides in PowerPoint for Mac and export a PDF, you can remake the script page from it
           (<code>python scripts/notes_html.py 〇〇_スライド.pptx --pdf 〇〇.pdf</code>; 〇〇 is the deck's name).</p></div></details>
     <details class="fold"><summary><svg class="i"><use href="#i-chev"/></svg>Text in figures shows as boxes or in another font</summary>
       <div class="in"><p>This happens when the Japanese fonts (Meiryo or Yu Gothic) are not found. On systems other than Windows, install Japanese fonts and redraw the figures.</p></div></details>
