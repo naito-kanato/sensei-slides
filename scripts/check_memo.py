@@ -68,6 +68,7 @@ def not_body_heading(h: str) -> bool:
 
 
 SCRIPT_MIN, SCRIPT_MAX = 280, 420   # 標準の回の script.md：本文の枚の読み上げの字数（目安は300〜400字。少しの外れは知らせない）
+SCRIPT_MEMO = re.compile(r"私の概算|概算です|開いていません|開いていない|開けていない|原資料|検索で|検索した|確かめていません|確かめられていません|未確認です|抜粋で")   # 原稿に残った作業の言い方
 SCRIPT_POS = re.compile(r"右端|左端|一番上|一番下|いちばん上|いちばん下|[上下左右]から[1-9１-９一二三四五]番目")   # 図の中の位置で指す言い方
 RECAP_MIN_BODY = 6   # 本文がこの枚数以上の講座は、最後にまとめの枚（輪読の型は、最後の拍が節のまとめなので要らない）
 
@@ -646,6 +647,12 @@ def check(memo: Path, require_review: bool = False):
                 if off:
                     res.append(("△", "原稿の字数", "本文の枚の原稿が300〜400字から外れた枚：" + "・".join(off[:8])
                                 + "（長い枚は1文を短くして補足を削る。短い枚は根拠の数字・例か、学習者の経験への橋渡しを足す）"))
+                # 作業の経緯の言い方（※ の行は出典・要確認の行なので見ない）。断りは設計メモ（3節の確認の列・8節）へ、原稿は聞き手に言う言い方だけ
+                memo_hits = [f"{n}「{m.group(0)}」" for n, t in secs.items()
+                             for m in [SCRIPT_MEMO.search("\n".join(l for l in t.splitlines() if not l.strip().startswith("※")))] if m]
+                if memo_hits:
+                    res.append(("△", "原稿の作業メモ", "原稿に作り手の作業の言い方が残っている枚：" + "・".join(memo_hits[:6])
+                                + "（確かさの断り・作業の経緯は設計メモの3節の確認の列か8節へ。原稿は「〜とされます」「ここは講師のまとめです」のように聞き手に言う形だけ）"))
                 # 図の中の位置で指す言い方（図の向き・並びは制作の担当があとで決めるので、原稿と食い違う。比べで「右端の〜」が横棒の一番下だった）
                 pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for m in [SCRIPT_POS.search(t)] if m]
                 if pos:

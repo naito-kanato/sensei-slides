@@ -762,9 +762,9 @@ def answer_slides(text: str, kind: str) -> dict:
     return dict(sorted(out.items()))
 
 
-ANSWER_FIG_HOW = ("答えの枚は、表・カードの列挙だけにしない。①仕組みの一言（なぜそうなるか）→ ②日常へのたとえ → ③見える対比 の順に決め、③を図に："
-                  "要るものと手に入るものの差（比べる：棒グラフ・違い：比較）、試した結果の外れ（予測と実際：棒グラフ・年表）、ばらつき（棒グラフ）、"
-                  "見えない所（仕組み：模式図）。「〜できない」の答えは、この形に言い換えると描ける。表のままにするなら中身に「外す理由：…」")
+ANSWER_FIG_HOW = ("答えの枚は、表・カードの列挙だけにしない。①仕組みの一言（なぜそうなるか）→ ②日常へのたとえ → ③見える対比 の順に決め、③を図に。"
+                  "筋の答えの枚（なぜの答え）は、まず仕組み：模式図（同じ始まりから違う結末に分かれる道・見えない所と見える所・要るものと手に入るものの差）。"
+                  "試した結果の外れ・ばらつきのデータ（棒グラフ・年表）は裏付けとして原稿か隣の枚に。「〜できない」の答えは、この形に言い換えると描ける。表のままにするなら中身に「外す理由：…」")
 
 
 def answer_fig_check(text: str, kind: str, body_no: list):
@@ -785,10 +785,14 @@ def answer_fig_check(text: str, kind: str, body_no: list):
     for n, why in ans.items():
         cell = cells.get(n, "")
         k = figplan.parse_fig(cell)[1]
-        if k in TABLE_KINDS and not figplan.REASON_WORDS.search(cell):
+        if figplan.REASON_WORDS.search(cell):
+            continue
+        if k in TABLE_KINDS:
             bad.append(f"[{n}] {k}（{why}）")
+        elif why == "筋の答えの枚" and k in ("棒グラフ", "折れ線", "帯グラフ", "大きな数字", None):   # なぜの答えは仕組みの図（地震の比べで、データの棒グラフだけの答えの枚が2人に減点された）
+            bad.append(f"[{n}] {k or '図なし'}（筋の答えの枚は、データの図より先に仕組みの模式図か因果の流れ図）")
     if bad:
-        return [("△", "答えの枚の図", "表・カードだけの答えの枚：" + "・".join(bad) + "。" + ANSWER_FIG_HOW)]
+        return [("△", "答えの枚の図", "答えの枚の図：" + "・".join(bad) + "。" + ANSWER_FIG_HOW)]
     if ans:
         return [("✔", "答えの枚の図", "答えの枚 " + "・".join(f"[{n}]" for n in ans) + " の図は表・カードだけでない")]
     return []

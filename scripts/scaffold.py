@@ -1122,11 +1122,21 @@ def figs_todo(work: Path) -> list:
     return out
 
 
+NOTE_TAG = re.compile(r"\s*〔事実\s*\d+[^〕]*〕")       # 設計メモの事実の印（原稿には要らない）
+MEMO_LINE = re.compile(r"^\s*※\s*[（(]メモ[)）].*$\n?", re.M)   # 作り手のメモの行（読み上げない）
+
+
+def spoken(text: str) -> str:
+    """script.md の1枚の原稿から、読み上げない物を外す：〔事実N〕の印と「※（メモ）」の行。
+    地震の試しで、推論距離の担当が足した〔事実16〕などの印と作業のメモが原稿に残り、採点者2人が「読み上げられない」と減点した。"""
+    return NOTE_TAG.sub("", MEMO_LINE.sub("", text)).strip()
+
+
 def fill_notes(work: Path, src: Path):
     """「## N」ごとの原稿を、notes.md のその枚の TODO の行に入れる（ほかの行はそのまま）。入れた枚と、まだ TODO の枚を返す。"""
     f = work / "notes.md"
     text = f.read_text(encoding="utf-8")
-    new = {int(m.group(1)): m.group(2).strip() for m in NOTE_SEC.finditer(src.read_text(encoding="utf-8")) if m.group(2).strip()}
+    new = {int(m.group(1)): spoken(m.group(2)) for m in NOTE_SEC.finditer(src.read_text(encoding="utf-8")) if spoken(m.group(2))}
     done = []
 
     def put(m):

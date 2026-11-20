@@ -169,3 +169,10 @@ def test_key_message_falls_back_to_number_and_unit_when_too_wide(tmp_path):
     texts = [{sh.name: sh.text_frame.text for sh in sl.shapes if sh.has_text_frame} for sl in slides]
     assert texts[0]["大きな数字"] == "60〜90%程度以上" and texts[0]["大きな数字の説明"] == "南海トラフ"
     assert texts[1]["大きな数字"] == "1,234,567,890,123億円" and texts[1]["大きな数字の説明"].startswith(long_)
+
+
+def test_notes_drop_fact_tags_and_memo_lines():
+    """原稿を notes.md に入れるとき、〔事実N〕の印と「※（メモ）」の行を外す（地震の試しで原稿に残り、採点者2人が減点した）。"""
+    import scaffold
+    assert scaffold.spoken("前兆は確かめられていません〔事実17〕。\n※（メモ）原資料は開いていない\n※（出典）気象庁 2019\n次へ") == \
+        "前兆は確かめられていません。\n※（出典）気象庁 2019\n次へ"
