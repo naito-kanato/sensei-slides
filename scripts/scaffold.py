@@ -43,7 +43,8 @@ def items_of(cell: str):
     「・」では分けない（「眠気・気分・集中」のような並びを1項目に保つ）。"""
     cell = re.sub(r"<br\s*/?>", "／", cell or "")
     parts = [p.strip() for p in re.split(r"\s*(?:／|/|；|;)\s*", cell) if p.strip()]
-    return [underline(red(re.sub(r"\s*〔[^〕]*〕", "", p))) for p in parts[:5]]
+    # 〔事実N〕の印と「（データN）」（3b節の組を指す設計メモの印）はスライドに出さない（地震の試しで「（データ1）」が本文に残り、採点者2人が減点した）
+    return [underline(red(re.sub(r"\s*(?:〔[^〕]*〕|[（(]データ\s*\d+(?:[・,、]\s*\d+)*[)）])", "", p))) for p in parts[:5]]
 
 
 def underline(p: str) -> str:
