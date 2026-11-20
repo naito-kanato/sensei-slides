@@ -329,3 +329,21 @@ def test_note_source_lines_drop_maker_notes():
     assert scaffold.clean_source("検索で確かめた複数の解説（例：Simply Psychology https://x）。一次資料は未確認") == "複数の解説（例：Simply Psychology https://x）"
     assert scaffold.clean_source("厚生労働省 2020年 https://b 第3章 図37（p.27）") == "厚生労働省 2020年 https://b 第3章 図37（p.27）"
     assert scaffold.clean_source("Nofzinger et al. https://a（要旨）") == "Nofzinger et al. https://a（要旨）"
+
+
+def test_scaffold_copies_memo_terms_into_the_readme(tmp_path):
+    """設計メモの4節（用語・記号の決め事）を、組む前に README の決め事へ写す。標準の流れでは写す担当がおらず、
+    比べの4本とも README が下書きのままだった。2回走らせても重ならず、CRLF の README は CRLF のまま。"""
+    import scaffold
+    course = tmp_path / "地震"
+    course.mkdir()
+    readme = course / "00_README.md"
+    readme.write_bytes("# 地震\r\n\r\n## 決め事（全回共通）\r\n\r\n- 原稿は AI講義モード\r\n- 記号・図の向き・色：<回を作るたびに足す>\r\n\r\n## つまずき一覧\r\n".encode("utf-8"))
+    work = tmp_path / "_work" / "地震_01"
+    work.mkdir(parents=True)
+    (work / "memo.md").write_text("## 4. 用語・記号の決め事（README の決め事に足すもの）\n\n- 予知＝日時を当てること\n- M＝マグニチュード\n\n## 5. 図の案\n", encoding="utf-8")
+    assert "2行" in scaffold.terms_to_readme(work)
+    scaffold.terms_to_readme(work)
+    t = readme.read_bytes().decode("utf-8")
+    assert t.count("- （第1回）予知＝日時を当てること") == 1 and "- （第1回）M＝マグニチュード\r\n" in t
+    assert "<回を作るたびに足す>" not in t and "\r\n\r\n## つまずき一覧" in t and "\n\n" not in t.replace("\r\n", "")

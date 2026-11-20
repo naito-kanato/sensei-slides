@@ -1122,6 +1122,39 @@ def fill_notes(work: Path, src: Path):
     return done, left
 
 
+def terms_to_readme(work: Path):
+    """設計メモの4節（用語・記号の決め事）を、講座の README の「決め事」に写す（references/course.md 4節「スライドを作る前に
+    README の決め事に写す」）。標準の流れでは写す担当がおらず、比べの4本とも README の決め事が下書きのままだった。
+    担当にさせず、組む前にスクリプトが写す。同じ回の行は置き換える。戻り値は知らせの1行（写さなかったら None）。"""
+    memo, m = work / "memo.md", re.search(r"_(\d{2})$", work.name)
+    readme = work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md"
+    if not (memo.exists() and readme.exists() and m):
+        return None
+    sec = re.search(r"^## 4\..*?$(.*?)(?=^## |\Z)", memo.read_text(encoding="utf-8"), re.S | re.M)
+    terms = [l.strip()[2:].strip() for l in (sec.group(1).splitlines() if sec else []) if l.strip().startswith("- ")]
+    terms = [t for t in terms if t and t not in ("なし", "—")]
+    if not terms:
+        return None
+    n = int(m.group(1))
+    tag = f"（第{n}回）"
+    with open(readme, encoding="utf-8", newline="") as f:   # 改行をそのまま読む（CRLF の README を LF にしない）
+        raw = f.read()
+    eol ="\r\n" if "\r\n" in raw else "\n"
+    lines = raw.splitlines()
+    head = next((i for i, l in enumerate(lines) if l.startswith("## 決め事")), None)
+    if head is None:
+        return None
+    end = next((i for i in range(head + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+    body = [l for l in lines[head + 1:end] if not l.startswith(f"- {tag}") and "<回を作るたびに足す>" not in l]
+    while body and not body[-1].strip():
+        body.pop()
+    body += [f"- {tag}{t}" for t in terms] + [""]
+    tail = eol if raw.endswith(("\n", "\r")) else ""
+    readme.write_text(eol.join(lines[:head + 1] + body + lines[end:]) + tail, encoding="utf-8", newline="")
+    return f"README の決め事に用語・記号を写した（第{n}回・{len(terms)}行）"
+
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if not argv:
@@ -1265,6 +1298,10 @@ def main(argv=None):
     if "notes.md" in made and script.exists():
         done, left = fill_notes(work, script)
         made.append(f"原稿を script.md から {len(done)} 枚入れた" + (f"（まだ TODO：{'・'.join(map(str, left))}）" if left else ""))
+    if "build.py" in made and kind == "memo":
+        note = terms_to_readme(work)
+        if note:
+            made.append(note)
     if made:
         print(f"作った：{'・'.join(made)}（{len(rows)}枚）。確認問題・解答・図の置き方・比較は設計メモから入れた。残った TODO を書き換えてから make_deck.py")
     return 0
