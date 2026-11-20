@@ -343,14 +343,33 @@ def cards_code(fig: str):
     return f's.cards([{its}], layout="row", y=s.cur_y + 0.3, size=20)'
 
 
+_KM_NUM = r"[0-9０-９][0-9０-９.,，．]*"
+_KM_UNIT = r"(?:[万億千兆])?(?:%|％|倍|人|件|円|点|年|割|回|時間|分|日|か月|ヶ月|週|歳|個|社|校|本|枚|台|km|kg|m|t|℃|度|σ)?"
+_KM_PRE = r"(?:約|ほぼ|およそ|最大|最小|最低|最高|少なくとも|わずか|平均)?"
+_KM_CORE = rf"(?:[MＭ]\s*)?{_KM_NUM}\s*{_KM_UNIT}(?:\s*[〜~～\-－–—]\s*{_KM_PRE}{_KM_NUM}\s*{_KM_UNIT})?(?:に\s*{_KM_NUM}\s*{_KM_UNIT})?"
+_KM_QUAL = r"(?:程度以上|程度以下|程度|以上|以下|未満|超え|超|前後|強|弱|近く|ほど|余り|あまり)?"
+KEY_NUMBER = re.compile(rf"({_KM_PRE})({_KM_CORE})(\s*{_KM_QUAL})")
+
+
+def key_number(h: str):
+    """図の案の大きな数字の所（「60〜90%程度以上」「ほぼ0〜0.9%」「8割以上」「3人に1人」）→ (全体, 数字＋単位)。読めなければ None。
+    範囲（〜）・単位・前の限定（約・ほぼ）・後ろの限定（程度以上・以下・未満）まで載せる。数字＋単位は、全体が大きな数字の場所に入らないときに
+    大きく出す形（zemi の key_message の short。全体は説明の頭に回る）。地震の比べで「60〜90%程度以上」が「60」、「ほぼ0〜0.9%」が「0」、
+    「8割以上」が「8割」だけになった。"""
+    m = KEY_NUMBER.search(h or "")
+    return (m.group(0).strip(), m.group(2).strip()) if m else None
+
+
 def key_message_code(fig: str):
     """図の案「…：大きな数字：17%（説明の一言）」から s.key_message の行（帯の下に置き、本文はその下へ）。読めなければ None。"""
     h, inner = _head_inner(_fig_body(fig))
-    m = re.search(r"[0-9０-９][0-9０-９.,，．]*\s*(?:%|％|倍|人|件|万|億|円|点|年|割|回|分|時間)?", h)
-    if not m:
+    got = key_number(h)
+    if not got:
         return None
+    full, short = got
     sub = f', sub="{q(_fold(inner, 9.0, 22))}"' if inner else ""
-    return f's.cur_y = s.key_message("{q(m.group(0).strip())}"{sub}, y=deck.area["top"] + 0.1).bottom + 0.45'
+    alt = f', short="{q(short)}"' if short != full else ""
+    return f's.cur_y = s.key_message("{q(full)}"{sub}{alt}, y=deck.area["top"] + 0.1).bottom + 0.45'
 
 
 def table_code(fig: str, beside: bool = True):

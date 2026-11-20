@@ -14,6 +14,7 @@ check_outline.py・check_memo.py から呼ばれる。面白いかどうかは�
     - 「そして」が4つ以上続いたら △（並べるだけの所。しかし・だからでつなぐか、まとめる。理由があれば「つなぎの理由：…」）
     - 「しかし」が1つも無ければ △（山場＝意外・対立・壁が無い）
     - しかし（壁）・しかし（疑い）のあと、次の「しかし」か本文の最後までに「だから」が無ければ △（出しっぱなし）
+  答えの枚（講座の設計メモ）：筋の答えの枚・型の答えの拍の枚・だから（問い）の枚の図が、表・カードだけなら △（answer_fig_check）
 """
 import re
 import sys
@@ -589,6 +590,7 @@ def check(text: str, kind: str, body_no: list, where: str):
         res.append(("✔", "前の枚から", "・".join(f"{w} {c}" for w, c in cnt.items()) + f"（しかし：{buts}）"))
     res += arc_check(text, kind, body_no)
     res += fig_check(text, kind, body_no)
+    res += answer_fig_check(text, kind, body_no)
     aim, want = aim_of(text)
     if aim is not None and want is None:
         res.append(("△", "ねらい", f"「{aim}」はねらいの一覧に無い。一覧（python <skill>/scripts/story.py --aims）の言葉から選び、"
@@ -657,6 +659,11 @@ TABLE_KINDS = ("表", "カード")
 TABLE_MANY = 3                     # 表がこの枚数以上で判定の流れ図が無ければ △（判定の拍がある型）
 NEEDS_REAL = ("手順を身につける",)  # やり方を目で見せる枚（実物・資料の図・模式図）が1枚は要る型
 REAL_KINDS = ("写真", "資料の図", "模式図")
+# 型ごとの「答えの拍」（筋の問いに答える拍。ARCS の拍のやること）。輪読は最後の拍が節のまとめ（観点の表が合う）なので見ない
+ANSWER_ROLES = {"論文紹介（問題から）": "確かめた結果", "論文紹介（方法から）": "確かめた結果", "研究発表": "なぜか",
+                "提案": "反論への答え", "事例・問題解決": "わかったこと", "素朴な見方を崩す": "なぜか", "今の形から由来へ": "だから今の形",
+                "手順を身につける": "越え方", "誤解を正す": "確かめると", "比べて選ぶ": "選び方", "定義から応用へ": "応用",
+                "原因を探る": "本当の原因"}
 
 
 def beat_figs(arc_name: str, role: str):
@@ -683,7 +690,9 @@ def figs_table(arc_name: str) -> str:
     lines.append("- 答えと柱の一覧（答えの位置「先」）→ 柱：カード・ツリー")
     if any("仕組み" in f for f in BEAT_FIGS.get(arc[0], [])):
         lines.append("この型には仕組みの拍がある：模式図（か資料の図・写真）を少なくとも1枚")
-    lines.append("どの型も：答えの理由（なぜ〜できない・なぜ〜違う）の枚は、文字の箱で済ませず、データのばらつき・外れ（棒グラフ）か仕組みの模式図で見せる（文字の箱だけだと「核心の図が無い」と減点された）")
+    role = ANSWER_ROLES.get(arc[0])
+    lines.append("答えの枚（筋の答えの枚" + (f"・拍「{role}」の枚" if role else "") + "・だから（問い）の枚）は、図の段でいちばん先に決める"
+                 "（仕組みの一言 → たとえ → 見える対比。依頼文の figures 1b節「図の段」）")
     lines.append("どの型も：表とカードは本文の枚の半分まで。表が3枚以上になるなら、条件で結論が分かれる枚は判定の流れ図（s.decision）に")
     if ARC_PITFALLS.get(arc[0]):
         lines += ["", "この型で陥りやすいミス："] + [f"- {m}" for m in ARC_PITFALLS[arc[0]]]
@@ -725,6 +734,86 @@ def fig_check(text: str, kind: str, body_no: list):
     if notes:
         return [("✘", "型と図", "。".join(notes) + f"。拍ごとのおすすめは `python <skill>/scripts/story.py --figs {arc[0]}`（変えないなら中身に「外す理由：…」）")]
     return [("✔", "型と図", "型の拍の枚の図は、どれもその拍のおすすめ")]
+
+
+def answer_slides(text: str, kind: str) -> dict:
+    """{枚: どの答えの枚か}：筋の答えの枚・型の答えの拍の枚（ANSWER_ROLES）・前の枚から が だから（問い）の枚。
+    答えの位置「先」の答えと柱の一覧の枚（カードがおすすめ）と、輪読の型の筋の答え・最後の拍（節のまとめ）は入れない。"""
+    import structures
+    body = body_numbers(text, kind)
+    name, arc = arc_of(text)
+    arc_name = arc[0] if arc else (name or "")
+    reading = arc_name.startswith("輪読")
+    beats = beat_map(text, kind)
+    pillar = {n for n, v in beats.items() if v[3].endswith("柱の一覧")}
+    out = {}
+    an = ((story_table(text) or {}).get("答え") or ("", None))[1]
+    if an in body and an not in pillar and not reading and answer_position(text, kind) != "先":
+        out[an] = "筋の答えの枚"
+    role = ANSWER_ROLES.get(arc_name)
+    for n, v in sorted(beats.items()):
+        if role and v[3] == role and n not in pillar:
+            out.setdefault(n, f"答えの拍「{role}」の枚")
+    rows = structures._plan_table(text, kind)
+    links = (link_cells(rows) if rows else None) or {}
+    for n in body:
+        if split_link(links.get(n, "")) == ("だから", "問い") and n not in pillar:
+            out.setdefault(n, "だから（問い）の枚")
+    return dict(sorted(out.items()))
+
+
+ANSWER_FIG_HOW = ("答えの枚は、表・カードの列挙だけにしない。①仕組みの一言（なぜそうなるか）→ ②日常へのたとえ → ③見える対比 の順に決め、③を図に："
+                  "要るものと手に入るものの差（比べる：棒グラフ・違い：比較）、試した結果の外れ（予測と実際：棒グラフ・年表）、ばらつき（棒グラフ）、"
+                  "見えない所（仕組み：模式図）。「〜できない」の答えは、この形に言い換えると描ける。表のままにするなら中身に「外す理由：…」")
+
+
+def answer_fig_check(text: str, kind: str, body_no: list):
+    """[(印, 項目, 説明)]：答えの枚（answer_slides）の図が、表・カードだけなら △（講座の設計メモ）。
+    地震の比べの5本で、答えの理由の枚が理由3つの表だけで、なぜ妨げるかの説明・たとえ・図が無かった。
+    デッキの「模式図1枚」は易しい枚（地震が起きる仕組みの断面）で満たされ、難しい答えの枚は表のまま通っていた。"""
+    import figplan
+    import structures
+    if kind != "memo" or len(body_no) <= 5:
+        return []
+    rows = structures._plan_table(text, kind)
+    i = next((k for k, h in enumerate(rows[0]) if "図で見せる" in h), None) if rows else None
+    if i is None:
+        return []
+    cells = {int(r[0]): r[i] for r in rows[1:] if r and r[0].strip().isdigit() and len(r) > i}
+    ans = answer_slides(text, kind)
+    bad = []
+    for n, why in ans.items():
+        cell = cells.get(n, "")
+        k = figplan.parse_fig(cell)[1]
+        if k in TABLE_KINDS and not figplan.REASON_WORDS.search(cell):
+            bad.append(f"[{n}] {k}（{why}）")
+    if bad:
+        return [("△", "答えの枚の図", "表・カードだけの答えの枚：" + "・".join(bad) + "。" + ANSWER_FIG_HOW)]
+    if ans:
+        return [("✔", "答えの枚の図", "答えの枚 " + "・".join(f"[{n}]" for n in ans) + " の図は表・カードだけでない")]
+    return []
+
+
+# 題の問い・筋の答えとのつながりを、語の重なりで見る（ゆるく：語が1つでも重なれば通す）
+QWORDS = ("なぜ", "どうして", "どうやって", "どのように", "本当", "どちら", "どこまで")
+QUESTION_SHAPE = re.compile(r"なぜ|どうして|どうやって|どのように|どう[しやな]|本当|どちら|どこまで|何|とは|か[？?]?\s*$|[？?]")
+WORD_STOP = {"第", "回", "講座", "入門", "基礎", "編"}
+
+
+def words(s: str) -> set:
+    """漢字の2字の並び・カタカナ語（2字以上）・英字の語（2字以上、小文字）の集まり。第N回は外す。"""
+    s = re.sub(r"第\s*[0-9０-９]+\s*回", "", s or "")
+    out = set()
+    for run in re.findall(r"[一-龥々〆ヵヶ]+", s):
+        out |= {run[k:k + 2] for k in range(len(run) - 1)}
+    out |= set(re.findall(r"[ァ-ヴー]{2,}", s))
+    out |= {w.lower() for w in re.findall(r"[A-Za-z][A-Za-z0-9]+", s)}
+    return out - WORD_STOP
+
+
+def linked(a: str, b: str) -> bool:
+    """a と b がつながっているか：語が1つでも重なるか、同じ問いの語（なぜ・本当 など）を両方が使う。"""
+    return bool(words(a) & words(b)) or any(w in a and w in b for w in QWORDS)
 
 
 if __name__ == "__main__":   # python story.py --aims：ねらいと既定の型の一覧（地図の担当・設計の担当が見る）

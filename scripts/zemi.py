@@ -1512,8 +1512,15 @@ class Slide:
         self.cur_y = max(lows) + 0.35
         return bottoms
 
-    def key_message(self, big: str, sub: str | None = None, size: float = 54, y: float = 2.5) -> Box:
-        """大きな数字・結論を1つだけ見せる型（一番伝えたい値・結論）。中央に大きく、下に短い説明。1回のデッキで1〜2枚まで。"""
+    def key_message(self, big: str, sub: str | None = None, size: float = 54, y: float = 2.5, short: str | None = None) -> Box:
+        """大きな数字・結論を1つだけ見せる型（一番伝えたい値・結論）。中央に大きく、下に短い説明。1回のデッキで1〜2枚まで。
+        short：big（「60〜90%程度以上」のような範囲・限定つき）が横の場所に入らないときに大きく出す、数字＋単位だけの形（「60〜90%」）。
+        そのときは big の全体を説明の頭に回す（限定を落とさない）。"""
+        if short and short != big:
+            wide = self.deck.wide[1] - self.deck.wide[0] - 0.2
+            if max(text_width_pt(l, size, bold=True) for l in split_lines(parse_markup(big))) / 72.0 + 2 * INSET_X + 0.1 > wide:
+                sub = f"{big}：{sub}" if sub else big
+                big = short
         lines = split_lines(parse_markup(big))
         tw = max(text_width_pt(l, size) for l in lines) / 72.0 + 2 * INSET_X + 0.1
         cx = sum(self.deck.wide) / 2
