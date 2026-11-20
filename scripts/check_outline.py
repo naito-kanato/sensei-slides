@@ -255,8 +255,15 @@ def check(outline: Path, require_review: bool = False):
         copied = check_memo.example_copy(text, "outline", outline)
     except Exception:
         copied = []
+    fit = []
+    if not (outline.parent / "memo.md").exists():   # 骨組みと同じ部品・幅で組んだときに、本文の場所に入らない枚（check_memo と同じ関数）
+        try:
+            import scaffold
+            fit = scaffold.fit_marks(outline.parent)
+        except Exception:   # noqa: BLE001
+            fit = []
     return (count(text, body) + ([tp] if tp else []) + ([ut] if ut else []) + ([fw] if fw else []) + story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")
-            + copied + flows(text, outline.parent) + reasoning(outline, text, require_review and not small, small))
+            + copied + flows(text, outline.parent) + fit + reasoning(outline, text, require_review and not small, small))
 
 
 def flows(text: str, folder=None):

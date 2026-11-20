@@ -315,7 +315,16 @@ def split_lines(runs: list[Run]) -> list[list[Run]]:
     return lines
 
 
-# ---- 文字幅の見積もり（PILのフォント計測。最終確認は PowerPoint 実描画で行う） -----
+# ---- 文字の大きさの計算 ---------------------------------------------------------------------------
+# 描画の検査（render_check_py.py：PowerPoint の文字の範囲・行数に合わせた計算。ラン・書体・太字の広がり・kern・禁則・ぶら下げ・
+# 余白・1行の高さ）と同じ関数で測る。部品が置く瞬間に、検査と同じ幅・行数で入るかを見られる（前は PIL で字の幅を足すだけの
+# 見積もりで、検査の幅と食い違い、はみ出しが描いてから見つかっていた）。render_check_py が使えない（fontTools が無い）ときは、
+# 前の見積もり（_pil_width）で測る。書体が無い環境の代わりの書体は、render_check_py も下の _FONT_FILES を使う。
+try:
+    import render_check_py as _RC
+except Exception:   # noqa: BLE001
+    _RC = None
+
 _FONTS: dict = {}
 _WIN = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
 # 文字幅を見積もるフォントの候補（上から順に、あるものを使う）。Windows のテーマのフォントに近いものを、Mac・Linux でも探す。
@@ -352,12 +361,13 @@ def _is_ea(ch: str) -> bool:
     return o >= 0x2E80 or 0x2190 <= o <= 0x2BFF or 0x0370 <= o <= 0x03FF or 0x2010 <= o <= 0x2027
 
 
-def text_width_pt(runs: list[Run], size: float) -> float:
+def _pil_width(runs: list[Run], size: float, bold: bool = False) -> float:
+    """前の見積もり（render_check_py が使えないときだけ）：字の送り幅を PIL で足す。"""
     w = 0.0
     for r in runs:
         scale = 0.7 if r.baseline else 1.0
         for ch in r.text:
-            kind = "ea" if _is_ea(ch) else ("latin_i" if r.i else ("latin_b" if r.b else "latin"))
+            kind = "ea" if _is_ea(ch) else ("latin_i" if r.i else ("latin_b" if (r.b or bold) else "latin"))
             f = _font(kind)
             try:
                 cw = f.getlength(ch) / 100.0 if f else (1.0 if kind == "ea" else 0.55)
@@ -367,11 +377,237 @@ def text_width_pt(runs: list[Run], size: float) -> float:
     return w
 
 
+INSET_X, INSET_Y = ((_RC.DEFAULT_INS[0] / 914400, _RC.DEFAULT_INS[1] / 914400) if _RC else (0.1, 0.05))   # 文字の枠の余白（in）
+LINE_FACTOR = _RC.LINE_FACTOR if _RC else 1.2   # 1行の高さ ＝ 字の大きさ × 1.2（行間 100%）
+
+
 def line_height_in(size: float) -> float:
-    return size * 1.2 / 72.0
+    return size * LINE_FACTOR / 72.0
 
 
-INSET_X, INSET_Y = 0.1, 0.05
+def fill_runs(paragraph, runs: list[Run], size: float, color: str | None, bold: bool, lang: str, alt: str):
+    """段落にランを入れる（スライドの文字の枠と、測るための枠が同じ書式になるように1か所で）。"""
+    for r in runs:
+        run = paragraph.add_run()
+        run.text = r.text
+        f = run.font
+        f.size = Pt(size)
+        c = r.color or color
+        if c:
+            f.color.rgb = RGBColor.from_string(c)
+        if r.u:
+            f.underline = True
+        if r.b or bold:
+            f.bold = True
+        if r.i:
+            f.italic = True
+            f.name = "Times New Roman"
+        rPr = run._r.get_or_add_rPr()
+        rPr.set("lang", lang)
+        rPr.set("altLang", alt)
+        if r.baseline:
+            rPr.set("baseline", str(r.baseline))
+
+
+class Meter:
+    """文字を測る。render_check_py.layout_text（描画の検査と同じ計算）を、スライドに置かない文字の枠で呼ぶ。
+    Deck ごとに1つ（そのテンプレートのテーマの書体・デッキの言語で測る）。"""
+
+    def __init__(self, prs, lang: str = "ja-JP", alt: str = "en-US"):
+        self.rd = _RC.Deck(prs)
+        self.master = prs.slide_masters[0]
+        self.lang, self.alt = lang, alt
+        self._cache: dict = {}
+
+    @staticmethod
+    def _key(lines):
+        return tuple(tuple((r.text, r.b, r.i, r.baseline) for r in l) for l in lines)
+
+    def layout(self, lines: list, size: float, bold: bool = False, wrap_w: float | None = None):
+        """lines（段落ごとのラン）を置いたときの配置（render_check_py.layout_text の戻り値）。wrap_w（in）を渡すと、その幅で折り返す。"""
+        key = (self._key(lines), size, bool(bold), wrap_w)
+        hit = self._cache.get(key)
+        if hit is not None:
+            return hit
+        from pptx.oxml.shapes.autoshape import CT_Shape
+        from pptx.shapes.autoshape import Shape
+        w_emu = int((wrap_w + 2 * INSET_X if wrap_w else 40.0) * 914400)
+        sh = Shape(CT_Shape.new_textbox_sp(1, "measure", 0, 0, w_emu, 914400), None)
+        tf = sh.text_frame
+        tf.word_wrap = bool(wrap_w)
+        for j, line in enumerate(lines or [[]]):
+            p = tf.paragraphs[0] if j == 0 else tf.add_paragraph()
+            if line:
+                fill_runs(p, line, size, None, bold, self.lang, self.alt)
+            else:
+                p.add_run().text = ""
+        lay = _RC.layout_text(_RC.TextCtx(self.rd, sh, self.master), (0.0, 0.0, w_emu / 12700.0, 100000.0))
+        if len(self._cache) > 20000:
+            self._cache.clear()
+        self._cache[key] = lay
+        return lay
+
+    def widths(self, lines, size, bold=False) -> list:
+        """段落ごとの [(字の幅, 行末の分)]（pt。折り返さない）。字の幅は描画の検査の行の幅、行末の分は検査の範囲に入る段落記号の幅。"""
+        lay = self.layout(lines, size, bold)
+        out = [(0.0, 0.0)] * len(lines)
+        for ln in lay["lines"]:
+            if ln.para < len(out):
+                out[ln.para] = (ln.width, ln.end_extra)
+        return out
+
+    def chars(self, line: list, size, bold=False) -> list:
+        """1行の字ごとの (字, 幅 pt)。"""
+        lay = self.layout([line], size, bold)
+        return [(c.c, c.w) for ln in lay["lines"] for c in ln.chars if c.c != "\v"]
+
+    def nlines(self, lines, size, bold=False, wrap_w: float | None = None) -> int:
+        return self.layout(lines, size, bold, wrap_w)["nlines"] if lines else 0
+
+
+_METER = None        # いま組んでいるデッキの Meter（Deck が作る。部品の外の text_width_pt・wrap_to も同じ計算で測る）
+_METER_DEFAULT = []  # デッキを作る前に測るとき（scaffold.py の折り返し）の、既定のテンプレートの Meter
+
+
+def _meter():
+    if _RC is None:
+        return None
+    if _METER is not None:
+        return _METER
+    if not _METER_DEFAULT:
+        try:
+            _METER_DEFAULT.append(Meter(Presentation(str(TEMPLATE))))
+        except Exception:   # noqa: BLE001
+            _METER_DEFAULT.append(None)
+    return _METER_DEFAULT[0]
+
+
+def text_width_pt(runs: list[Run], size: float, bold: bool = False) -> float:
+    """1行の字の幅（pt）。描画の検査（render_check_py）と同じ計算。"""
+    m = _meter()
+    if m is not None and runs:
+        try:
+            return m.widths([runs], size, bold)[0][0]
+        except Exception:   # noqa: BLE001  測れない字の並び（壊れたフォントなど）は前の見積もりで
+            pass
+    return _pil_width(runs, size, bold)
+
+
+def line_extent_pt(runs: list[Run], size: float, bold: bool = False) -> float:
+    """1行の文字の範囲の幅（pt）：字の幅＋行末の段落記号の幅。描画の検査が本文の右端・図との間隔に使う幅。"""
+    m = _meter()
+    if m is not None and runs:
+        try:
+            w, extra = m.widths([runs], size, bold)[0]
+            return w + extra
+        except Exception:   # noqa: BLE001
+            pass
+    return _pil_width(runs, size, bold) + 0.27 * size
+
+
+# ---- 折り返し（右の限りを超える行だけ。描画の検査と同じ字の幅で） -----------------------------------------------
+_BREAK_AFTER = set("、。，,・）」』】：:；;!！?？")
+_PARTICLES = ("では", "には", "とは", "から", "まで", "より", "ので", "のに", "が", "を", "に", "は", "で", "と", "も", "へ", "や")
+_NO_START = set(_RC.NO_START) if _RC else set("、。，．,.・：；？！?!:;)）]］}｝」』】ー")
+_NO_END = set(_RC.NO_END) if _RC else set("([｛〔〈《「『【（［{")
+_MARKS = ("⇒", "→", "・", "□", "☐", "•")
+
+
+def _split_runs(line: list, k: int):
+    """ランの並びを、字の位置 k で2つに分ける。"""
+    a, b, pos = [], [], 0
+    for r in line:
+        n = len(r.text)
+        if pos + n <= k:
+            a.append(r)
+        elif pos >= k:
+            b.append(r)
+        else:
+            cut = k - pos
+            a.append(Run(r.text[:cut], r.color, r.u, r.b, r.i, r.baseline))
+            b.append(Run(r.text[cut:], r.color, r.u, r.b, r.i, r.baseline))
+        pos += n
+    return a, b
+
+
+def _strip_runs(line: list, left: bool = False, right: bool = False):
+    out = [Run(r.text, r.color, r.u, r.b, r.i, r.baseline) for r in line]
+    if left:
+        while out and not out[0].text.lstrip(" "):
+            out.pop(0)
+        if out:
+            out[0].text = out[0].text.lstrip(" ")
+    if right:
+        while out and not out[-1].text.rstrip(" "):
+            out.pop()
+        if out:
+            out[-1].text = out[-1].text.rstrip(" ")
+    return out
+
+
+def _latin(ch: str) -> bool:
+    return ch.isascii() and (ch.isalnum() or ch in ".,'%+-_/()^")
+
+
+def wrap_runs(line: list, width_pt: float, size: float, bold: bool = False, indent: str = "") -> list:
+    """1行（ラン）を幅 width_pt（字の幅＋行末の分）に入るように折る。折る所は「、」「。」・空白・助詞の後ろ（禁則と英単語の途中は避ける）。
+    2行目からは indent を頭に付ける（字下げ・「⇒」「・」の後ろにそろえる）。入る行はそのまま [line]。"""
+    m = _meter()
+    out, cur = [], line
+    for _ in range(8):
+        text = "".join(r.text for r in cur)
+        ext = line_extent_pt(cur, size, bold) if text else 0.0
+        if not text or ext <= width_pt:
+            break
+        cw = []
+        if m is not None:
+            try:
+                cw = m.chars(cur, size, bold)
+            except Exception:   # noqa: BLE001
+                cw = []
+        if len(cw) != len(text):
+            cw = [(c, text_width_pt([Run(c)], size, bold)) for c in text]
+        extra = max(0.0, ext - sum(w for _, w in cw))
+        acc, imax = 0.0, 0
+        for i, (_, w) in enumerate(cw):
+            if acc + w + extra > width_pt and i > 0:
+                break
+            acc += w
+            imax = i + 1
+        if imax >= len(text):
+            break
+        best, rank_best = None, -1
+        for i in range(max(1, int(imax * 0.5)), imax + 1):
+            prev, nxt = text[i - 1], text[i] if i < len(text) else ""
+            if nxt in _NO_START or prev in _NO_END or (_latin(prev) and _latin(nxt)) or not text[i:].strip():
+                continue
+            if prev in _BREAK_AFTER or prev == " " or nxt == " ":
+                rank = 3
+            elif any(text[:i].endswith(p) for p in _PARTICLES):
+                rank = 2
+            else:
+                rank = 1
+            if rank >= rank_best:
+                best, rank_best = i, rank
+        if best is None:   # 折れる所が無い（長い英単語など）：入る所で切る
+            best = max(1, imax)
+        a, b = _split_runs(cur, best)
+        out.append(_strip_runs(a, right=True))
+        b = _strip_runs(b, left=True)
+        cur = ([Run(indent)] if indent else []) + b
+    out.append(cur)
+    return out
+
+
+def _cont_indent(text: str, sp: str) -> str:
+    """折った2行目の頭に付ける字下げ：元の行の頭の空白、行が「⇒」「・」「1.」などで始まるなら、その後ろにそろえる分。"""
+    lead = text[:len(text) - len(text.lstrip(" 　"))]
+    rest = text[len(lead):]
+    if rest.startswith(_MARKS) or re.match(r"^\d+[.．]\s", rest):
+        return lead + sp
+    return lead
+
+
 BODY_PT = 22   # 本文の字の大きさ（2026-11-13 に 20 → 22。本文の目安を 80〜120字に狭めたのに合わせ、少し大きく）
 
 
@@ -445,6 +681,17 @@ def has_conclusion(slide, slide_height) -> bool:
     return False
 
 
+_RULES: dict = {}
+
+
+def _rule(name: str):
+    """描画の検査（check_layout.py）の基準の値（下端の許し・図との間隔・箱の決まりなど）。二重に持たないように、検査のものを読む。"""
+    if name not in _RULES:
+        import check_layout
+        _RULES[name] = getattr(check_layout, name)
+    return _RULES[name]
+
+
 # ---- スライド ------------------------------------------------------------------
 class Slide:
     def __init__(self, deck: "Deck", slide):
@@ -453,6 +700,8 @@ class Slide:
         self.cur_x = deck.area["x"] if hasattr(deck, "area") else BODY_X
         self.cur_y = deck.area["top"] if hasattr(deck, "area") else 1.9
         self.boxes: list[tuple[str, Box]] = []
+        self._texts: list[dict] = []   # 置いた文字の枠（折り返し直し・ずらしに使う）：{shape, box, lines, size, bold, color, align, name, fit}
+        self._shape_box: dict = {}     # 図形の要素 → その Box（ずらすとき、記録の位置も合わせる）
 
     def _forms(self, items, what: str, steps: bool = False):
         """並べる項目の形がそろっているか（英語だけ。style-guide 7節）。組んだ pptx では折り返しと次の項目が区別できないので、ここで見る。"""
@@ -469,40 +718,66 @@ class Slide:
 
     # -- 低レベル: テキストボックス
     def _add_runs(self, paragraph, runs: list[Run], size: float, color: str | None, bold: bool):
-        for r in runs:
-            run = paragraph.add_run()
-            run.text = r.text
-            f = run.font
-            f.size = Pt(size)
-            c = r.color or color
-            if c:
-                f.color.rgb = RGBColor.from_string(c)
-            if r.u:
-                f.underline = True
-            if r.b or bold:
-                f.bold = True
-            if r.i:
-                f.italic = True
-                f.name = "Times New Roman"
-            rPr = run._r.get_or_add_rPr()
-            rPr.set("lang", self.deck.lang_code)
-            rPr.set("altLang", self.deck.alt_code)
-            if r.baseline:
-                rPr.set("baseline", str(r.baseline))
+        fill_runs(paragraph, runs, size, color, bold, self.deck.lang_code, self.deck.alt_code)
 
-    def text(self, x: float, y: float, text: str, size: float = BODY_PT, color: str | None = None,
-             align: str = "l", bold: bool = False, w: float | None = None, name: str | None = None) -> Box:
-        """本文テキストを置く。折り返しなし（改行は \\n で明示）。戻り値は推定の外枠。"""
-        lines = split_lines(parse_markup(text))
-        tw = max((text_width_pt(l, size) for l in lines), default=0) / 72.0
-        bw = w if w is not None else tw + 2 * INSET_X + 0.05
-        bh = len(lines) * line_height_in(size) + 2 * INSET_Y
-        tb = self.slide.shapes.add_textbox(Inches(x), Inches(y), Inches(bw), Inches(bh))
-        if name:
-            tb.name = name
-        tf = tb.text_frame
-        tf.word_wrap = False
-        tf.auto_size = MSO_AUTO_SIZE.SHAPE_TO_FIT_TEXT
+    # -- 置く瞬間に測る：本文の場所の右端・下端、図の左端（描画の検査と同じ値。check_layout から1か所で読む）
+    FIT_NAMES = ("塊の見出し", "塊の本文", "帰結", "展開の左", "展開の右", "問い", "答え", "手順", "想定質問", "回答",
+                 "漸進表示", "定義")   # 右の限りを超えたら折り返す本文の文字の枠（名前の無い本文 s.p も）
+
+    def _no(self) -> int:
+        return self.deck.prs.slides.index(self.slide) + 1
+
+    def _reg(self, kind: str, box: Box, sh=None):
+        self.boxes.append((kind, box))
+        if sh is not None:
+            self._shape_box[id(sh._element)] = (sh._element, box, kind)   # 要素も持つ（持たないと id が使い回される）
+
+    def _right_limit(self, x: float, y0: float, y1: float) -> float:
+        """x から始まる文の右の限り（in）：本文の場所の右（描画の検査の本文の場所の右と同じ。柱の中の文は柱の右）、
+        右に図・表・箱が縦に重なって置いてあれば、その左端から図との間隔（0.4 in）を引いた所。"""
+        a = self.deck.area
+        lim = max(a["right"], SLIDE_W - _rule("PAGE_MARGIN") / 72.0) + _rule("RIGHT_TOL") / 72.0
+        if "text_right" in a and x < a["text_right"]:
+            lim = a["text_right"]
+        for kind, b in self.boxes:
+            if kind in ("image", "shape") and b.x - x >= 1.0 and b.y < y1 - 0.02 and y0 + 0.02 < b.bottom:
+                lim = min(lim, b.x - _rule("FIG_GAP_MIN") / 72.0)
+        return lim
+
+    def _bottom_limit(self) -> float:
+        """本文・図の下端の限り（in）：本文の場所の下端（deck.content_bottom）＋描画の検査の許し（EDGE_TOL）と、
+        帯の上端（帯の無い枚はページ番号の上）から描画の誤差 2pt を引いた所の、上の方（描画の検査と同じ値）。"""
+        if getattr(self, "_blim", None) is None:
+            banded = (band_placeholder_idx(self.slide.slide_layout, self.deck.prs.slide_height) is not None
+                      or any(sh.name == "青帯" for sh in self.slide.shapes))
+            band = (_rule("BAND_TOP") if banded else _rule("NOBAND_BOTTOM")) - 2.0
+            self._blim = min(self.deck.content_bottom + _rule("EDGE_TOL") / 72.0, band / 72.0) - 0.01   # 0.01 in は丸めの分（ちょうど限りで ERROR になった）
+        return self._blim
+
+    def _fits(self, name, size) -> bool:
+        return hasattr(self, "section") and (name in self.FIT_NAMES or (name is None and size >= 17.5))
+
+    def _wrap_to_limit(self, lines, x, y, size, bold, width=None):
+        """右の限り（width を渡せばその幅）を超える行だけ折る。(新しい行, 折ったか)。"""
+        out, changed = lines, False
+        for _ in range(2):   # 折ると高さが増え、下にある図にかかることがあるので、もう1回見る
+            h = len(out) * line_height_in(size) + 2 * INSET_Y
+            lim_pt = (width * 72.0) if width is not None else (self._right_limit(x, y, y + h) - x - INSET_X) * 72.0
+            if lim_pt < 6 * size:   # 6字も入らない所では折らない（細切れになる。右のはみ出しとして知らせる）
+                break
+            new = []
+            for line in out:
+                if line and line_extent_pt(line, size, bold) > lim_pt:
+                    text = "".join(r.text for r in line)
+                    new += wrap_runs(line, lim_pt, size, bold, _cont_indent(text, self.deck.sp))
+                else:
+                    new.append(line)
+            if len(new) == len(out):
+                break
+            out, changed = new, True
+        return out, changed
+
+    def _fill_frame(self, tf, lines, size, color, bold, align):
         for j, line in enumerate(lines):
             p = tf.paragraphs[0] if j == 0 else tf.add_paragraph()
             p.alignment = {"l": PP_ALIGN.LEFT, "c": PP_ALIGN.CENTER, "r": PP_ALIGN.RIGHT}[align]
@@ -510,8 +785,45 @@ class Slide:
                 self._add_runs(p, line, size, color, bold)
             else:
                 p.add_run().text = ""
+
+    def _text_size(self, lines, size, bold):
+        """文字の枠の幅・高さ（in）：一番長い行の字の幅＋余白、行数 × 1行の高さ＋余白（描画の検査と同じ計算）。"""
+        m = self.deck.meter
+        tw = None
+        if m is not None:
+            try:
+                tw = max((w for w, _ in m.widths(lines, size, bold)), default=0) / 72.0
+            except Exception:   # noqa: BLE001
+                tw = None
+        if tw is None:
+            tw = max((_pil_width(l, size, bold) for l in lines), default=0) / 72.0
+        return tw + 2 * INSET_X + 0.05, len(lines) * line_height_in(size) + 2 * INSET_Y
+
+    def text(self, x: float, y: float, text: str, size: float = BODY_PT, color: str | None = None,
+             align: str = "l", bold: bool = False, w: float | None = None, name: str | None = None,
+             fit: bool | None = None, wrap_w: float | None = None) -> Box:
+        """本文テキストを置く。改行は \\n で明示。本文の文字の枠（FIT_NAMES・名前の無い本文）は、行が右の限り（本文の場所の右・
+        右にある図の左端から 0.4 in）を超えるときだけ、その幅で折る（fit=False で折らない。wrap_w（in）でその幅に）。戻り値は外枠。"""
+        lines = split_lines(parse_markup(text))
+        fit = self._fits(name, size) if fit is None else fit
+        if (fit or wrap_w) and align == "l":
+            before = lines
+            lines, changed = self._wrap_to_limit(lines, x, y, size, bold, wrap_w)
+            if changed:
+                self._wrapped(before, lines, size, name)
+        tw, bh = self._text_size(lines, size, bold)
+        bw = tw if w is None else max(w, tw) if wrap_w is not None else w
+        tb = self.slide.shapes.add_textbox(Inches(x), Inches(y), Inches(bw), Inches(bh))
+        if name:
+            tb.name = name
+        tf = tb.text_frame
+        tf.word_wrap = False
+        tf.auto_size = MSO_AUTO_SIZE.SHAPE_TO_FIT_TEXT
+        self._fill_frame(tf, lines, size, color, bold, align)
         box = Box(x, y, bw, bh)
-        self.boxes.append(("text", box))
+        self._reg("text", box, tb)
+        self._texts.append(dict(shape=tb, box=box, lines=lines, size=size, bold=bold, color=color, align=align,
+                                name=name, fit=fit, w=w))
         tr = self.deck.area.get("text_right") if hasattr(self.deck, "area") else None
         if tr and hasattr(self, "section") and box.x < tr < box.right - 0.05 and box.x < self.deck.area["fig_x"]:   # 本文の枚だけ
             print(f"[WARN] 柱からはみ出す文（右端 {box.right:.2f} in > 柱の右 {tr:.2f} in）：「{text[:16]}」"
@@ -556,7 +868,7 @@ class Slide:
         tf.auto_size = MSO_AUTO_SIZE.SHAPE_TO_FIT_TEXT
         self._add_runs(tf.paragraphs[0], lines[0], size, None, False)
         box = Box(x, y, bw, bh)
-        self.boxes.append(("text", box))
+        self._reg("text", box, tb)
         return box
 
     # -- 数式
@@ -572,7 +884,7 @@ class Slide:
         pic = self.slide.shapes.add_picture(str(path), Inches(x), Inches(y), Inches(w_in), Inches(h_in))
         pic.name = "数式"                     # 図と見分ける（figplan.py が図の種類を数えるとき）
         box = Box(x, y, w_in, h_in)
-        self.boxes.append(("eq", box))
+        self._reg("eq", box, pic)
         return box
 
     def row(self, x: float, y: float, parts: list, size: float = BODY_PT, gap: float = 0.07) -> Box:
@@ -592,7 +904,7 @@ class Slide:
                 b = self.eq(part.latex, cx + gap, 0, size=part.size or size, color=part.color, center_y=cy)
                 cx = b.right + gap
             else:
-                b = self.text(cx - INSET_X, cy - line_h / 2, part, size=size)
+                b = self.text(cx - INSET_X, cy - line_h / 2, part, size=size, fit=False)   # 数式と並ぶ1行は折らない
                 cx = b.right - INSET_X - 0.05
         return Box(x, y, cx - x + INSET_X, row_h)
 
@@ -613,7 +925,8 @@ class Slide:
         pic = self.slide.shapes.add_picture(str(path), Inches(x), Inches(y), Inches(w), Inches(h))
         pic.name = name or "図"
         box = Box(x, y, w, h)
-        self.boxes.append(("image", box))
+        self._reg("image", box, pic)
+        self._fig_font(pic, path, w)
         return box
 
     def arrow(self, x: float, y: float, w: float = 0.6, h: float = 0.55, direction: str = "right") -> Box:
@@ -632,7 +945,7 @@ class Slide:
         if style is not None:
             sh._element.remove(style)
         box = Box(x, y, w, h)
-        self.boxes.append(("shape", box))
+        self._reg("arrow", box, sh)
         return box
 
     def rect(self, x, y, w, h, fill: str | None = "F2F2F2", line: str | None = None, rounded=True,
@@ -671,7 +984,7 @@ class Slide:
                 p.alignment = {"l": PP_ALIGN.LEFT, "c": PP_ALIGN.CENTER, "r": PP_ALIGN.RIGHT}[align]
                 self._add_runs(p, line_runs, size, color or C.TEXT, bold)
         box = Box(x, y, w, h)
-        self.boxes.append(("shape", box))
+        self._reg("shape", box, sh)
         return box
 
     def caption(self, box: Box, text: str, right: bool = True, size: float = 14) -> Box:
@@ -684,7 +997,7 @@ class Slide:
         w = width(text, size)
         x = box.right - w if right else box.x
         h = line_height_in(size) + 2 * INSET_Y
-        if x < box.x - 0.01 and any(kind != "image" and b.x < box.x and x < b.right and b.y < y + h and y < b.bottom
+        if x < box.x - 0.01 and any(kind in ("text", "eq", "shape") and b.x < box.x and x < b.right and b.y < y + h and y < b.bottom
                                     for kind, b in self.boxes):
             area = getattr(self.deck, "area", None) or {}
             room = max(box.w, area.get("right", SLIDE_W - 0.5) - box.x)
@@ -693,7 +1006,7 @@ class Slide:
                 if width(text, size) > room:
                     size = 12
             x = box.x
-        return self.text(x, y, text, size=size, color=C.GRAY)
+        return self.text(x, y, text, size=size, color=C.GRAY, fit=False)
 
     def table(self, x: float, y: float, col_w, row_h: float, header: list[str], rows: list,
               label_w: float = 0.0, size: float = 16) -> float:
@@ -713,19 +1026,43 @@ class Slide:
         ws = list(col_w) if isinstance(col_w, (list, tuple)) else [col_w] * ncols
         if len(ws) != ncols:
             raise ValueError(f"s.table：col_w の幅 {len(ws)} 個とセルの列 {ncols} 個が合わない（行ラベル列の幅は label_w で渡す）")
+        # 右の限りを越える幅なら、列の幅を同じ割合で縮める（手で決めた表の幅が右にはみ出す、が1回目の ERROR にあった）
+        room = self._right_limit(x, y, y + 1) - x - label_w - 0.08 * (ncols - 1)
+        if sum(ws) > room + 0.01 and room > 0.5 * sum(ws):
+            ws = [w_ * room / sum(ws) for w_ in ws]
+        lim = self._bottom_limit()
+        gap = 0.08
+        for sz, gp in ((size, 0.08), (size, 0.04), (min(size, 15), 0.04), (min(size, _rule("TABLE_FONT_MIN")), 0.04)):
+            # 行の高さは、その行のいちばん行の多いセルに合わせる（折り返した行も数える。足りないとセルの文字が下の行に重なった）
+            hs = [max([row_h] + [self._box_text_h(c, w_, sz) for c, w_ in zip(cells, ws)]
+                      + ([self._box_text_h(lab, label_w - 0.08, sz, bold=True)] if label_w else [])) for lab, cells in rows]
+            size, gap = sz, gp
+            if y + 0.5 + gp + sum(hs) + gp * (len(hs) - 1) <= lim:
+                break
         xs = [x + label_w + sum(ws[:j]) + 0.08 * j for j in range(len(ws))]
         if corner is not None:
             self.rect(x, y, label_w - 0.08, 0.5, fill=C.PALE, text=corner, size=17, color=C.BAND, bold=True, name=TABLE_NAMES[0])
         for j, h in enumerate(header):
             self.rect(xs[j], y, ws[j], 0.5, fill=C.PALE, text=h, size=17, color=C.BAND, bold=True, name=TABLE_NAMES[0])
-        yy = y + 0.58
-        for lab, cells in rows:
+        yy = y + 0.5 + gap
+        for (lab, cells), rh in zip(rows, hs):
             if label_w:
-                self.rect(x, yy, label_w - 0.08, row_h, fill=C.PALE, text=lab, size=size, color=C.BAND, bold=True, name=TABLE_NAMES[1])
+                self.rect(x, yy, label_w - 0.08, rh, fill=C.PALE, text=lab, size=size, color=C.BAND, bold=True, name=TABLE_NAMES[1])
             for j, cell in enumerate(cells):
-                self.rect(xs[j], yy, ws[j], row_h, fill=C.LIGHT, text=cell, size=size, align="l", name=TABLE_NAMES[2])
-            yy += row_h + 0.08
+                self.rect(xs[j], yy, ws[j], rh, fill=C.LIGHT, text=cell, size=size, align="l", name=TABLE_NAMES[2])
+            yy += rh + gap
         return yy
+
+    def _box_text_h(self, text: str, w: float, size: float, bold: bool = False) -> float:
+        """箱（rect。左右の余白 0.12 in・上下 0.05 in・角丸）の中の文字の高さ（in）：箱の幅で折り返した行数 × 1行の高さ＋余白。"""
+        lines = split_lines(parse_markup(text or ""))
+        m = self.deck.meter
+        inner = max(0.3, w - 0.24 - 0.05)
+        try:
+            n = m.nlines(lines, size, bold, inner) if m is not None else len(lines)
+        except Exception:   # noqa: BLE001
+            n = len(lines)
+        return n * line_height_in(size) + 0.1 + 0.06
 
     def flow(self, items: list, x: float, y: float, w: float, h: float = 0.9, gap: float = 0.75,
              direction: str = "down", size: float = 18, arrow_labels: list | None = None,
@@ -735,6 +1072,15 @@ class Slide:
         direction="down" は縦に、"right" は横に並べる。arrow_labels で矢印の横に注記（例 ["較正", None]）。
         最後の箱だけ薄灰（結果・行き先）、ほかは薄青。"""
         n = len(items)
+        lim_b, lim_r = self._bottom_limit(), self._right_limit(x, y, y + h)
+        need = lambda w_: max(self._box_text_h(tx, w_, size) for tx in items)   # noqa: E731  箱の文字が入る高さ
+        if direction == "right" and x + n * w + (n - 1) * gap > lim_r + 0.01:   # 右に入らなければ、間 → 箱の幅の順に詰める
+            gap = max(0.35, min(gap, (lim_r - x - n * w) / max(1, n - 1)))
+            w = min(w, (lim_r - x - (n - 1) * gap) / n)
+        h = max(h, need(w))   # 箱の文字が箱より高ければ、箱を高く（文字が箱の外に出ていた）
+        if direction == "down" and y + n * h + (n - 1) * gap > lim_b:   # 下に入らなければ、間 → 箱の高さの順に詰める
+            gap = max(0.35, min(gap, (lim_b - y - n * h) / max(1, n - 1)))
+            h = max(need(w), min(h, (lim_b - y - (n - 1) * gap) / n))
         aw, ah = (0.6, gap - 0.15) if direction == "down" else (gap - 0.15, 0.6)
         for k, text in enumerate(items):
             if direction == "down":
@@ -763,6 +1109,7 @@ class Slide:
         ln.line.width = Pt(width)
         if dash:
             ln.line.dash_style = 4
+        self._reg("line", Box(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1)), ln)
         return ln
 
     def oval(self, x: float, y: float, w: float, h: float, color: str = C.RED, width: float = 2.75) -> Box:
@@ -778,7 +1125,7 @@ class Slide:
         if style is not None:
             sh._element.remove(style)
         box = Box(x, y, w, h)
-        self.boxes.append(("shape", box))
+        self._reg("ring", box, sh)
         return box
 
     def note(self, x: float, y: float, text: str, size: float = 16, color: str | None = None,
@@ -1026,44 +1373,143 @@ class Slide:
         w = pw / dpi if dpi and dpi >= 100 else 5.0
         a = self.deck.area
         right = a["right"]
-        texts = [b for kind, b in self.boxes if kind != "image" and b.y > a["top"] - 0.3]
-        tr = max((b.right for b in texts), default=a.get("fig_x", right - w) - gap)
-        x = min(tr + max(gap, (right - w - tr) / 2), right - w)
-        if "text_right" in a:
-            x = max(x, a["fig_x"])
-        b = self.image(path, x, a["top"] if y is None else y, name=name)
+        fy = a["top"] if y is None else y
+        fh = w * ph_ / pw
+
+        def place_x():
+            texts = [b for kind, b in self.boxes if kind in ("text", "eq", "shape", "arrow") and b.y > a["top"] - 0.3]
+            tr = max((b.right for b in texts), default=a.get("fig_x", right - w) - gap)
+            x = min(tr + max(gap, (right - w - tr) / 2), right - w)
+            return max(x, a["fig_x"]) if "text_right" in a else x
+        x = place_x()
+        # 図の左に入らない文（右端＋図との間隔 0.4 in が図の左端を越える行）は、図の左端までの幅で折り直す
+        # （1行が長くて図に重なる・図との間隔が狭い、が1回目の ERROR の2割近くあった）
+        if self._reflow_left_of(x, fy, fy + fh):
+            x = place_x()
+        b = self.image(path, x, fy, name=name)
         if caption:
             self.caption(b, caption)
         return b
 
+    def _reflow_left_of(self, fx: float, y0: float, y1: float) -> bool:
+        """図の左端 fx の左にあり、縦に重なる本文の文字の枠のうち、図との間隔（0.4 in）に入らない行を折り直す。折ったら True。"""
+        lim = fx - _rule("FIG_GAP_MIN") / 72.0 - 0.01   # 描画の検査は 0.40 in ちょうどでも小数の切り捨てで ERROR にするので、少し内側に
+        done = False
+        for t in list(self._texts):
+            b = t["box"]
+            if not t["fit"] or t["align"] != "l" or fx - b.x < 1.0 or not (b.y < y1 and y0 < b.bottom):
+                continue
+            width = (lim - b.x - INSET_X) * 72.0
+            if width < 6 * t["size"]:   # 6字も入らない所は折らない（細切れになる。図を小さく描き直すほうがよい。組む時点に知らせる）
+                continue
+            new = []
+            for line in t["lines"]:
+                if line and line_extent_pt(line, t["size"], t["bold"]) > width:
+                    new += wrap_runs(line, width, t["size"], t["bold"], _cont_indent("".join(r.text for r in line), self.deck.sp))
+                else:
+                    new.append(line)
+            if len(new) != len(t["lines"]):
+                self._wrapped(t["lines"], new, t["size"], "図の横の文")
+                self._retext(t, new)
+                done = True
+        return done
+
+    def _wrapped(self, before, after, size, name):
+        """折り返した行の記録（設計メモの確認 check_memo.py の見積もりが、列に入らない要点として出す）：(枚, 元の行, 1行の字数, 部品)。"""
+        n = self._no()
+        cpl = max((len("".join(r.text for r in l).strip()) for l in after), default=0)
+        for l in before:
+            tx = "".join(r.text for r in l).strip()
+            if tx and not any("".join(r.text for r in a).strip() == tx for a in after):
+                self.deck._wraps.append((n, tx, cpl, name or "本文"))
+
+    def _retext(self, t: dict, lines):
+        """置いた文字の枠の行を入れ替え、大きさを合わせる。高くなった分、その下に後から置いた図形を下へずらす（重ならない分だけ）。"""
+        sh, b = t["shape"], t["box"]
+        old_bottom = b.bottom
+        tf = sh.text_frame
+        tf.clear()
+        self._fill_frame(tf, lines, t["size"], t["color"], t["bold"], t["align"])
+        tw, th = self._text_size(lines, t["size"], t["bold"])
+        b.w = tw if t["w"] is None else max(t["w"], tw)
+        b.h = th
+        sh.width, sh.height = Inches(b.w), Inches(b.h)
+        t["lines"] = lines
+        self._push_below(sh, old_bottom, b.bottom)
+
+    def _push_below(self, sh, old_bottom: float, new_bottom: float):
+        """sh より後に置いた、old_bottom より下の図形を、new_bottom に重ならない分だけ下へ。カーソルも。"""
+        els = list(self.slide.shapes._spTree.iterchildren())
+        k = els.index(sh._element)
+        sb = self._shape_box
+        after = [e for e in els[k + 1:] if id(e) in sb and sb[id(e)][1].y >= old_bottom - 0.02]
+        if not after:
+            return
+        skip = {id(sh._element)} | {id(x) for x in after}
+        others = [bx for key, (_, bx, _k) in sb.items() if key not in skip and bx.y < old_bottom and bx.y > self.deck.area["top"] - 0.3]
+        floor = max([old_bottom] + [bx.bottom for bx in others if bx.bottom > old_bottom - 0.02])
+        dy = new_bottom - floor
+        if dy <= 0.005:
+            return
+        for e in after:
+            bx = sb[id(e)][1]
+            bx.y += dy
+            e_sh = next(s for s in self.slide.shapes if s._element is e)
+            e_sh.top = Inches(bx.y)
+        if self.cur_y >= old_bottom - 0.02:
+            self.cur_y += dy
+
+    def _body_above(self, x0: float, x1: float) -> float:
+        """先に置いた、x0〜x1 に横に重なる本文の図形の下端の一番下（無ければ 0）。上の見出しの領域の図形は数えない。"""
+        top = self.deck.area["top"] - 0.3
+        return max([0.0] + [b.bottom for kind, b in self.boxes if kind in ("text", "eq", "shape", "arrow", "image")
+                            and b.y > top and b.x < x1 and x0 < b.right])
+
     def compare(self, left: tuple, right: tuple, y: float | None = None, size: float = BODY_PT, gap: float = 0.6) -> list:
         """2つを並べて比べる型（手法の比較・前と後・長所と短所）。left/right = ("小見出し", ["要点", ...])。
-        左右同じ幅で、上に小見出しの帯、間に縦の区切り線。戻り値は左右の下端。"""
-        y = self.deck.area["top"] + 0.1 if y is None else y
+        左右同じ幅で、上に小見出しの帯、間に縦の区切り線。戻り値は左右の下端。置いたあと、カーソルを下端（の大きい方）の下へ進める
+        （続けて s.block・s.p を置ける）。y を省くと、上に置いた塊の下（無ければ本文の上端）。渡した y が上の塊に重なるなら、塊の下へずらす。
+        要点は列の幅で折り返す。"""
         wx0, wx1 = self.deck.wide
         col_w = (wx1 - wx0 - gap) / 2
-        # 上に本文の塊があって下に入りきらないときは、行の間を詰め、それでも入らなければ字を 18pt まで小さく
-        # （ベンチプレス講座の試しで、塊2つ＋3行ずつの比較がページ番号にかかり、制作の担当の直しが上限を越えた）
-        bottom = getattr(self.deck, "content_bottom", None) or self.deck.area.get("bottom", 7.0)
-        need = lambda sz, sp, top: top + max(sum(len(split_lines(parse_markup(t))) * line_height_in(sz) + 2 * INSET_Y + sp  # noqa: E731
-                                                for t in its) for its in (left[1], right[1]))
+        top0 = self.deck.area["top"] + 0.1
+        above = self._body_above(wx0, wx1)   # 先に置いた本文の図形の下端（横に重なるもの）
+        if y is None:
+            y = max(top0, above + 0.3) if above else top0
+        elif above > y - 0.05:   # 先に置いた塊に重なる（手で決めた y が上の文と重なる、が1回目の ERROR に多かった）
+            y = above + 0.3
+        # 下に入りきらないときは、行の間を詰め、それでも入らなければ字を 18pt まで小さく
+        # （ベンチプレス講座の試しで、塊2つ＋3行ずつの比較がページ番号にかかり、制作の担当の直しが上限を越えた）。
+        # 行は減らさない（各列の行を削ると、描画の検査の「箱が小さい（比較の列が短い）」になる）
+        inner = col_w - 0.3 - 2 * INSET_X
+        lim = self._bottom_limit()
+        lh = line_height_in
+
+        def nl(tx, sz):
+            return len(self._wrap_to_limit(split_lines(parse_markup(tx)), 0, 0, sz, False, inner)[0])
+
+        def low(sz, sp, to):
+            return y + to + max(sum(nl(tx, sz) * lh(sz) + 2 * INSET_Y for tx in its) + sp * max(0, len(its) - 1)
+                                for its in (left[1], right[1])) - INSET_Y
         top_off, step = 0.8, 0.2
         for sz, sp, to in ((size, 0.2, 0.8), (size, 0.08, 0.7), (min(size, 20), 0.08, 0.7), (min(size, 18), 0.06, 0.68)):
             size, step, top_off = sz, sp, to
-            if y + need(sz, sp, to) <= bottom:
+            if low(sz, sp, to) <= lim:
                 break
-        bottoms = []
+        bottoms, lows = [], []
         for k, (head, items) in enumerate((left, right)):
             x = wx0 + k * (col_w + gap)
             self.rect(x, y, col_w, 0.55, fill=C.PALE, text=head, size=20, color=C.BAND, bold=True)
-            yy = y + top_off
+            yy, b = y + top_off, None
             for it in items:
                 # 列の幅いっぱいの枠に（列が1つの箱に見える。渡す前の検査は、箱の大きさを各列の行数で見る）
-                b = self.text(x + 0.15, yy, it, size=size, w=max(col_w - 0.3, self._text_w(it, size)),
+                b = self.text(x + 0.15, yy, it, size=size, w=col_w - 0.3, wrap_w=inner,
                               name="比較の" + ("左" if k == 0 else "右"))
                 yy = b.bottom + step
             bottoms.append(yy)
-        self.line(wx0 + col_w + gap / 2, y, wx0 + col_w + gap / 2, max(bottoms), color=C.GRAY, width=1.0)
+            lows.append(b.bottom if b else y + 0.55)
+        self.line(wx0 + col_w + gap / 2, y, wx0 + col_w + gap / 2, max(lows) - INSET_Y, color=C.GRAY, width=1.0)
+        self.cur_y = max(lows) + 0.35
         return bottoms
 
     def key_message(self, big: str, sub: str | None = None, size: float = 54, y: float = 2.5) -> Box:
@@ -1309,16 +1755,26 @@ class Slide:
     # -- 図解の型（references/structures.md）。カードは薄い灰の塗りだけ（線なし）、見出しは主色の太字
     VALUE_SIZE = 28   # カードの値（3つ目）の文字の大きさ
 
-    def _card_h(self, items, size, pad=0.45):
-        """カードの中身（見出し1行＋説明の行数、値があればその1行）の一番多いものに合わせた高さ。"""
-        n = max(1 + (len(self._lines(it[1]).split("\n")) if isinstance(it, tuple) and len(it) > 1 and it[1] else 0) for it in items)
+    def _card_h(self, items, size, pad=0.45, cw=None):
+        """カードの中身（見出し1行＋説明の行数、値があればその1行）の一番多いものに合わせた高さ。
+        cw（カードの幅）を渡すと、カードの幅で折り返した行も数える（描画の検査と同じ計算）。"""
+        def nl(it):
+            if cw is not None:
+                return round((self._box_text_h(self._card_text(it), cw, size) - 0.16) / line_height_in(size))
+            return 1 + (len(self._lines(it[1]).split("\n")) if isinstance(it, tuple) and len(it) > 1 and it[1] else 0)
+        n = max(nl(it) for it in items)
         val = any(isinstance(it, tuple) and len(it) > 2 and it[2] for it in items)
         return n * line_height_in(size) + pad + (line_height_in(self.VALUE_SIZE) + 0.1 if val else 0)
 
+    def _card_text(self, item) -> str:
+        item = item if isinstance(item, tuple) else (item,)
+        head, body = (tuple(item) + ("", ""))[:2]
+        return "{ab:" + head + "}" + ("\n" + "\n".join(self.deck.sp + l for l in self._lines(body).split("\n")) if body else "")
+
     def _card(self, x, y, w, h, item, kind, size):
         item = item if isinstance(item, tuple) else (item,)
-        head, body, value = (tuple(item) + ("", ""))[:3]   # 説明は全角1字下げ（見出しとの階層の差。場合分けの部品と同じ）
-        text = "{ab:" + head + "}" + ("\n" + "\n".join(self.deck.sp + l for l in self._lines(body).split("\n")) if body else "")
+        value = (tuple(item) + ("", ""))[2]   # 説明は全角1字下げ（見出しとの階層の差。場合分けの部品と同じ）
+        text = self._card_text(item)
         b = self.rect(x, y, w, h, fill=C.LIGHT, text=text, size=size, color=C.TEXT, align="l", anchor="t", name=f"カード_{kind}")
         if value:   # 値（大きな赤い数字）はカードの下に。並べるだけの箱が小さく寂しく見えるのを、言いたい値で埋める
             vh = line_height_in(self.VALUE_SIZE) + 0.1
@@ -1339,7 +1795,9 @@ class Slide:
         bottom = self.deck.content_bottom
         if layout == "row":
             cw = (w - gap * (n - 1)) / n
-            ch = h or max(1.3, self._card_h(items, size, pad=0.6))
+            ch = h or max(1.3, self._card_h(items, size, pad=0.6, cw=cw))
+            if not h and y + ch > self._bottom_limit():   # 下に入らなければ、余白を詰める（文字が入る高さまで）
+                ch = max(self._card_h(items, size, pad=0.3, cw=cw), self._bottom_limit() - y)
             for k, it in enumerate(items):
                 self._card(x + k * (cw + gap), y, cw, ch, it, kind, size)
             box = Box(x, y, w, ch)
@@ -1347,14 +1805,15 @@ class Slide:
             cols = 2 if n <= 4 else 3
             nrow = (n + cols - 1) // cols
             cw = (w - gap * (cols - 1)) / cols
-            ch = h or min(max(1.1, self._card_h(items, size)), (bottom - y - gap * (nrow - 1)) / nrow)
+            ch = h or max(self._card_h(items, size, pad=0.3, cw=cw),
+                          min(max(1.1, self._card_h(items, size, cw=cw)), (bottom - y - gap * (nrow - 1)) / nrow))
             for k, it in enumerate(items):
                 r, c = divmod(k, cols)
                 self._card(x + c * (cw + gap), y + r * (ch + gap), cw, ch, it, kind, size)
             box = Box(x, y, w, nrow * ch + (nrow - 1) * gap)
         elif layout == "steps":
             cw = w * (0.46 if n <= 3 else 0.4)
-            ch = h or self._card_h(items, size, pad=0.35)
+            ch = h or self._card_h(items, size, pad=0.35, cw=cw)
             dx = (w - cw) / (n - 1)
             dy = min(ch + 0.3, (bottom - y - ch) / (n - 1))
             for k, it in enumerate(items):
@@ -1370,7 +1829,7 @@ class Slide:
                 raise ValueError("cycle は4枚（2×2）で使う")
             g2 = 0.7
             cw = (w - g2) / 2
-            ch = h or min(max(1.1, self._card_h(items, size)), (bottom - y - g2) / 2)
+            ch = h or max(self._card_h(items, size, pad=0.3, cw=cw), min(max(1.1, self._card_h(items, size, cw=cw)), (bottom - y - g2) / 2))
             pos = [(x, y), (x + cw + g2, y), (x + cw + g2, y + ch + g2), (x, y + ch + g2)]
             for k, (px, py) in enumerate(pos):
                 self._card(px, py, cw, ch, items[k], kind, size)
@@ -1420,15 +1879,23 @@ class Slide:
         x = self.deck.wide[0] if x is None else x
         y = self.cur_y if y is None else y
         n = len(steps)
+        lim_r = self._right_limit(x, y, y + 1)
+        if x + q_w + 1.3 + out_w > lim_r + 0.01:   # 右に入らなければ、問いと結論の箱の幅を同じ割合で（手で決めた幅が右にはみ出していた）
+            k_ = max(0.6, (lim_r - x - 1.3) / (q_w + out_w))
+            q_w, out_w = q_w * k_, out_w * k_
+        h = max([h, self._box_text_h(last, q_w, size)]
+                + [self._box_text_h(tx, w_, size) for (q_, o_) in steps for tx, w_ in ((q_, q_w), (o_, out_w))])
         total = n * (h + gap) + h
-        if y + total > self.deck.content_bottom + 0.01:
-            raise ValueError(f"判定の流れ図が下にはみ出す（下端 {y + total:.2f} in）。h・gap を小さくするか、問いを減らす")
+        lim = self._bottom_limit()
+        if y + total > lim:   # 下に入らなければ、間を詰める（それでも入らなければ Deck.save が知らせる）
+            gap = max(0.36, min(gap, (lim - y - (n + 1) * h) / n))
+            total = n * (h + gap) + h
         ox = x + q_w + 1.3
         for k, (q, out) in enumerate(steps):
             qy = y + k * (h + gap)
             self.rect(x, qy, q_w, h, fill=C.PALE, text=q, size=size, name="判定の問い")
             self.arrow(x + q_w + 0.15, qy + h / 2 - 0.2, w=1.0, h=0.4, direction="right")
-            self.text(x + q_w + 0.2, qy + h / 2 - 0.62, yes, size=16, color=C.BAND, bold=True, name="判定の枝")
+            self.text(x + q_w + 0.32, qy + h / 2 - 0.62, yes, size=16, color=C.BAND, bold=True, name="判定の枝")   # 問いの箱から 0.4 in（描画の検査の図との間隔）
             self.rect(ox, qy, out_w, h, fill=C.LIGHT, text=out, size=size, name="判定の結論")
             self.arrow(x + q_w / 2 - 0.2, qy + h + 0.06, w=0.4, h=gap - 0.12, direction="down")
             self.text(x + q_w / 2 + 0.3, qy + h + 0.02, no, size=16, color=C.BAND, bold=True, name="判定の枝")
@@ -1494,7 +1961,7 @@ class Slide:
         bottom = max(b.bottom for b in out) + (0.55 if values else 0)
         if caption:   # 数値の行の下、右の図の右端にそろえる
             cw_ = self._text_w(caption, 14)
-            cb = self.text(out[-1].right - cw_, bottom, caption, size=14, color=C.GRAY)
+            cb = self.text(out[-1].right - cw_, bottom, caption, size=14, color=C.GRAY, fit=False)
             bottom = cb.bottom
         self.cur_y = bottom + 0.3
         return Box(wx0, y, wx1 - wx0, bottom - y)
@@ -1508,6 +1975,165 @@ class Slide:
         ex = b.x if target[0] < b.x else b.right
         self.pointer(ex, b.cy, target[0], target[1], color=C.BAND, width=1.5)
         return b
+
+    # -- 組む時点の検査（Deck.save が枚ごとに呼ぶ）：本文の場所に入るか。小さな超え（SQUEEZE_MAX まで）は、塊の間を詰めて直す
+    SQUEEZE_MAX = 0.3      # in。これまでの超えは、塊・部品の間を詰めて直す（見た目を大きく変えないように、これより大きい超えは知らせるだけ）
+    GAP_MIN = 0.15         # 詰めたあとの文の塊どうしの間（in）
+    PART_HINTS = (         # 下にはみ出した図形の名前 → (部品, 直し方)。箱の決まり（箱が小さい）を破らない直し方を先に書く
+        ("比較の", "比較", "上の塊を1つ減らすか、比較の各列の字を短く（各列は{cmp}行以上のまま：{cmp}行より削ると描画の検査の「箱が小さい」）"),
+        ("カード", "カード", "上の文を1つ減らすか、カードの説明を短く（カードの数と大きさはそのまま：小さくすると「箱が小さい」）"),
+        ("表の", "表", "表の行を減らすか、セルの言葉を短く（字は {tab:g}pt まで小さくしてある）"),
+        ("判定の", "判定の流れ図", "問いを1つ減らすか、上の文を減らす"),
+        ("前後_", "前後", "上の文を減らすか、前後の行を短く"),
+        ("ツリー", "ツリー", "上の文を減らすか、小分類を減らす"),
+        ("まとめの", "まとめ", "持ち帰ることを1つ減らすか、短く"),
+    )
+
+    def _fig_font(self, pic, path, w):
+        """置いた図の中のいちばん小さい字（figkit.save が画像に書いた MinFontPt × 縮尺）が、描画の検査の下限より小さければ知らせる。"""
+        try:
+            with Image.open(path) as im:
+                mf = float(im.info.get("MinFontPt") or im.text.get("MinFontPt"))
+                px, dpi = im.size[0], (im.info.get("dpi") or (0, 0))[0]
+        except Exception:   # noqa: BLE001  記録の無い画像（資料の切り出し・写真）は描画の検査が画像から測る
+            return
+        drawn = px / dpi if dpi and dpi >= 100 else None
+        eff = mf * (w / drawn if drawn else 1.0)
+        lim = _rule("FIG_FONT_MIN")
+        if eff < lim - 0.25:
+            self.deck._notes.append((self._no(), f"図の文字が小さい（{pic.name}：いちばん小さい字が置いた大きさで {eff:.1f}pt < {lim:g}pt）"
+                                                  " → 置く幅で描き直す（fig() の幅を置く幅に、目盛り・注記は 14pt 以上）"))
+
+    def _body(self):
+        """本文の図形：[(要素, Box, 種類, 名前)]。上の見出しの領域・結論の置き場・図に重ねる注目の印は除く。"""
+        top = self.deck.area["top"] - 0.3
+        out = []
+        for el, b, kind in self._shape_box.values():
+            nm = el.find(".//" + qn("p:cNvPr")).get("name", "")
+            if (b.y < top or nm in Deck.HEADER_NAMES or nm == "青帯" or nm.startswith("注目の") or kind == "ring"
+                    or (nm == "結論の囲み" and b.y >= BOX_TOP - 0.1)):
+                continue
+            out.append((el, b, kind, nm))
+        return out
+
+    @staticmethod
+    def _vis_bottom(b, kind):
+        return b.bottom - INSET_Y if kind == "text" else b.bottom   # 文字の枠は、文字の範囲（描画の検査が測る所）
+
+    def _squeeze(self, need: float, items) -> bool:
+        """縦に並ぶ塊（縦に重なる図形のまとまり）の間を詰めて、下端を need（in）上げる。入れば True（図形を動かす）。
+        間は文どうし GAP_MIN、下が図・表・箱なら描画の検査の「本文の直下の図・表との間隔」（0.3 in）まで。"""
+        items = sorted(items, key=lambda it: it[1].y)
+        groups = []
+        for it in items:
+            if groups and it[1].y < max(self._vis_bottom(g[1], g[2]) for g in groups[-1]) - 0.01:
+                groups[-1].append(it)
+            else:
+                groups.append([it])
+        if len(groups) < 2:
+            return False
+        below_min = _rule("FIG_GAP_BELOW_MIN") / 72.0
+        red = []
+        for a_, b_ in zip(groups, groups[1:]):
+            gap = min(it[1].y for it in b_) - max(self._vis_bottom(it[1], it[2]) for it in a_)
+            boxy = any(k in ("image", "shape") for _, _, k, _ in b_)
+            red.append(max(0.0, gap - (below_min if boxy else self.GAP_MIN)))
+        if sum(red) + 1e-6 < need:
+            return False
+        shapes = {id(s._element): s for s in self.slide.shapes}
+        shift = 0.0
+        for k, g in enumerate(groups[1:]):
+            shift += need * red[k] / sum(red)
+            for el, b, _, _ in g:
+                b.y -= shift
+                sh = shapes.get(id(el))
+                if sh is not None:
+                    sh.top = Inches(b.y)
+        return True
+
+    def _fit_check(self, squeeze: bool = True) -> list:
+        """[(枚, 文)]：本文の場所の下端・右端と、図との間隔。小さな下の超えは詰めて直す（直せたものは出さない）。"""
+        if not hasattr(self, "section"):
+            return []
+        n, out = self._no(), []
+        full = self._body()
+        if not full:
+            return out
+        lim = self._bottom_limit()
+        body = [it for it in full if it[2] != "line"] or full   # 線（比較の区切り線など）は部品の文字に合わせて動くので、部品の名前で言う
+        low = max(body, key=lambda it: self._vis_bottom(it[1], it[2]))
+        over = self._vis_bottom(low[1], low[2]) - lim
+        if over > 0.005 and squeeze and over <= self.SQUEEZE_MAX:
+            moved = self._squeeze(over, full)
+            if not moved:   # 右に図が縦いっぱいにある枚：左の列だけを詰める
+                figs = [it for it in body if it[2] == "image" and it[1].x > self.deck.area["x"] + 1.0]
+                if figs:
+                    fx = min(it[1].x for it in figs)
+                    left = [it for it in full if it[1].right <= fx + 0.05]
+                    if low in left:
+                        moved = self._squeeze(over, left)
+            if moved:
+                low = max(body, key=lambda it: self._vis_bottom(it[1], it[2]))
+                over = self._vis_bottom(low[1], low[2]) - lim
+        if over > 0.005:
+            part, hint = "文", None
+            for pre, nm, h in self.PART_HINTS:
+                if low[3].startswith(pre):
+                    part, hint = nm, h.format(cmp=_rule("COMPARE_MIN_LINES"), tab=_rule("TABLE_FONT_MIN"))
+                    break
+            if hint is None and low[2] == "image":
+                part, hint = "図", "図を低く描き直す（描いた大きさのまま置くので、fig() の高さを本文の場所に合わせる）か、図の上の文を減らす"
+            if hint is None:
+                t_ = next((t for t in self._texts if t["box"] is low[1]), None)
+                sz = t_["size"] if t_ else BODY_PT
+                cut = max(1, -(-over // line_height_in(sz)))
+                hint = f"要点を1つ減らすか短く（あと {int(cut)} 行ほど減らす）"
+            out.append((n, f"{part}の下端 {self._vis_bottom(low[1], low[2]):.2f} in、限り {lim:.2f} in（{over:.2f} in 超え"
+                           + ("。小さな超えは間を詰めて直すが、それでも入らない" if over <= self.SQUEEZE_MAX else "") + f"）→ {hint}"))
+        # 右の限り（本文の場所の右）・図との間隔
+        a = self.deck.area
+        rlim = max(a["right"], SLIDE_W - _rule("PAGE_MARGIN") / 72.0) + _rule("RIGHT_TOL") / 72.0
+        ext = {}
+        for t_ in self._texts:
+            if t_["lines"]:
+                ext[id(t_["box"])] = t_["box"].x + INSET_X + max(line_extent_pt(l, t_["size"], t_["bold"]) for l in t_["lines"]) / 72.0
+        wide = [(it, ext.get(id(it[1]), it[1].right)) for it in body if it[2] != "line"]
+        wide = [(it, r) for it, r in wide if r > rlim + 0.01]
+        if wide:
+            it, r = max(wide, key=lambda x: x[1])
+            out.append((n, f"{it[3] or '図形'}の右端 {r:.2f} in、限り {rlim:.2f} in（{r - rlim:.2f} in 超え）→ 幅を狭く（図は fig_x から描いた幅のまま。"
+                           "箱・表は幅を減らす）"))
+        gap_min = _rule("FIG_GAP_MIN") / 72.0
+        figs = [it for it in body if it[2] == "image"]
+        for t_ in self._texts:   # 本文が図に重なる（図の左端の近くから始まる文は、折り返しでは直らない）
+            b = t_["box"]
+            if not t_["fit"] or id(b) not in ext:
+                continue
+            for el, f, kind, nm in figs:
+                ox = min(ext[id(b)], f.right) - max(b.x + INSET_X, f.x)
+                oy = min(b.bottom - INSET_Y, f.bottom) - max(b.y + INSET_Y, f.y)
+                if ox > 0.03 and oy > 0.03 and f.x > b.x:
+                    out.append((n, f"文「{''.join(r.text for r in t_['lines'][0])[:12]}」が{nm or '図'}に重なる（文の右端 {ext[id(b)]:.2f} in、"
+                                   f"図の左端 {f.x:.2f} in）→ 文を図の左に収める（展開の左右を短く・図を小さく描き直す）か、図を下に置く型（figure_below）に"))
+                    break
+            else:
+                continue
+            break
+        for t_ in self._texts:
+            b = t_["box"]
+            if not t_["fit"] or id(b) not in ext:
+                continue
+            for el, f, kind, nm in body:
+                if kind in ("image", "shape") and f.x - b.x >= 1.0 and f.y < b.bottom - INSET_Y and b.y + INSET_Y < f.bottom:
+                    g = f.x - ext[id(b)]
+                    if g < gap_min - 0.005 and not (kind == "image" and g < 0):   # 図に重なるものは上で出した
+                        cpl = int((f.x - gap_min - b.x - INSET_X) * 72 / t_["size"])
+                        head = f"文「{''.join(r.text for r in t_['lines'][0])[:12]}」と{nm or '図'}の間 {g:.2f} in < {gap_min:.1f} in"
+                        out.append((n, head + (f" → 文の行を短く（ここは1行 {cpl}字まで）" if cpl >= 6 else
+                                               f"（文の左端 {b.x:.2f} in、図の左端 {f.x:.2f} in）→ 文を図の左に収める"
+                                               "（展開の左右を短く・図を小さく描き直す）か、図を下に置く型（figure_below）に")))
+                        break
+        return out
 
     # -- 流し込みレイアウト（上から順に置く）
     def at(self, x: float, y: float):
@@ -1601,6 +2227,14 @@ class Deck:
         # 部品が入れる字下げ・区切りの空白。日本語は全角の空白、ほかの言語は半角2つ（英語の試しで、全角の空白が英字の間に残った）
         self.sp = "　" if self.lang == "日本語" else "  "
         self.prs = Presentation(str(template))
+        global _METER
+        try:   # 文字を測る道具（描画の検査と同じ計算。テンプレートのテーマの書体・デッキの言語で）
+            self.meter = Meter(self.prs, self.lang_code, self.alt_code) if _RC else None
+        except Exception:   # noqa: BLE001
+            self.meter = None
+        _METER = self.meter
+        self._notes: list = []   # 組む時点の知らせ [(枚, 文)]（save で WARN にして出す）
+        self._wraps: list = []   # 右の限りで折り返した行 [(枚, 元の行, 1行の字数, 部品)]
         self.workdir = Path(workdir)
         self.workdir.mkdir(parents=True, exist_ok=True)
         w, h = self.prs.slide_width / 914400, self.prs.slide_height / 914400
@@ -1731,13 +2365,23 @@ class Deck:
         text = "\n".join(lines)
         runs = split_lines(parse_markup(text))
         x0, x1 = self._cover_span(self.layout_title)
-        while True:   # 題が表紙の幅に入らなければ 2pt ずつ小さく（32pt まで。それでも入らなければ \n で折るよう知らせる）
-            tw = max(text_width_pt(l, size) for l in runs) / 72.0 + 2 * INSET_X + 0.1
-            if tw <= x1 - x0 - 0.4 or size <= 32:
+        size0 = size
+        while True:   # 題が表紙の幅に入らなければ 2pt ずつ小さく（32pt まで。それでも入らない1行の題は2行に折ってやり直す）
+            tw = max(text_width_pt(l, size, bold) for l in runs) / 72.0 + 2 * INSET_X + 0.1
+            if tw <= x1 - x0 - 0.4:
+                break
+            if size <= 32:
+                if len(runs) == 1:
+                    text = wrap_to(text, x1 - x0 - 0.6, size0)
+                    runs = split_lines(parse_markup(text))
+                    if len(runs) > 1:
+                        size = size0
+                        continue
                 break
             size -= 2
         if tw > x1 - x0 - 0.4:
-            print(f"[WARN] 表紙の題が幅に入らない（{size}pt でも {tw:.1f} in > {x1 - x0 - 0.4:.1f} in）：「{text[:16]}」 → \\n で行を分ける")
+            self._notes.append((len(self.prs.slides), f"表紙の題が幅に入らない（{size}pt でも {tw:.1f} in > {x1 - x0 - 0.4:.1f} in）："
+                                                       f"「{text[:16]}」 → \\n で行を分ける"))
         th = len(runs) * line_height_in(size) * 0.95 + 2 * INSET_Y
         top = 2.44 if len(runs) >= 2 else 2.75
         cx = (x0 + x1) / 2
@@ -1885,7 +2529,51 @@ class Deck:
             for sh in body:
                 sh.top = sh.top + Emu(int(dy * 914400))
 
+    def fit_report(self, squeeze: bool = True) -> list:
+        """組む時点の知らせ [(枚, 文)]：本文の場所に入るか（0.3 in までの超えは塊の間を詰めて直し、出さない）・右の限り・図との間隔・
+        図の文字の大きさと、描画の検査の構造の決まり（文の塊の数・箱が小さい・箱のまわりが空いている。check_layout の同じ関数で）。
+        1回だけ計算する（save と、設計メモの確認 check_memo.py の見積もりが使う）。"""
+        if getattr(self, "_report", None) is not None:
+            return self._report
+        out = list(self._notes)
+        for s in self.slides:
+            out += s._fit_check(squeeze)
+        out += self._structure_notes()
+        self._report = sorted(out, key=lambda x: x[0])
+        return self._report
+
+    def _structure_notes(self) -> list:
+        """描画の検査の構造の決まり（check_layout.unit_msgs・box_msgs）を、組んだ枚に同じ基準で当てる。"""
+        if self.meter is None:
+            return []
+        try:
+            import check_layout as CL
+        except Exception:   # noqa: BLE001
+            return []
+        out = []
+        W = self.prs.slide_width / 12700.0
+        for s in self.slides:
+            if not hasattr(s, "section"):
+                continue
+            n = s._no()
+            try:
+                items = _RC.shape_rows(self.meter.rd, s.slide, n)
+            except Exception:   # noqa: BLE001
+                continue
+            if CL.is_qa_slide(items) or CL.is_cover_slide(items):
+                continue
+            banded = (band_placeholder_idx(s.slide.slide_layout, self.prs.slide_height) is not None
+                      or any(sh.name == "青帯" for sh in s.slide.shapes))
+            for level, msg in CL.unit_msgs(items) + CL.box_msgs(items, W, CL.BAND_TOP if banded else CL.NOBAND_BOTTOM):
+                if level == "ERROR":   # 描画の検査で ERROR になるものだけ（WARN は検査の出力に任せる）
+                    out.append((n, msg.split(" → ")[0] + "（描画の検査と同じ基準）"))
+        return out
+
     def save(self, path: str | Path, title: str | None = None, author: str | None = None):
+        if not getattr(self, "_reported_once", False):
+            for n, msg in self.fit_report():
+                print(f"[WARN] {n}枚目：{msg}")
+            self._reported_once = True
         if self.valign == "center" and not getattr(self, "_distributed", False):
             self._distribute()
             self._distributed = True

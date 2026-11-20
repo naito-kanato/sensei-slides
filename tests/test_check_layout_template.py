@@ -148,7 +148,7 @@ def test_column_text_and_figures(root, tmp_path, png, capsys):
     """左の淡い柱：柱から右へはみ出す文は ERROR、柱の中の図は WARN、柱の縁をまたぐ図は ERROR"""
     deck = deck_of(root, 8, tmp_path)
     s = deck.slide("背景", summary="短い結論")
-    s.text(0.5, 3.0, "柱の中に置いた長い一文が右の白い所まで伸びる")
+    s.text(0.5, 3.0, "柱の中に置いた長い一文が右の白い所まで伸びる", fit=False)   # zemi は柱の右で折り返すので、折らずに置いて検査を見る
     s.image(png, x=0.6, y=4.6, w=3.0, h=1.5)
     s = deck.slide("結果")
     s.image(png, x=3.5, y=3.0, w=3.0, h=2.0)

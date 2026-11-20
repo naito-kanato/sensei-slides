@@ -525,6 +525,7 @@ def check(memo: Path, require_review: bool = False):
             res.append(("✘", "文の塊の数", "塊が3つを超える枚：" + "・".join(many[:6]) + "。要点（行）は3〜4個のまま、見出しは2〜3つに："
                         "同じ見出しの下に2行まとめる（「例：a」「例：b」）か、補足の要点は原稿へ（描画の検査は塊4つで ERROR。制作の担当が全部の枚を組み直していた）"))
         res += term_order(text, srows, scaffold)
+        res += scaffold.fit_marks(memo.parent)   # 骨組みと同じ部品・幅で組んだときに、本文の場所に入らない枚・列に入らない要点
         import os as _os2
         if "examples" not in Path(memo).resolve().parts and not _os2.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):   # 見本はまとめの枚より前に作った（作り直すときに入れる）
             res += recap_check(text, srows, scaffold.col)

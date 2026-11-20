@@ -14,7 +14,7 @@
 | `scripts/materials.py` | 資料を発表フォルダの `資料/` に写し、足りないもの（研究発表の方針.md・図）を確かめる |
 | `scripts/slide_profile.py` | 設定の一覧（手順0）。build.py からも `load_profile`・`author`・`deck_options` |
 | `scripts/pdf_pages.py` | PDF のページ画像化（`extract`）と図の切り出し（`crop`） |
-| `scripts/check_outline.py`・`check_memo.py` | 構成案・講座の設計メモの確認（話の筋・前の枚から・要点の出どころ・推論距離の手当て・確認問題のひもづけまで） |
+| `scripts/check_outline.py`・`check_memo.py` | 構成案・講座の設計メモの確認（話の筋・前の枚から・要点の出どころ・推論距離の手当て・確認問題のひもづけまで。骨組みと同じ部品・幅で組んで、本文の場所に入らない枚を △「入りの見込み」で出す） |
 | `scripts/scaffold.py`・`cards.py`・`excerpt.py` | 骨組みと枚ごとのカード、資料の抜き出し、書き手の parts を戻す `--merge` |
 | `scripts/figkit.py`・`figlib.py`・`figgrid.py`・`catalog.py` | 図の共通設定と小道具・よく使う図の型・図の一覧画像・これまでの図のカタログ |
 | `scripts/figdraft.py` | 自分で描く図の下書きの雛形（模式図は実物・気づく・配置・ラベル、グラフは気づく）と、`--check` で下書きの抜け・箱と矢印だけの模式図 |

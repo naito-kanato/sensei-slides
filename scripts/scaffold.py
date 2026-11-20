@@ -853,6 +853,86 @@ def geometry_marks(prs, check_layout):
     return out
 
 
+FIT_FIG = {"beside": (5.2, 3.8), "main": (7.0, 4.6)}   # 見積もりで置く図の大きさ（in）：figs_py が渡す大きさの中ほど（左文右図は 5.0〜5.8 in 幅）
+FIT_BIG = 0.3   # これより大きい超え（in）を先に出す（zemi が自分で詰めるのは 0.3 in まで）
+
+
+def fit_estimate(work: Path) -> list:
+    """設計メモ（memo.md）・構成案（outline.md）の各枚を、骨組み（build_py）と同じ部品・同じ幅・同じ折り返しで組んでみて
+    （描かない。図はまだ無いので、figs_py が渡す大きさの白い画像を置く）、zemi.py が組む時点に出す知らせを集める。
+    戻り値 [(枚, 超え in, 文)]：本文の場所に入らない枚（超えの大きい順）と、列・図の横に入らず折り返した要点（超え 0）。
+    見積もり：要点の言い方は制作の担当が変えるので、外れることがある（check_memo は △ で出す）。"""
+    import contextlib
+    import io
+    import tempfile
+    import figplan
+    from PIL import Image
+    kind, title, rows, _ = plan(work)
+    code = build_py(work, kind, title, rows)
+    place = placements(rows)
+    out = []
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        (td / "figs").mkdir()
+        for r in rows:
+            fig = col(r, "図で見せるもの", "図")
+            if (col(r, "役割") or "本文") == "本文" and fig not in EMPTY and not figplan.pptx_part(fig):
+                w, h = FIT_FIG["main" if place.get(r["#"]) == "main" else "beside"]
+                Image.new("RGB", (int(w * 220), int(h * 220)), "white").save(td / "figs" / f"s{r['#']:02d}.png", dpi=(220, 220))
+        code = code.replace('FIG = HERE / "figs"', f'FIG = Path(r"{td / "figs"}")')
+        code = code.replace('deck = Deck(workdir=HERE / "build"', f'deck = Deck(workdir=Path(r"{td / "build"}")')
+        code = code[:code.index('NOTES = load_notes(')]
+        g = {"__file__": str(work / "build.py"), "__name__": "__fit__"}
+        with contextlib.redirect_stdout(io.StringIO()):
+            exec(compile(code, str(work / "build.py"), "exec"), g)   # noqa: S102  骨組みのコード（scaffold が設計メモから作ったもの）
+            deck = g["deck"]
+            report = deck.fit_report()
+    nums = [r["#"] for r in rows]
+    row_of = lambda i: nums[i - 1] if 0 < i <= len(nums) else i   # noqa: E731  枚の順 → 表の番号（1行が1枚）
+    lim = {r["#"]: (13 if place.get(r["#"]) == "main" else 13 if (figplan.pptx_part(col(r, "図で見せるもの", "図") or "") or "").startswith("s.decision")
+                    else 16 if (figplan.pptx_part(col(r, "図で見せるもの", "図") or "") or "").startswith("s.compare") else 19) for r in rows}
+    import re as _re
+    for i, msg in report:
+        n = row_of(i)
+        r_ = _re.search(r"^(.+?)の右端 [\d.]+ in、限り [\d.]+ in（([\d.]+) in 超え", msg)
+        g_ = _re.search(r"と(.+?)の間 (-?[\d.]+) in < ([\d.]+) in", msg)
+        if r_:
+            out.append((n, float(r_.group(2)), f"{n}枚目：右に {float(r_.group(2)):.1f} in 入らない見込み（{r_.group(1)[:8]}）→ 文・箱を短く"))
+        elif g_:   # 図との間（0.4 in）だけの不足は出さない（図の幅は図の担当が本文に合わせて 5.0〜5.8 in で描く）
+            pass
+        elif "に重なる（文の右端" in msg:
+            o_ = _re.search(r"文の右端 ([\d.]+) in、図の左端 ([\d.]+) in", msg)
+            ov = float(o_.group(1)) - float(o_.group(2)) if o_ else 0.5
+            out.append((n, ov, f"{n}枚目：文が図に {ov:.1f} in 重なる見込み → 図の横の要点を短く（展開は左右とも短く）か、図を下に置く型に"))
+        m = _re.search(r"^(.+?)の下端 [\d.]+ in、限り [\d.]+ in（([\d.]+) in 超え", msg)
+        if not m:
+            continue
+        over = float(m.group(2))
+        part = m.group(1)
+        k = max(1, int(-(-over // (22 * 1.2 / 72))))
+        what = {"比較": f"比較の各列は1行{lim.get(n, 16)}字まで・各列3行のまま", "カード": "カードの説明は短く・カードの数はそのまま",
+                "表": "表のセルは短く", "図": "図の高さ"}.get(part, f"本文は1行{lim.get(n, 19)}字まで")
+        out.append((n, over, f"{n}枚目：要点が {over:.1f} in 入らない見込み（{what}。あと{k}行ほど多い）→ 要点を1つ減らすか短く"))
+    # 列・図の横の1行に入らない要点は、組むときに zemi が折り返す（それで高さが足りなくなった枚は上の「入らない見込み」に出る）ので、ここでは出さない
+    out.sort(key=lambda x: (-x[1], x[0]))
+    return out
+
+
+def fit_marks(work: Path) -> list:
+    """check_memo・check_outline の △ の行（入りの見込み）。見積もれなければ空。"""
+    try:
+        est = fit_estimate(work)
+    except Exception:   # noqa: BLE001  骨組みが組めない設計（読めない図の案など）は、ほかの確認が ✘ で出す
+        return []
+    if not est:
+        return [("✔", "入りの見込み", "骨組みと同じ部品・幅で組むと、どの枚も本文の場所に入る")]
+    big = [m for _, o, m in est if o > FIT_BIG]
+    rest = [m for _, o, m in est if o <= FIT_BIG]
+    shown = (big + rest)[:6]
+    return [("△", "入りの見込み", "；".join(shown) + (f"；ほか {len(est) - len(shown)} 件" if len(est) > len(shown) else "")
+             + "（骨組みと同じ部品・幅で、塊の間を詰めたうえで組んだ見積もり。要点の言い方が変わると外れることもある）")]
+
+
 TRY_TYPES = {}   # --try all：枚 → (スライドの型, 本文の枚か)。左文右図が本文の半分を超えないかを、組む前に見る
 
 
@@ -914,6 +994,9 @@ def try_part(work: Path, n: int) -> int:
         bad = structures.role_mismatches(prs, {1: "本文"})
         rows_.append(("✘" if bad else "✔", "結論の一文", bad[0][1] if bad else "ある"))
     rows_ += geometry_marks(prs, check_layout)
+    for ln in (r.stdout or "").splitlines():   # 組む時点の知らせ（zemi.py：本文の場所に入るか・図との間・構造の決まり）
+        if "[WARN]" in ln and "1枚目：" in ln:
+            rows_.append(("△", "組む時点", ln.split("1枚目：", 1)[1].strip()))
     TRY_TYPES[n] = (figplan.slide_type(prs.slides[0], prs.slide_width, prs.slide_height), roles.get(n) == "本文")
     lines = []
     for sh in prs.slides[0].shapes:
