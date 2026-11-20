@@ -151,8 +151,11 @@ def plan_forms(text: str, kind: str):
     i_f = next((k for k, h in enumerate(head) if "本文の形" in h), None)
     if i_f is None:
         return None
+    i_r = next((k for k, h in enumerate(head) if "役割" in h), None)
     out = {}
     for r in rows[1:]:
+        if i_r is not None and len(r) > i_r and r[i_r].strip() == "まとめ":   # まとめの枚の部品は s.recap（本文の形は見ない）
+            continue
         if r and r[0].strip().isdigit() and len(r) > i_f:
             out[int(r[0])] = form_key(r[i_f])
     return out
@@ -625,7 +628,7 @@ def role_mismatches(prs, roles: dict):
         elif r == "本文":
             if not con and "漸進表示" not in names:
                 out.append((i, "役割は本文なのに、結論の一文が無い（summary= に入れる）"))
-        elif con:
+        elif con and r != "まとめ":   # まとめの結論の一文は、この回の答え（あってよい）
             out.append((i, f"役割は{r}なのに、結論の一文がある（summary を外す。外すと帯も●も無い枚になる）"))
     return out
 

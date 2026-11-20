@@ -61,7 +61,47 @@ def not_body_heading(h: str) -> bool:
     """表紙・確認問題・解答（・区切り）の行の●見出しか。日本語でない見出し（"Review Questions (1-1 to 1-3)"・"Answers"）も見る。
     英語の試しで、英語の確認問題の見出しを本文に数え、設計の担当が見出しを日本語に戻して逃げた。"""
     import language as LG
-    return any(w in h for w in ("表紙", "問題", "解答")) or LG.is_qa_heading(h) or bool(re.match(r"\s*(title|cover)\b", h, re.I))
+    return (any(w in h for w in ("表紙", "問題", "解答")) or LG.is_qa_heading(h) or bool(re.match(r"\s*(title|cover)\b", h, re.I))
+            or h.strip() in ("まとめ", "Summary"))   # まとめの枚（役割「まとめ」）は本文の枚数に数えない
+
+
+RECAP_MIN_BODY = 6   # 本文がこの枚数以上の講座は、最後にまとめの枚（輪読の型は、最後の拍が節のまとめなので要らない）
+
+
+def recap_check(text: str, srows, col):
+    """講座の最後のまとめの枚（役割「まとめ」）。本文6枚以上で無ければ ✘。睡眠の比べで、まとめの枚が無いと採点者2人が減点した
+    （部品 s.recap と scaffold の組みはあったが、標準の回の設計の担当に知らせる所も検査も無く、作られなかった）。"""
+    import story
+    role = lambda r: col(r, "役割") or "本文"   # noqa: E731
+    body = [r["#"] for r in srows if role(r) == "本文"]
+    name, _ = story.arc_of(text)
+    if len(body) < RECAP_MIN_BODY or (name or "").startswith("輪読"):
+        return []
+    rec = [r["#"] for r in srows if role(r) == "まとめ"]
+    if not rec:
+        return [("✘", "まとめの枚", f"本文 {len(body)} 枚の講座に、最後のまとめの枚が無い。2節の表の最後の本文の枚のあと（確認問題の前）に、"
+                 f"●見出し「まとめ」・役割「まとめ」の行を1つ足す（形は話の型の既定「{story.recap_kind(text)}」。青帯は筋の表の「答え」の一文。"
+                 "新しい事実は入れない。references/story.md 3節）。scaffold が s.recap で組む")]
+    after = [n for n in body if n > rec[0]]
+    if after:
+        return [("✘", "まとめの枚", f"まとめの枚（{rec[0]}枚目）のあとに本文の枚がある（{after[0]}枚目）。まとめは最後の本文の枚のあと・確認問題の前に")]
+    r = next(x for x in srows if x["#"] == rec[0])
+    band = re.sub(r"\s", "", col(r, "青帯（結論）", "青帯") or "")
+    kind_ = story.recap_kind(text)
+    pts = [p.strip() for p in re.split(r"\s*/\s*", col(r, "本文の要点") or "") if p.strip() and p.strip() not in ("—", "-")]
+    bad = []
+    if len(band) > 36:
+        bad.append(f"青帯が {len(band)} 字（36字まで。答えの一文を縮める）")
+    if kind_ in ("前と後", "選び方"):
+        pairs = [p for p in pts if re.search(r"→|⇒", p)]
+        if not 2 <= len(pairs) <= 3:
+            bad.append(f"本文の要点に「{'聞く前の見方 → 今わかったこと' if kind_ == '前と後' else 'こんなとき → 選ぶもの'}」の対を「 / 」で区切って2〜3組（今 {len(pairs)} 組）")
+        long_ = [s for p in pairs for s in re.split(r"\s*(?:→|⇒)\s*", p) if len(re.sub(r"\s", "", s)) > 14]
+        if long_:
+            bad.append("対の片側は14字まで（箱の中で1行）：" + "・".join(f"「{s[:16]}」" for s in long_[:3]))
+    if bad:
+        return [("✘", "まとめの枚", f"{rec[0]}枚目（形「{kind_}」）：" + "。".join(bad))]
+    return [("✔", "まとめの枚", f"{rec[0]}枚目（形「{kind_}」）")]
 
 
 CONCRETE = re.compile(r"[0-9０-９]|「[^」]+」|例[：:）)]|たとえば|例えば")
@@ -485,12 +525,15 @@ def check(memo: Path, require_review: bool = False):
             res.append(("✘", "文の塊の数", "塊が3つを超える枚：" + "・".join(many[:6]) + "。要点（行）は3〜4個のまま、見出しは2〜3つに："
                         "同じ見出しの下に2行まとめる（「例：a」「例：b」）か、補足の要点は原稿へ（描画の検査は塊4つで ERROR。制作の担当が全部の枚を組み直していた）"))
         res += term_order(text, srows, scaffold)
+        import os as _os2
+        if "examples" not in Path(memo).resolve().parts and not _os2.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):   # 見本はまとめの枚より前に作った（作り直すときに入れる）
+            res += recap_check(text, srows, scaffold.col)
         res += example_copy(text, "memo", memo)
         import budget as _bud   # 標準の回：原稿は設計の担当が script.md に書く（制作の担当は書き直さない）
         import os as _os
         if _bud.light(memo.parent) and "examples" not in Path(memo).resolve().parts and not _os.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):
             sp = memo.parent / "script.md"
-            body_n = [r["#"] for r in srows if (scaffold.col(r, "役割") or "本文") == "本文"]
+            body_n = [r["#"] for r in srows if (scaffold.col(r, "役割") or "本文") in ("本文", "まとめ")]
             if not sp.exists():
                 res.append(("△", "原稿", "script.md が無い（本文の枚ごとに「## N」と読み上げる原稿。設計の担当が書き、scaffold が notes.md に入れる）"))
             else:

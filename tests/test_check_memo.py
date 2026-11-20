@@ -116,3 +116,16 @@ def test_numeric_points_need_sources(memo):
     text = memo.read_text(encoding="utf-8")
     memo.write_text(text.replace("〔事実7〕", "", 1), encoding="utf-8")
     assert marks(cm.check(memo))["要点の出どころ"] == "△"
+
+
+def test_course_needs_a_recap_slide(memo, monkeypatch):
+    """本文6枚以上の講座は、最後にまとめの枚（役割「まとめ」）。睡眠の比べで、まとめの枚が無いと採点者2人が減点した"""
+    monkeypatch.delenv("SENSEI_SKIP_EXAMPLE_COPY", raising=False)
+    assert marks(cm.check(memo))["まとめの枚"] == "✘"
+    t = memo.read_text(encoding="utf-8")
+    t = re.sub(r"^\| (1[2-5]) \|", lambda m: f"| {int(m.group(1)) + 1} |", t, flags=re.M)
+    row = "| 12 | まとめ | だから（帰結） | 生成AIは次の語を予測し、確かめて使う | — | 何でも知っている → 次の語を予測する / 答えは正しい → もっともらしい誤りがある | — | — | まとめ |\n"
+    t = re.sub(r"^(\| 13 \| 確認問題)", row.replace("\\", "\\\\") + r"\1", t, count=1, flags=re.M)
+    memo.write_text(t, encoding="utf-8")
+    assert len(cm.body_rows(t)) == 10   # まとめの枚は本文に数えない
+    assert marks(cm.check(memo))["まとめの枚"] == "✔"

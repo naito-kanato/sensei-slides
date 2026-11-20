@@ -610,14 +610,19 @@ def build_py(work: Path, kind, title, rows) -> str:
             sit = (st.get("状況") or ("",))[0] or "TODO 状況"
             comp = (st.get("複雑化") or ("",))[0] or "TODO しかし"
             note = f"   # まとめの形「{kind_}」（話の型から。合わなければ kind を変える。新しい事実は入れない。references/story.md 3節）"
+            # 前と後・選び方：設計メモのまとめの行の要点に「A → B」で書いた対を、そのまま組む（無ければ筋の表の状況→答えと TODO）
+            prs = [tuple(x.strip() for x in re.split(r"\s*(?:→|⇒)\s*", p, maxsplit=1)) for p in pts if re.search(r"→|⇒", p)][:3]
+            pair_code = ", ".join(f'("{q(a)}", "{q(b)}")' for a, b in prs)
             if kind_ == "前と後":
-                L.append(f's.recap(kind="前と後", pairs=[("{q(opn)}", "{q(ans)}"), ("TODO 聞く前の見方2", "TODO 今わかったこと2")])' + note)
+                pair_code = pair_code or f'("{q(sit)}", "{q(ans)}"), ("TODO 聞く前の見方2", "TODO 今わかったこと2")'
+                L.append(f's.recap(kind="前と後", pairs=[{pair_code}])' + note)
             elif kind_ == "筋":
                 L.append(f's.recap(kind="筋", steps=["{q(sit)}", "{q(comp)}", "TODO だから（手段・理由）", "{q(ans)}"], points=[{pl}])' + note)
             elif kind_ == "次の一歩":
                 L.append(f's.recap(kind="次の一歩", answer="{q(ans)}", actions=[{pl if pts else chr(34) + "TODO 明日からやること1" + chr(34) + ", " + chr(34) + "TODO 2" + chr(34)}])' + note)
             elif kind_ == "選び方":
-                L.append('s.recap(kind="選び方", pairs=[("TODO こんなとき1", "TODO 選ぶもの1"), ("TODO こんなとき2", "TODO 選ぶもの2")])' + note)
+                pair_code = pair_code or '("TODO こんなとき1", "TODO 選ぶもの1"), ("TODO こんなとき2", "TODO 選ぶもの2")'
+                L.append(f's.recap(kind="選び方", pairs=[{pair_code}])' + note)
             else:
                 L.append(f's.recap("{q(opn)}", "{q(ans)}", [{pl}])' + note)
         elif role in ("確認問題", "解答"):
