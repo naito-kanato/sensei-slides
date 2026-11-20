@@ -1042,16 +1042,26 @@ class Slide:
         y = self.deck.area["top"] + 0.1 if y is None else y
         wx0, wx1 = self.deck.wide
         col_w = (wx1 - wx0 - gap) / 2
+        # 上に本文の塊があって下に入りきらないときは、行の間を詰め、それでも入らなければ字を 18pt まで小さく
+        # （ベンチプレス講座の試しで、塊2つ＋3行ずつの比較がページ番号にかかり、制作の担当の直しが上限を越えた）
+        bottom = getattr(self.deck, "content_bottom", None) or self.deck.area.get("bottom", 7.0)
+        need = lambda sz, sp, top: top + max(sum(len(split_lines(parse_markup(t))) * line_height_in(sz) + 2 * INSET_Y + sp  # noqa: E731
+                                                for t in its) for its in (left[1], right[1]))
+        top_off, step = 0.8, 0.2
+        for sz, sp, to in ((size, 0.2, 0.8), (size, 0.08, 0.7), (min(size, 20), 0.08, 0.7), (min(size, 18), 0.06, 0.68)):
+            size, step, top_off = sz, sp, to
+            if y + need(sz, sp, to) <= bottom:
+                break
         bottoms = []
         for k, (head, items) in enumerate((left, right)):
             x = wx0 + k * (col_w + gap)
             self.rect(x, y, col_w, 0.55, fill=C.PALE, text=head, size=20, color=C.BAND, bold=True)
-            yy = y + 0.8
+            yy = y + top_off
             for it in items:
                 # 列の幅いっぱいの枠に（列が1つの箱に見える。渡す前の検査は、箱の大きさを各列の行数で見る）
                 b = self.text(x + 0.15, yy, it, size=size, w=max(col_w - 0.3, self._text_w(it, size)),
                               name="比較の" + ("左" if k == 0 else "右"))
-                yy = b.bottom + 0.2
+                yy = b.bottom + step
             bottoms.append(yy)
         self.line(wx0 + col_w + gap / 2, y, wx0 + col_w + gap / 2, max(bottoms), color=C.GRAY, width=1.0)
         return bottoms

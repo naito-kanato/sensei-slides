@@ -449,6 +449,7 @@ def figs_py(work: Path, rows, text: str) -> str:
     except ValueError:
         rel = (SKILL / "scripts").as_posix()
     ds = datamod.datasets(text)
+    place = placements(rows)
     L = ['"""図。python figs.py [名前 ...]（名前は f_ を除いた部分）。データの棒グラフは scaffold.py が設計メモの3b節から描いた。TODO の図を描く"""',
          "import sys", "from pathlib import Path", "",
          "HERE = Path(__file__).resolve().parent",
@@ -484,8 +485,15 @@ def figs_py(work: Path, rows, text: str) -> str:
                   + (f", highlight={hi}" if hi is not None else "") + (f', unit="{q(unit)}"' if unit else "") + ")",
                   f'    save(f, OUT / "s{n:02d}.png")', ""]
         else:
+            # 描いた大きさのまま置かれるので、置き場所に入る大きさを渡す（試しで、制作の担当が zemi.py・figkit.py を読みに行っていた）
+            mk = "fig" if re.search(r"グラフ|棒|推移|分布|散布", fig) else "blank"
+            size = (f"{mk}(7.0, 4.6)・図が主役（左に図・右に細い列の文）" if place.get(n) == "main"
+                    else f"{mk}(5.6, 4.0)・左文右図（右の列。本文の右端しだいで幅 5.0〜5.8）")
+            if d and d.get("rows"):   # 2列でない表（組の棒など）は描かないが、値はここに（data_N.md を開かずに描ける）
+                hd = d.get("head") or []
+                size += f"。データ{refs[0]}" + "の値（" + q("｜".join(hd)) + "）：" + q("／".join("｜".join(str(c) for c in r_) for r_ in d["rows"])[:300])
             L += [f"def f_s{n:02d}():",
-                  f'    """TODO 図の案：{q(fig[:100])}',
+                  f'    """TODO 図の案：{q(fig[:100])}（大きさ：{size}）',
                   '    （figdraft.py の下書きの雛形を埋めて、ここに書き、描く）"""',
                   f'    raise NotImplementedError("s{n:02d} の図はまだ（図の案のとおりに描く）")', ""]
     L += ["", 'if __name__ == "__main__":',
@@ -988,7 +996,7 @@ def figs_todo(work: Path) -> list:
     for i, l in enumerate(t):
         m = re.match(r"def (f_\w+)\(", l)
         if m and i + 1 < len(t) and "TODO" in t[i + 1]:
-            out.append(f"{m.group(1)}（{i + 1}行目）：" + t[i + 1].strip().strip('"').replace("TODO ", "", 1)[:200])
+            out.append(f"{m.group(1)}（{i + 1}行目）：" + t[i + 1].strip().strip('"').replace("TODO ", "", 1)[:520])
     return out
 
 

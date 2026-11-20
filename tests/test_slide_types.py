@@ -126,3 +126,17 @@ def test_every_story_type_has_a_recap_kind_and_each_kind_builds(tmp_path):
         d.save(out)
         prs = Presentation(out)
         assert {fp.slide_type(sl, prs.slide_width, prs.slide_height) for sl in prs.slides} == {"まとめ"}
+
+
+def test_compare_below_two_blocks_fits_above_the_page_number(tmp_path):
+    # ベンチプレス講座の7枚目：塊2つの下に3行ずつの比較を置くと、ページ番号にかかっていた
+    d = Deck(workdir=tmp_path / "build")
+    d.title_slide(["比較の高さ"])
+    s = d.slide("型", summary="握りを広げると肩の力が増えた")
+    s.heading("広げすぎの壁")
+    s.block("比べた握り：", ["肩峰間距離の1・1.5・2倍"])
+    s.block("肩の力：", ["広いほど増加、最大は1.5→2倍"])
+    bottoms = s.compare(("握り1.5倍", ["握り幅は肩峰間の1.5倍", "肩関節の力は基準", "肩鎖関節の力は基準"]),
+                        ("握り2倍", ["握り幅は2倍", "肩関節の力が増える", "肩鎖関節の力が増える"]), y=s.cur_y + 0.3)
+    texts = [b for k, b in s.boxes if k == "text"]
+    assert max(b.bottom for b in texts) <= d.content_bottom
