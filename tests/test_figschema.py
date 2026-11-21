@@ -5,18 +5,20 @@ import pytest
 
 W, H = 5.6, 3.4
 CASES = {
-    "branch": lambda ax: figschema.branch(ax, "破れの始まり", ["小さく止まる", "大きく広がる"], highlight=1, stops=[0]),
+    "branch": lambda ax: figschema.branch(ax, "始まり", ["結末A", "結末B"], highlight=1, stops=[0], unknown="ここでは見分けられない"),
     "branch3": lambda ax: figschema.branch(ax, "始まり", ["A", "B", "C"], highlight=2),
-    "hidden": lambda ax: figschema.hidden(ax, "地表の観測点", "見えない深さ", target="断層"),
-    "need_have": lambda ax: figschema.need_have(ax, "要る情報", "測れる情報", gap="足りない分"),
+    "hidden": lambda ax: figschema.hidden(ax, "測る所", "見えない所", target="肝心の物"),
+    "need_have": lambda ax: figschema.need_have(ax, "要る量", "手に入る量", gap="足りない分"),
     "build_release": lambda ax: figschema.build_release(ax),
-    "funnel": lambda ax: figschema.funnel(ax, [("報告", "729件"), ("記録", "160件"), ("観察", "14件")]),
+    "build_release_uneven": lambda ax: figschema.build_release(ax, intervals=(1.0, 0.6, 1.4, 0.8), limits=(0.8, 0.6, 0.95, 0.7),
+                                                               band="限界の幅", gap="間隔のばらつき"),
+    "funnel": lambda ax: figschema.funnel(ax, [("候補", "1000件"), ("条件", "120件"), ("残り", "8件")]),
     "cone": lambda ax: figschema.cone(ax, actual="実際"),
     "sensitive": lambda ax: figschema.sensitive(ax),
     "black_box": lambda ax: figschema.black_box(ax, ["入力A", "入力B"], ["出力"]),
-    "balance": lambda ax: figschema.balance(ax, "手間", "安心", result="安心の側に傾く"),
-    "section": lambda ax: figschema.section(ax, [("地殻", 1), ("マントル", 2)], marks=[("震源", 0.5, 0.45)], top="地表"),
-    "combo": lambda ax: (figschema.hidden(ax, "観測点", "見えない所", area=(0, 0, 2.6, H)),
+    "balance": lambda ax: figschema.balance(ax, "重みA", "重みB", result="Bに傾く"),
+    "section": lambda ax: figschema.section(ax, [("上の層", 1), ("下の層", 2)], marks=[("ここ", 0.5, 0.45)], top="表面"),
+    "combo": lambda ax: (figschema.hidden(ax, "測る所", "見えない所", area=(0, 0, 2.6, H)),
                          figschema.branch(ax, "始まり", ["止まる", "広がる"], highlight=1, stops=[0],
                                           unknown="見分けられない", area=(2.75, 0, 2.85, H))),
 }
@@ -40,8 +42,7 @@ def test_every_pattern_is_listed_and_drawable():
 
 
 def test_match_finds_the_branch_and_hidden_for_the_answer_plan():
-    # 試しの答えの枚の図の案（描く部品が無く、一本の線に点と矢印だけになった）
-    plan = "仕組み：模式図：地表（観測できる所）と地下の断層（見えない所）の断面。断層上の1点から破れが始まり、小さく止まる道と大きく広がる道"
+    plan = "仕組み：模式図：外から観測できる所と、内部の見えない所。同じ始まりから2つの結末に分かれる道"
     funcs = [p.func for p in figschema.match(plan)]
     assert "branch" in funcs and "hidden" in funcs
     h = figschema.hint(plan)

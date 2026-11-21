@@ -52,7 +52,7 @@ def test_story_question_far_from_the_title_warns(memo):
     assert got(memo)["題の問い"][0] == "✔"
     edit(memo, "生成AIは中で何をしていて、その答えはどこまで信じてよいか？", "確率が低い所は、本当に安心してよいのか？")
     mark, msg = got(memo)["題の問い"]
-    assert mark == "△" and "身近な問い" in msg
+    assert mark == "△" and "経験か予想" in msg
     t = memo.read_text(encoding="utf-8")
     memo.write_text(re.sub(r"^# 設計メモ：.*$", "# 設計メモ：第1回 ベイズの定理（X講座）", t, count=1, flags=re.M), encoding="utf-8")
     assert "題の問い" not in got(memo)

@@ -1,13 +1,13 @@
 """仕組みの模式図の型：答えの枚（なぜ〜か）によく出る、話題によらない「仕組みの形」を関数にしたもの。
 
 figkit の blank()（座標がインチ）の上に描く。ラベルは引数で渡す（名詞か短い句。3〜5個まで）。
-area=(x0, y0, w, h) を渡すと、その四角の中だけに描く（2つの型を1枚に並べられる：見えない所 ＋ 分かれ道 など）。
+area=(x0, y0, w, h) を渡すと、その四角の中だけに描く（2つの型を1枚に並べられる）。
 
     import sys; sys.path.insert(0, r"<skill>/scripts")
     from figkit import blank, save
     import figschema
     f, ax = blank(5.6, 3.4)
-    figschema.branch(ax, "始まり", ["小さく止まる", "大きく広がる"], highlight=1, stops=[0])
+    figschema.branch(ax, "始まり", ["結末A", "結末B"], highlight=1)
     save(f, "figs/s10.png")
 
 設計メモの図の案の言葉から型を探す:  python figschema.py --match "<図の案の一文>"
@@ -15,10 +15,10 @@ area=(x0, y0, w, h) を渡すと、その四角の中だけに描く（2つの�
 
 | 型 | 名前 | 何を見せるか |
 |---|---|---|
-| branch        | 分かれ道         | 同じ始まりから違う結末に分かれる。分かれ目では、どちらになるか見分けられない |
-| hidden        | 見える所と見えない所 | 上から測れるのは浅い所まで。肝心の物は、測れない深い所にある |
+| branch        | 分かれ道         | 同じ始まりから違う結末に分かれる |
+| hidden        | 見える所と見えない所 | 外から測れる所と、肝心の物のある所が離れている |
 | need_have     | 要る量と手に入る量 | 要る量の器に、手に入る量が少ししか入っていない（足りない分） |
-| build_release | たまって一気に   | 少しずつたまり、限界で一気に放たれる。限界も間隔も毎回ちがう |
+| build_release | たまって一気に   | 少しずつたまり、ある所で一気に放たれる（くり返し） |
 | funnel        | ふるい           | 候補が段ごとに減り、最後に少ししか残らない（数は図の中の数字で読む） |
 | cone          | 先ほど広がる幅   | 今から先へ行くほど、見込みの幅が広がる |
 | sensitive     | 小さな違いが大きく | ほぼ同じ始まりの2本が、だんだん離れる |
@@ -62,10 +62,10 @@ def _smooth(t):
 
 # ---- 分かれ道 ---------------------------------------------------------------------------------
 
-def branch(ax, start, outcomes, highlight=None, stops=(), unknown="ここでは見分けられない", area=None, fs=14):
+def branch(ax, start, outcomes, highlight=None, stops=(), unknown=None, area=None, fs=14):
     """同じ始まりから、違う結末に分かれる道。outcomes は上から順の結末の名前（2〜3個）。
     highlight（番号）の道だけ青で太く、stops（番号の並び）の道は途中で止まる（⊥の印）。
-    unknown は分かれ目の赤い破線の輪に付ける一言（None で付けない）。"""
+    unknown を渡すと、分かれ目を赤い破線の輪で囲み、その一言を添える（既定は付けない）。"""
     x0, y0, w, h = _area(ax, area)
     n = len(outcomes)
     sx, sy = x0 + 0.08 * w, y0 + 0.50 * h
@@ -151,11 +151,11 @@ def need_have(ax, need, have, gap=None, level=0.3, area=None, fs=14):
 
 # ---- たまって一気に ---------------------------------------------------------------------------
 
-def build_release(ax, intervals=(1.0, 0.65, 1.45, 0.85), limits=(0.80, 0.62, 0.94, 0.72),
-                  amount="たまる量", time="時間", release="一気に放たれる", band="限界（毎回ちがう）",
-                  gap="間隔がそろわない", area=None, fs=14):
+def build_release(ax, intervals=(1.0, 1.0, 1.0, 1.0), limits=(0.8, 0.8, 0.8, 0.8),
+                  amount="たまる量", time="時間", release="一気に放たれる", band=None, gap=None, area=None, fs=14):
     """少しずつたまり（右上がり）、限界で一気に放たれる（縦に落ちる）のくり返し。
-    intervals＝くり返しの間隔（相対）、limits＝毎回の限界（0〜1）。限界の幅を淡い帯で、間隔の不ぞろいを下の括弧で。"""
+    intervals＝くり返しの間隔（相対）、limits＝毎回の限界（0〜1）。そろえないで渡すと、限界の幅を淡い帯で描く。
+    band＝限界の帯に付ける一言、gap＝間隔の括弧に付ける一言（渡したときだけ描く）。"""
     x0, y0, w, h = _area(ax, area)
     px0, px1 = x0 + 0.08 * w, x0 + 0.97 * w
     py0, py1 = y0 + 0.30 * h, y0 + 0.86 * h
@@ -353,17 +353,17 @@ def section(ax, layers, marks=(), top=None, area=None, fs=14):
 
 Pattern = namedtuple("Pattern", "func name words shows example")
 PATTERNS = [
-    Pattern("branch", "分かれ道", r"分かれ|分岐|枝分|同じ始まり|止まる.{0,14}(広がる|育つ)|(育つ|広がる).{0,14}止まる|どちらに転",
-            "同じ始まりから違う結末に分かれる（分かれ目では見分けられない）",
+    Pattern("branch", "分かれ道", r"分かれ|分岐|枝分|同じ始まり|どちらに転",
+            "同じ始まりから違う結末に分かれる",
             'branch(ax, "始まり", ["結末A", "結末B"], highlight=1, stops=[0])'),
-    Pattern("hidden", "見える所と見えない所", r"見えない|見える所|測れない|届かない|観測できない|直接.{0,4}(見|測)|地下|奥の|内部",
-            "上から測れるのは浅い所まで。肝心の物は測れない所にある",
+    Pattern("hidden", "見える所と見えない所", r"見えない|見える所|測れない|届かない|観測できない|直接.{0,4}(見|測)|奥の|内部",
+            "外から測れる所と、肝心の物のある所が離れている",
             'hidden(ax, "観測する所", "見えない所", target="肝心の物")'),
     Pattern("need_have", "要る量と手に入る量", r"要る(もの|量)|必要な量|足りない|不足|手に入る",
             "要る量の器に、手に入る量が少ししか入っていない",
             'need_have(ax, "要る量", "手に入る量", gap="足りない分", level=0.3)'),
     Pattern("build_release", "たまって一気に", r"たま(る|り|って)|ため(る|て)|蓄積|一気に|解放|限界で",
-            "少しずつたまり、限界で一気に放たれる。限界も間隔も毎回ちがう",
+            "少しずつたまり、ある所で一気に放たれる（くり返し）",
             "build_release(ax)"),
     Pattern("funnel", "ふるい", r"ふるい|篩|絞り込|絞られ|漏斗|残ったのは|段ごとに減",
             "候補が段ごとに減り、最後に少ししか残らない",
@@ -380,7 +380,7 @@ PATTERNS = [
     Pattern("balance", "つり合い", r"つり合|釣り合|天秤|てんびん|綱引き|トレードオフ|せめぎ|傾く",
             "2つの重みの、どちらに傾くか",
             'balance(ax, "重みA", "重みB", heavier="right", result="Bの側に傾く")'),
-    Pattern("section", "断面の層", r"断面|地層|層の|層が|層を|重なった層",
+    Pattern("section", "断面の層", r"断面|層の|層が|層を|重なった層",
             "層の重なりと、どの層のどこに何があるか",
             'section(ax, [("層1", 1), ("層2", 2), ("層3", 2)], marks=[("ここ", 0.5, 0.7)], top="表面")'),
 ]
@@ -424,7 +424,7 @@ def _demo(outdir):
         save(f, p)
         out.append(p)
 
-    go("branch", lambda ax: branch(ax, "始まり", ["小さく止まる", "大きく広がる"], highlight=1, stops=[0]))
+    go("branch", lambda ax: branch(ax, "始まり", ["結末A", "結末B"], highlight=1, stops=[0]))
     go("hidden", lambda ax: hidden(ax, "測る所", "見えない所", target="肝心の物"))
     go("need_have", lambda ax: need_have(ax, "要る量", "手に入る量", gap="足りない分", level=0.28))
     go("build_release", lambda ax: build_release(ax))
@@ -436,9 +436,9 @@ def _demo(outdir):
     go("section", lambda ax: section(ax, [("上の層", 1.0), ("下の層", 2.2)], marks=[("ここ", 0.55, 0.45)], top="表面"))
 
     def combo(ax):   # 2つの型を1枚に（area で左右に分ける）
-        hidden(ax, "観測点", "見えない所", target=None, area=(0.0, 0.0, 2.6, 3.4))
-        branch(ax, "始まり", ["止まる", "広がる"], highlight=1, stops=[0], unknown="見分けられない", area=(2.75, 0.0, 2.85, 3.4))
-    go("combo_hidden_branch", combo)
+        need_have(ax, "要る量", "手に入る量", gap="差", level=0.3, area=(0.0, 0.0, 2.7, 3.4))
+        balance(ax, "重みA", "重みB", heavier="left", result="Aに傾く", area=(2.8, 0.0, 2.8, 3.4))
+    go("combo_need_balance", combo)
 
     try:
         from PIL import Image
