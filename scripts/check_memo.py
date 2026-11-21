@@ -69,6 +69,36 @@ def not_body_heading(h: str) -> bool:
 
 SCRIPT_MIN, SCRIPT_MAX = 280, 420   # 標準の回の script.md：本文の枚の読み上げの字数（目安は300〜400字。少しの外れは知らせない）
 SCRIPT_MEMO = re.compile(r"私の概算|概算です|開いていません|開いていない|開けていない|原資料|検索で|検索した|確かめていません|確かめられていません|未確認です|抜粋で")   # 原稿に残った作業の言い方
+
+# 原稿が話す図の種類と、図の案の種類の食い違い（原稿は図より先に書くので、話す図と案の図が別物になりやすい）
+TALK_GRAPH = re.compile(r"グラフ|曲線|横軸|縦軸|折れ線|線を超え|線と交わ")
+TALK_TABLE = re.compile(r"表の[左右上下0-9０-９一二三四五]|表を見|この表|表のとおり")
+TALK_FLOW = re.compile(r"流れ図")
+TALK_PICTURE = re.compile(r"図は[、,][^。]{0,40}(?:位置|断面|粒|描いた|描き)")
+GRAPH_KINDS_T = ("棒グラフ", "折れ線", "概略グラフ", "帯グラフ", "年表", "資料の図")
+TEXTBOX_KINDS_T = ("比較", "前後", "カード", "表", "大きな数字", "流れ図", "判定の流れ図")
+
+
+def figure_talk(secs: dict, kinds: dict) -> list:
+    """[(枚, 原稿の言い方, 図の案の種類)]：原稿が話す図と、その枚の図の案の種類が合わない枚。
+    比べで、図の案は「比較」「流れ図」なのに、原稿は「図は、同じ時刻の上と下の空気の粒の位置です」「概略のグラフで…重さの線を超えた
+    ところで」と話し、採点者2人とも「原稿が描いていない図を指す」と減点した。"""
+    out = []
+    for n, t in secs.items():
+        k = kinds.get(n)
+        if not k:
+            continue
+        body = "\n".join(l for l in t.splitlines() if not l.strip().startswith("※"))
+        for pat, ok, what in ((TALK_GRAPH, lambda k: k in GRAPH_KINDS_T, "グラフ"), (TALK_TABLE, lambda k: k == "表", "表"),
+                              (TALK_FLOW, lambda k: "流れ図" in k, "流れ図"),
+                              (TALK_PICTURE, lambda k: k not in TEXTBOX_KINDS_T, "絵の中身")):
+            m = pat.search(body)
+            if m and not ok(k):
+                out.append((n, m.group(0), k, what))
+                break
+    return out
+
+
 SCRIPT_POS = re.compile(r"右端|左端|一番上|一番下|いちばん上|いちばん下|[上下左右]から[1-9１-９一二三四五]番目")   # 図の中の位置で指す言い方
 RECAP_MIN_BODY = 6   # 本文がこの枚数以上の講座は、最後にまとめの枚（輪読の型は、最後の拍が節のまとめなので要らない）
 
@@ -777,6 +807,13 @@ def check(memo: Path, require_review: bool = False):
                 if memo_hits:
                     res.append(("△", "原稿の作業メモ", "原稿は聞き手に向けた言葉だけにする。作り手の作業の言い方が残っている枚：" + "・".join(memo_hits[:6])
                                 + "（確かさの断り・作業の経緯は設計メモの3節の確認の列か8節へ。原稿は「〜とされます」「ここは講師のまとめです」のように聞き手に言う形だけ）"))
+                import figplan as _fp
+                kinds = {r["#"]: _fp.parse_fig(scaffold.col(r, "図で見せるもの", "図"))[1] for r in srows}
+                talk = figure_talk(secs, {n: k for n, k in kinds.items() if k})
+                if talk:
+                    res.append(("△", "原稿の図の種類", "原稿は、その枚の図の案の図を話す（原稿は図より先に書くので、話す図が案と別物になりやすい）。"
+                                "食い違う枚：" + "・".join(f"{n}「{s[:14]}」→図の案は{k}" for n, s, k, _ in talk[:5])
+                                + "。原稿を図の案に合わせて直すか、図の案をその図に替える"))
                 # 図の中の位置で指す言い方（図の向き・並びは制作の担当があとで決めるので、原稿と食い違う。比べで「右端の〜」が横棒の一番下だった）
                 pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for m in [SCRIPT_POS.search(t)] if m]
                 if pos:

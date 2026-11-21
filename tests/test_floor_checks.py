@@ -76,3 +76,12 @@ def test_answer_with_only_elements_is_stopped_and_still_rendered():
     assert any(m == "✘" and i == "解答の本文" for m, i, _ in structures.check_quiz_plan(t, "memo"))
     item = structures.quiz_items(t)["1-1"]
     assert scaffold.answer_text(item) == "空気を下へ曲げる。反作用で上へ押される。"
+
+
+def test_narration_must_talk_about_the_planned_figure():
+    """原稿が話す図（グラフ・表・流れ図・絵の中身）と、その枚の図の案の種類が合わなければ拾う。合っている言い方は拾わない。"""
+    secs = {4: "図は、同じ時刻の上と下の空気の粒の位置です。", 7: "図は概略のグラフで、重さの線を超えたところで浮きます。",
+            5: "図の左がよく聞く説明、右が実際です。", 6: "図の横軸が迎え角、縦軸が揚力です。", 9: "表のとおり、等時間説は誤りです。"}
+    kinds = {4: "比較", 7: "流れ図", 5: "比較", 6: "概略グラフ", 9: "表"}
+    got = {n: what for n, _, _, what in cm.figure_talk(secs, kinds)}
+    assert got == {4: "絵の中身", 7: "グラフ"}
