@@ -440,8 +440,18 @@ def quiz_slices(text: str, rows):
             continue
         per = -(-len(ids) // len(slides))
         for j, n in enumerate(slides):
-            out[n] = [(i, TAG.sub("", qi[i][k]).strip()) for i in ids[j * per:(j + 1) * per]]
+            out[n] = [(i, answer_text(qi[i]) if k == 3 else TAG.sub("", qi[i][k]).strip()) for i in ids[j * per:(j + 1) * per]]
     return out
+
+
+def answer_text(item) -> str:
+    """解答の文（〔…〕の印を外す）。本文が無く〔要素：a／b〕だけの行は、要素をつないで文にする
+    （比べで、設計メモの解答が要素だけの行になり、解答の枚の6問中4問が空白で出た）。"""
+    t = TAG.sub("", item[3]).strip()
+    if t.strip("。.、 ") or not item[4]:
+        return t
+    parts = [re.sub(r"^たとえ\s*[：:]\s*", "たとえば、", e).rstrip("。") for e in item[4]]
+    return "。".join(parts) + "。"
 
 
 def quiz_wrapped(qz: dict) -> dict:

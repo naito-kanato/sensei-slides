@@ -64,3 +64,15 @@ def test_entry_needs_the_learners_experience():
     assert cm.entry_experience_check(memo(data_first))[0][0] == "△"
     felt = data_first.replace("| 要点2 |", "| 窓の外で手を傾けると浮く体験 |")
     assert cm.entry_experience_check(memo(felt))[0][0] == "✔"
+
+
+def test_answer_with_only_elements_is_stopped_and_still_rendered():
+    """解答の本文が無く〔要素〕だけの行は ✘。組むときは要素をつないで答えの文にする（解答の枚が空白にならない）。"""
+    import scaffold
+    import structures
+    q = ("### 問題\n1-1. 揚力のしくみを説明せよ。〔ゴール1・3枚目〕〔型：仕組み〕\n\n### 解答\n"
+         "1-1. 〔要素：空気を下へ曲げる／反作用で上へ押される〕\n")
+    t = memo(BODY, quiz=q)
+    assert any(m == "✘" and i == "解答の本文" for m, i, _ in structures.check_quiz_plan(t, "memo"))
+    item = structures.quiz_items(t)["1-1"]
+    assert scaffold.answer_text(item) == "空気を下へ曲げる。反作用で上へ押される。"

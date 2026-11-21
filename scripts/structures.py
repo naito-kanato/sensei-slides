@@ -423,6 +423,11 @@ def check_quiz_plan(text: str, kind: str = "memo"):
         nas = len(set(quiz_ids(a.group(1).splitlines()))) if a else 0
         if (nqs, nas) != (QUIZ_TOTAL, QUIZ_TOTAL):
             res.append(("✘", "確認問題の数", f"6節の問題 {nqs}問・解答 {nas}問。ちょうど {QUIZ_TOTAL}問（N-1〜N-{QUIZ_TOTAL}）と、その解答を書く"))
+    if kind == "memo":
+        bare = [k for k, v in quiz_items(text).items() if not re.sub(r"〔[^〕]*〕", "", v[3]).strip("。.、 \t")]
+        if bare:
+            res.append(("✘", "解答の本文", "解答は、学習者が読んで分かる答えの文を書き、〔要素：…〕はその後ろに付ける。"
+                        f"本文が無く〔要素〕だけの解答：{'・'.join(bare)}（組むときに印を外すと、解答の枚が空白になる）"))
     if not res:
         res.append(("✔", "確認問題", f"{QUIZ_TOTAL}問を {QUIZ_PER_SLIDE}問ずつ、確認問題 {QUIZ_SLIDES}枚・解答 {QUIZ_SLIDES}枚"))
     res += quiz_links(text, kind)
