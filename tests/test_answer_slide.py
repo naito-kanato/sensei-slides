@@ -42,7 +42,7 @@ def test_table_on_the_answer_slide_warns(memo):
     assert got(memo)["答えの枚の図"][0] == "✔"
     edit(memo, "| 時期：年表：", "| 観点：表：理由×中身（地下＝見えない／始まり＝分からない） 年表：")
     mark, msg = got(memo)["答えの枚の図"]
-    assert mark == "△" and "[8] 表" in msg and "見える対比" in msg
+    assert mark == "△" and "[8] 表" in msg and "見える形" in msg
     edit(memo, "観点：表：理由×中身（", "観点：表：理由×中身（外す理由：見本、")
     assert got(memo)["答えの枚の図"][0] == "✔"
 
@@ -83,6 +83,7 @@ def test_analogy_row(memo):
 def test_quiz_must_ask_the_title_question(memo):
     """6問のうち1問が題の問いに答える問：〔題の問い〕か、答えの枚を根拠にした〔型：仕組み〕・なぜ の問。"""
     assert got(memo)["確認問題の題の問い"][0] == "✔"
+    edit(memo, "| 問い | どこまで |", "| 問い | なぜ |")   # なぜの問いなら、仕組みの問が要る
     edit(memo, "〔題の問い〕", "")
     mark, msg = got(memo)["確認問題の題の問い"]
     assert mark == "△" and "〔題の問い〕" in msg and "8・9" in msg

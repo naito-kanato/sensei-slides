@@ -128,7 +128,7 @@ def test_opening_mystery_points_to_the_surprise():
             "| 4 | 結果 | だから | P は約55% | 比べる：棒グラフ：データ1 | c | 本文 |\n"
             "| 5 | まとめ | だから | 表面は弱まり P は TI より低い | 仕組み：模式図：z | d | 本文 |\n")
     marks = {i: m for m, i, _ in check_memo.design_content(head + rows + tail, True)}
-    assert marks.get("冒頭の問い") == "✘"                       # 問い（？）はあるが、驚きのデータを指していない
+    assert marks.get("冒頭の問い") == "△"                       # 問い（？）はあるが、驚きのデータを指していない（知らせるだけ）
     teaser = rows.replace("| 2 | 背景 | — | 表面は金属 | 仕組み：模式図：x | a |",
                           "| 2 | 謎 | — | TKI なら約70%のはずが約55%。なぜ？ | 仕組み：模式図：x | 謎（データ1） |")
     res = check_memo.design_content(head + teaser + tail, True)

@@ -397,6 +397,30 @@ def story_types(text: str):
     return {_key(c[0]): (_key(c[i_t]) if len(c) > i_t else "") for c in rows}
 
 
+Q_GUESS = [("どうやって", r"どうやって|どうすれば|どのように|どう(?:す|や)る"), ("どちらか", r"どちら|どっち"),
+           ("どこまで", r"どこまで"), ("本当か", r"本当|と言えるか|正しいか"), ("何が", r"とは何|何が|何か？"), ("なぜ", r"なぜ|どうして")]
+
+
+def q_type(text: str) -> str:
+    """筋の問いの型（なぜ・どうやって・本当か・どちらか・どこまで・何が）。筋の表の「型」の列か、問いの一文の語から。分からなければ空。"""
+    t = (story_types(text) or {}).get("問い", "")
+    if t in Q_KINDS:
+        return t
+    q = ((story_table(text) or {}).get("問い") or ("", None))[0]
+    return next((k for k, pat in Q_GUESS if re.search(pat, q or "")), "")
+
+
+# 問いの型に合う答えの形（答えの一言・答えの枚の図・題の問いの確認問題の型）
+ANSWER_FORM = {
+    "なぜ": ("仕組みの一言（なぜそうなるか）", "仕組みの模式図", ("仕組み",)),
+    "どうやって": ("やり方と、それが効く理由", "やり方の流れと効く所（流れ図・模式図）", ("当てはめ", "仕組み", "計算")),
+    "本当か": ("決め手（何を見て言えるか）と範囲", "決め手の比べ（棒グラフ・比較）", ("比べる", "誤り指摘")),
+    "どちらか": ("決め手と、選ぶ条件", "決め手の比べ（比較・棒グラフ）", ("比べる",)),
+    "どこまで": ("使える範囲と外れる所", "範囲と外れる所（判定の流れ図・比較）", ("当てはめ", "誤り指摘", "比べる")),
+    "何が": ("正体・決め手の一言", "中身の模式図か、決め手の比べ", ("定義", "仕組み", "比べる")),
+}
+
+
 def type_notes(text: str, st: dict, body_no: list, links):
     """筋の表の「型」の列についての注意 [文]。links は {番号: 前の枚から}（列が無ければ None）。"""
     menu = (f"複雑化は しかし の種類（{'・'.join(COMP_KINDS)}）、問いは問いの型（{'・'.join(Q_KINDS)}）から選ぶ。"
@@ -528,9 +552,10 @@ def check(text: str, kind: str, body_no: list, where: str):
             if not re.search(r"[？?]\s*$", q):
                 notes.append("問いが疑問の形でない（「…か？」「なぜ…？」で終える）")
             ans = st["答え"][0]
-            if METHOD_ANSWER.search(ans):
-                notes.append("答えが見方・方法になっている（「〜で比べる」「〜を見ればよい」「〜として扱う」）。"
-                             "対象について分かったこと（「〜だった」「〜である」と数値・年・固有の名前）で答える。方法を教える回でも、それで何が分かるかまで言う")
+            if METHOD_ANSWER.search(ans) and q_type(text) != "どうやって":
+                notes.append("答えが問いに答えず、見方・方法だけになっている（「〜で比べる」「〜を見ればよい」）。"
+                             "答えは問いの型に合う形で、対象について分かったことを言う（なぜ → 仕組み、本当か・どちらか → 決め手と範囲）。"
+                             "方法を教える回（問いの型「どうやって」）なら、やり方とそれが効く理由まで言う")
             third = max(3, -(-len(body_no) // 3))
             head, tail = body_no[:third], body_no[-max(2, len(body_no) // 3):]
             an = st["答え"][1]
@@ -692,7 +717,7 @@ def figs_table(arc_name: str) -> str:
         lines.append("この型には仕組みの拍がある：模式図（か資料の図・写真）を少なくとも1枚")
     role = ANSWER_ROLES.get(arc[0])
     lines.append("答えの枚（筋の答えの枚" + (f"・拍「{role}」の枚" if role else "") + "・だから（問い）の枚）は、図の段でいちばん先に決める"
-                 "（仕組みの一言 → たとえ → 見える対比。依頼文の figures 1b節「図の段」）")
+                 "（答えの一言 → たとえ → 見える形。依頼文の figures 1b節「図の段」）")
     lines.append("どの型も：表とカードは本文の枚の半分まで。表が3枚以上になるなら、条件で結論が分かれる枚は判定の流れ図（s.decision）に")
     if ARC_PITFALLS.get(arc[0]):
         lines += ["", "この型で陥りやすいミス："] + [f"- {m}" for m in ARC_PITFALLS[arc[0]]]
@@ -762,9 +787,9 @@ def answer_slides(text: str, kind: str) -> dict:
     return dict(sorted(out.items()))
 
 
-ANSWER_FIG_HOW = ("答えの枚は、表・カードの列挙だけにしない。①仕組みの一言（なぜそうなるか）→ ②日常へのたとえ → ③見える対比 の順に決め、③を図に。"
-                  "筋の答えの枚（なぜの答え）は、まず仕組み：模式図（同じ始まりから違う結末に分かれる道・見えない所と見える所・要るものと手に入るものの差）。"
-                  "試した結果の外れ・ばらつきのデータ（棒グラフ・年表）は裏付けとして原稿か隣の枚に。「〜できない」の答えは、この形に言い換えると描ける。表のままにするなら中身に「外す理由：…」")
+ANSWER_FIG_HOW = ("答えの枚の図は、答えそのものを見せる（表・カードの列挙だけにしない）。①答えの一言 → ②日常へのたとえ → ③見える形 の順に決め、③を図に："
+                  "なぜ → 仕組みの模式図（figschema の型）、どうやって → やり方の流れと効く所、本当か・どちらか → 決め手の比べ、どこまで → 範囲と外れる所。"
+                  "「〜できない」の答えは、何が足りない・届かないかに言い換えると描ける。表のままにするなら中身に「外す理由：…」")
 
 
 def answer_fig_check(text: str, kind: str, body_no: list):
@@ -781,6 +806,7 @@ def answer_fig_check(text: str, kind: str, body_no: list):
         return []
     cells = {int(r[0]): r[i] for r in rows[1:] if r and r[0].strip().isdigit() and len(r) > i}
     ans = answer_slides(text, kind)
+    qt = q_type(text)
     bad = []
     for n, why in ans.items():
         cell = cells.get(n, "")
@@ -789,8 +815,9 @@ def answer_fig_check(text: str, kind: str, body_no: list):
             continue
         if k in TABLE_KINDS:
             bad.append(f"[{n}] {k}（{why}）")
-        elif why == "筋の答えの枚" and k in ("棒グラフ", "折れ線", "帯グラフ", "大きな数字", None):   # なぜの答えは仕組みの図（地震の比べで、データの棒グラフだけの答えの枚が2人に減点された）
-            bad.append(f"[{n}] {k or '図なし'}（筋の答えの枚は、データの図より先に仕組みの模式図か因果の流れ図）")
+        elif why == "筋の答えの枚" and qt == "なぜ" and k in ("棒グラフ", "折れ線", "帯グラフ", "大きな数字", None):
+            # なぜの答えは仕組みの図（データの棒グラフだけの答えの枚が、採点者2人に「仕組みの図が無い」と減点された）。本当か・どちらかの問いはデータの比べが答えなので見ない
+            bad.append(f"[{n}] {k or '図なし'}（なぜの答えの枚は、データの図より先に仕組みの模式図）")
     if bad:
         return [("△", "答えの枚の図", "答えの枚の図：" + "・".join(bad) + "。" + ANSWER_FIG_HOW)]
     if ans:

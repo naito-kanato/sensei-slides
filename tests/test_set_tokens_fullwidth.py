@@ -53,7 +53,7 @@ def test_hedged_facts_and_data_slides():
     h = cm.hedged_facts(memo, rows)
     assert h and "[2]" in h[2] and "[3]" not in h[2]
     d = cm.data_slides(rows)
-    assert d and "時点が無い：[4]" in d[2] and "分母が無い：[4]" in d[2] and "[5]" not in d[2]
+    assert d and "時点か条件が無い：[4]" in d[2] and "分母が無い：[4]" in d[2] and "[5]" not in d[2]
 
 
 def test_timeline_warns_with_two_points(capsys):

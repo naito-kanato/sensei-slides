@@ -111,8 +111,8 @@ def recap_check(text: str, srows, col):
     if kind_ in ("前と後", "選び方") and ans:   # ほかの形は scaffold が筋の答えをそのまま入れる
         right = " ".join(re.split(r"\s*(?:→|⇒)\s*", p, maxsplit=1)[-1] for p in pts if re.search(r"→|⇒", p))
         if right and not (story.words(right) & story.words(ans)):
-            out.append(("△", "まとめの要点と答え", f"{rec[0]}枚目の対の右（今わかったこと）に、筋の答え（仕組みの一言）の語が無い。"
-                        "1組目を「題の問いへの素朴な答え → 仕組みの一言」に（片側14字まで）"))
+            out.append(("△", "まとめの要点と答え", f"{rec[0]}枚目の対の右（今わかったこと）に、筋の答え（答えの一言）の語が無い。"
+                        "1組目を「題の問いへの素朴な答え → 答えの一言」に（片側14字まで）"))
     return out
 
 
@@ -157,7 +157,8 @@ def title_question_check(text: str, memo: Path):
         return [("✔", "題の問い", "筋の問いを題から変えている（理由あり）")]
     if any(story.linked(q, t) for t in qs):
         return [("✔", "題の問い", f"筋の問い「{q[:24]}」は題「{qs[0][:24]}」につながる")]
-    return [("△", "題の問い", f"筋の問い「{q[:30]}」が、題の問い「{qs[0][:30]}」と語を1つも共有していない。"
+    return [("△", "題の問い", f"筋の問いに答えると、題の問いにも答えたことになるか確かめる（機械は語の重なりだけを粗く見ている）。"
+             f"筋の問い「{q[:30]}」が、題の問い「{qs[0][:30]}」と語を1つも共有していない。"
              "入口は学習者がすでに持っている経験か予想から入り、題の問いへ橋渡しする（学習者の予想・経験 → それと食い違う事実 → 題の問い）。"
              "題と違う問いにするなら1節に「問いを変える理由：…」")]
 
@@ -171,7 +172,7 @@ def analogy_check(text: str, body_n: int):
     t = (st.get("たとえ") or ("", None))[0]
     if t in ("", "—", "-"):
         return [("△", "筋のたとえ", "筋の表に「たとえ」の行が無い（答えの下に「| たとえ | — | 〜は、〜のようなもの | <答えの枚> |」。"
-                 "答えの仕組みを学習者の日常に置き換える一文。答えの枚の図と原稿で使う）")]
+                 "答えの一言を学習者の日常に置き換える一文。答えの枚の図と原稿で使う）")]
     return [("✔", "筋のたとえ", t[:30])]
 
 
@@ -187,14 +188,16 @@ def quiz_title_check(text: str):
     if tagged:
         return [("✔", "確認問題の題の問い", f"{tagged[0]}（〔題の問い〕）")]
     ans = story.answer_slides(text, "memo")
+    form, _, want = story.ANSWER_FORM.get(story.q_type(text), story.ANSWER_FORM["なぜ"])
     hit = [k for k, v in items.items() if v[2] in ans and
-           ((m := structures.QUIZ_TYPE_TAG.search(v[0])) and m.group(1).strip() == "仕組み" or re.search(r"なぜ|どうして", v[0]))]
+           ((m := structures.QUIZ_TYPE_TAG.search(v[0])) and m.group(1).strip() in want or re.search(r"なぜ|どうして", v[0]))]
     if hit:
         return [("✔", "確認問題の題の問い", f"{hit[0]}（{items[hit[0]][2]}枚目＝答えの枚）")]
     where = "・".join(map(str, ans)) or "<答えの枚>"
-    return [("△", "確認問題の題の問い", "6問に、題の問い（筋の問い）に答える問が無い。1問を「<題の問い>を、仕組みの一言とたとえで説明せよ。"
-             f"〔題の問い〕〔ゴールN・{where.split('・')[0]}枚目〕〔型：仕組み〕」にし、解答の〔要素〕に仕組みの一言とたとえを入れる"
-             f"（答えの枚：{where}。6問ちょうど・型3種類以上はそのまま）")]
+    return [("△", "確認問題の題の問い", "確認問題の1問は、この回の題の問いに答えられたかを確かめる。6問に、題の問い（筋の問い）に答える問が無い。"
+             f"1問を、答えの枚を根拠に「<題の問い>」へ{form}で答えさせる問にする"
+             f"（〔題の問い〕〔ゴールN・{where.split('・')[0]}枚目〕〔型：{want[0]}〕。解答の〔要素〕に答えの一言とたとえ。"
+             f"答えの枚：{where}。6問ちょうど・型3種類以上はそのまま）")]
 
 
 CONCRETE = re.compile(r"[0-9０-９]|「[^」]+」|例[：:）)]|たとえば|例えば")
@@ -221,8 +224,9 @@ def concreteness(rows):
     n = body - len(plain)
     if n >= CONCRETE_MIN * body:
         return ("✔", "中身の具体さ", f"本文 {body}枚のうち {n}枚に数値か具体例がある")
-    return ("△", "中身の具体さ", f"本文 {body}枚のうち、数値か具体例（「…」・例：）がある枚が {n}枚（半分以上に）。無い枚：{'・'.join(plain)}。"
-            "「〜を確認」「〜に注意」の言い換えで終わらせず、各枚に、出典つきの数値・実際の場面の例・よくある間違いの例を1つ足す")
+    return ("△", "中身の具体さ", "各枚の行は、その題材でしか言えない中身（値・名前・場面・結果）を持つ（どの題材にも言える一般論で終わらせない）。"
+            f"本文 {body}枚のうち、数値か具体例（「…」・例：）がある枚が {n}枚（半分以上に）。無い枚：{'・'.join(plain)}。"
+            "各枚に、出典つきの数値・実際の場面の例・間違いやすい例のうち合うものを1つ足す")
 
 
 POINTS_MIN = 3        # 本文の要点の数の下限（SKILL.md の書き方は 3〜4個）
@@ -289,7 +293,8 @@ def thin_points(rows, what="設計メモ2節"):
         return None
     if len(thin) > THIN_ROWS_MAX * body:
         return ("✘", "本文の要点の数", f"本文 {body}枚のうち {len(thin)}枚で、本文の要点が {POINTS_MIN}個に満たない（{'・'.join(thin)}）。"
-                f"{what}の「本文の要点」を枚ごとに 3〜4個にする：結論の根拠・数値・具体例・よくある間違い。言い換えや「〜の見方」のような中身の無い要点は数えない")
+                f"{what}の「本文の要点」を枚ごとに 3〜4個にする：結論を支える中身（根拠・数値・例・限り・間違いやすい所など、その枚に合うもの）。"
+                "数は部品の箱が埋まって本文の場所に入る量の目安。言い換えや「〜の見方」のような中身の無い要点は数えない")
     return ("✔", "本文の要点の数", f"本文 {body}枚のうち、要点が {POINTS_MIN}個に満たない枚は {len(thin)}枚")
 
 
@@ -329,10 +334,12 @@ def hedged_facts(text: str, rows):
     if not hits:
         return None
     return ("△", "事実の限定", "事実の行の限定が、その事実を使う枚の青帯・本文の要点で外れている：" + "、".join(hits[:6])
-            + ("…" if len(hits) > 6 else "") + "。限定を残す（「〜とされる」を言い切りに、「一部」を全体に、「考慮する」を「必須」にしない）")
+            + ("…" if len(hits) > 6 else "") + "。事実の確かさと範囲（誰に・いつ・どの程度）を、枚の文で広げも強めもしない"
+            "（「〜とされる」を言い切りに、「一部」を全体に、「考慮する」を「必須」にしない）")
 
 
-WHEN = re.compile(r"\d{4}\s*年|年度|\d+\s*月|時点|現在|\d{4}[-/.]\d|\b(?:19|20)\d{2}\b|(?i:\bas of\b)")   # 英語の年・as of も
+WHEN = re.compile(r"\d{4}\s*年|年度|\d+\s*月|時点|現在|\d{4}[-/.]\d|\b(?:19|20)\d{2}\b|(?i:\bas of\b)"   # 英語の年・as of も
+                  r"|条件|温度|試料|測定|測り方|℃|°C|\d\s*K\b|の下で|において")   # 測定のデータは時点より条件（温度・試料・測り方）
 DENOM = re.compile(r"分母|÷|／|うち|中\s*\d|中の|に対し|あたり|当たり|全国|全体|のなかで|に占める"
                    r"|(?i:\b(?:out of|of all|per|among|share of)\b)")
 
@@ -356,12 +363,13 @@ def data_slides(rows, what="設計メモ2節"):
             no_denom.append(f"[{r[0].strip()}]")
     notes = []
     if no_when:
-        notes.append("時点が無い：" + "・".join(no_when[:8]) + "（いつの値か。「〇年〇月末」「〇年度」）")
+        notes.append("時点か条件が無い：" + "・".join(no_when[:8]) + "（いつ・どの条件の値か。統計なら「〇年〇月末」「〇年度」、測定なら温度・試料・測り方）")
     if no_denom:
         notes.append("割合なのに分母が無い：" + "・".join(no_denom[:8]) + "（何のうちの割合か。「全国の〇〇のうち」「÷ 全体の数」）")
     if not notes:
         return None
-    return ("△", "データの枚の時点と分母", f"{what}でデータを使う枚の青帯・本文の要点に、" + "。".join(notes) + "。1枚に違う時点の値を混ぜるなら、それぞれに時点を書く")
+    return ("△", "データの枚の時点と分母", "数字には、比べられる条件（いつ・何のうち・どの条件で）を添える。"
+            f"{what}でデータを使う枚の青帯・本文の要点に、" + "。".join(notes) + "。1枚に条件の違う値を混ぜるなら、それぞれに条件を書く")
 
 
 FULLWIDTH = re.compile(r"[０-９Ａ-Ｚａ-ｚ．％]+")
@@ -651,13 +659,13 @@ def check(memo: Path, require_review: bool = False):
                 memo_hits = [f"{n}「{m.group(0)}」" for n, t in secs.items()
                              for m in [SCRIPT_MEMO.search("\n".join(l for l in t.splitlines() if not l.strip().startswith("※")))] if m]
                 if memo_hits:
-                    res.append(("△", "原稿の作業メモ", "原稿に作り手の作業の言い方が残っている枚：" + "・".join(memo_hits[:6])
+                    res.append(("△", "原稿の作業メモ", "原稿は聞き手に向けた言葉だけにする。作り手の作業の言い方が残っている枚：" + "・".join(memo_hits[:6])
                                 + "（確かさの断り・作業の経緯は設計メモの3節の確認の列か8節へ。原稿は「〜とされます」「ここは講師のまとめです」のように聞き手に言う形だけ）"))
                 # 図の中の位置で指す言い方（図の向き・並びは制作の担当があとで決めるので、原稿と食い違う。比べで「右端の〜」が横棒の一番下だった）
                 pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for m in [SCRIPT_POS.search(t)] if m]
                 if pos:
-                    res.append(("△", "原稿の図の指し方", "図の中の位置で指している枚：" + "・".join(pos[:6])
-                                + "（図の向き・並びは組むときに決まる。位置ではなく中身で指す：「右端の棒」→「〇〇（その棒の名前）の棒」）"))
+                    res.append(("△", "原稿の図の指し方", "図の部分は、組むときに変わる位置・順番・色ではなく、ラベルと中身で指す。位置で指している枚：" + "・".join(pos[:6])
+                                + "（「右端の棒」→「〇〇（その棒の名前）の棒」）"))
         import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
         bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
         if bad:
@@ -716,7 +724,10 @@ def design_content(text: str, light: bool):
     if surprise:
         # 3b節に驚きがあれば、最初の枚でそのデータを指す（冒頭の謎）。「しかし（壁）」のつなぎや筋の表の問いの枚だけでは通さない
         # （研究発表からの講座の試しで、2・3枚目が背景と「未検証」の説明だけのまま通り、驚きの数字2つが9・13枚目に回った）
-        hooked = any(data_ref(r) for r in first)
+        hooked = any(data_ref(r) or asks(r) for r in first)
+        if hooked and not any(data_ref(r) for r in first):   # 問いはあるが、一番強い材料（驚き）があとに回っている：知らせるだけ
+            out.append(("△", "冒頭の問い", f"本文の最初の {len(first)} 枚に問いはあるが、3b節の驚きのデータ（データN）を使っていない。"
+                        "驚きが学習者の予想と食い違うなら、冒頭の謎の材料に（「〜のはずが、実際は〜。なぜ？」、要点に「（データN）」）。references/story.md 3節"))
     else:   # 驚きが無い回は前のまま：問い（？）・データN・しかし・筋の表の問いを置いた枚
         hooked = any(asks(r) or data_ref(r) or "しかし" in get(r, i_link) for r in first)
         try:
@@ -727,10 +738,10 @@ def design_content(text: str, light: bool):
             pass
     if not hooked:
         out.append((mark, "冒頭の問い", f"本文の最初の {len(first)} 枚（{'・'.join(r[0] for r in first)}枚目）に、"
-                    + (("3b節の驚きのデータ（データN）を指す枚が無い（「しかし（壁）」のつなぎや背景の説明だけでは引き込めない）。"
-                        "冒頭の謎：3b節の驚きのうち一番強いものを、本文の1〜2枚目の青帯か要点で「〜のはずが、実際は〜。なぜ？」と見せ、"
-                        "要点に「（データN）」と書く（数字は一言で。グラフと理由はあとの枚で1回だけ）。型の拍の順は変えない") if surprise else
-                       ("問い（？）も意外な事実（しかし・データN）も無い。1枚目の本文で、学習者の思い込みを問う一文か、驚きのある数字を出す"
+                    + "学習者が答えを知りたくなる問いが無い（背景の説明や「しかし（壁）」のつなぎだけでは引き込めない）。"
+                    + (("3b節の驚きのうち一番強いものを、本文の1〜2枚目の青帯か要点で「〜のはずが、実際は〜。なぜ？」と見せ、"
+                        "要点に「（データN）」と書くか、学習者の予想を問う一文（？）を置く（グラフと理由はあとの枚で1回だけ）。型の拍の順は変えない") if surprise else
+                       ("1枚目の本文で、学習者の予想を問う一文（？）か、予想と食い違う事実を出す"
                         "（筋の表の問いを前へ。仕組みの説明はそのあと）"))
                     + "。references/story.md 3節"))
     last = body[-1]
