@@ -1250,7 +1250,7 @@ class Slide:
             rx = x0 + bw + gap
             label(x0, y, la)
             label(rx, y, lb)
-            top = y + lh(size) + 0.25
+            top = y + lh(size) + 0.35   # 見出しと地の間（0.25 だと描画の検査の「縦の間隔が狭い」0.30 in を割った）
             cells, yy = [], top
             for left, right in list(rows)[:3]:
                 lt, rt = wrap_to(left, bw - 0.4, size), wrap_to(right, bw - 0.4, size)

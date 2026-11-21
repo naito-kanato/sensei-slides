@@ -43,8 +43,17 @@ def items_of(cell: str):
     「・」では分けない（「眠気・気分・集中」のような並びを1項目に保つ）。"""
     cell = re.sub(r"<br\s*/?>", "／", cell or "")
     parts = [p.strip() for p in re.split(r"\s*(?:／|/|；|;)\s*", cell) if p.strip()]
+    if parts and not any("★" in p for p in parts[:5]):   # ★を付け忘れた枚：事実の印の付いた要点の数値を赤字に（比べで「赤字が無い」が8本で約60回）
+        for k, p in enumerate(parts[:5]):
+            m = AUTO_RED.search(re.sub(r"〔[^〕]*〕", lambda x: "\0" * len(x.group(0)), p)) if re.search(r"〔(?:事実|データ)", p) else None
+            if m:
+                parts[k] = p[:m.start()] + "{r:" + m.group(0).strip() + "}" + p[m.start() + len(m.group(0).rstrip()):]
+                break
     # 〔事実N〕の印と「（データN）」（3b節の組を指す設計メモの印）はスライドに出さない（地震の試しで「（データ1）」が本文に残り、採点者2人が減点した）
     return [underline(red(re.sub(r"\s*(?:〔[^〕]*〕|[（(]データ\s*\d+(?:[・,、]\s*\d+)*[)）])", "", p))) for p in parts[:5]]
+
+
+AUTO_RED = re.compile(r"約?\d+(?:[.,]\d+)?\s?(?:[%％℃倍割]|[A-Za-zµ°]+|万|億|年|時間|分|秒|個|人|件|回|度)?")
 
 
 def underline(p: str) -> str:
@@ -373,6 +382,16 @@ def key_message_code(fig: str):
     return f's.cur_y = s.key_message("{q(full)}"{sub}{alt}, y=deck.area["top"] + 0.1).bottom + 0.45'
 
 
+LABEL_CUT = re.compile(r"(?:から|まで|より|の|は|が|を|で|に|と|・|、|／)")
+
+
+def split_label(lab: str) -> str:
+    """入らない行ラベルを2行に：真ん中にいちばん近い助詞・区切りの後ろで折る（「放射線だから／危険説」）。無ければ半分で。"""
+    cuts = [m.end() for m in LABEL_CUT.finditer(lab) if 2 <= m.end() <= len(lab) - 2]
+    i = min(cuts, key=lambda c: abs(c - len(lab) / 2)) if cuts else (len(lab) + 1) // 2
+    return lab[:i] + "\n" + lab[i:]
+
+
 def table_code(fig: str, beside: bool = True):
     """図の案「…：表：列1×列2（行1＝セル／行2＝セル）」（セルが2つ以上なら「｜」で区切る）から s.table の行。
     行の中身が無ければ None（担当が中身を考えることになるので、設計メモに書く）。"""
@@ -383,8 +402,11 @@ def table_code(fig: str, beside: bool = True):
     header = [x.strip() for x in re.split(r"[×xX]", h) if x.strip()] or ["", ""]
     ncell = max(len(c.split("｜")) for _, c in rows)
     total = 5.4 if beside else 11.5
-    label_w = 1.5 if beside else 1.8
+    # 行ラベルの列は、いちばん長いラベルが1行に入る幅に（固定幅だと7〜8字のラベルが1字だけ次の行に落ちた。比べの8本で18回）
+    need = max(len(lab) for lab, _ in rows[:7]) * 16 / 72 * 1.05 + 0.35
+    label_w = round(min(max(1.5 if beside else 1.8, need), total * 0.42), 2)
     col_w = round((total - label_w) / ncell, 2)
+    rows = [(split_label(lab) if len(lab) * 16 / 72 * 1.05 + 0.35 > label_w else lab, c) for lab, c in rows]
     cells = [(lab, [_fold(c, col_w - 0.2, 16) for c in cell.split("｜")]) for lab, cell in rows[:7]]
     nl = max(c.count("\n") + 1 for _, cs in cells for c in cs)   # 行の高さは、いちばん行の多いセルに合わせる（固定だと2行のセルが重なった）
     row_h = round(0.2 + 0.28 * nl, 2)
@@ -524,7 +546,7 @@ def figs_py(work: Path, rows, text: str) -> str:
         else:
             # 描いた大きさのまま置かれるので、置き場所に入る大きさを渡す（試しで、制作の担当が zemi.py・figkit.py を読みに行っていた）
             mk = "fig" if re.search(r"グラフ|棒|推移|分布|散布", fig) else "blank"
-            size = (f"{mk}(7.0, 4.6)・図が主役（左に図・右に細い列の文）" if place.get(n) == "main"
+            size = (f"{mk}(6.6, 4.3)・図が主役（左に図・右に細い列の文。これより大きく描くと置くときに縮み、14pt の字が下限を割る）" if place.get(n) == "main"
                     else f"{mk}(5.6, 4.0)・左文右図（右の列。本文の右端しだいで幅 5.0〜5.8）")
             if d and d.get("rows"):   # 2列でない表（組の棒など）は描かないが、値はここに（data_N.md を開かずに描ける）
                 hd = d.get("head") or []
@@ -891,7 +913,7 @@ def geometry_marks(prs, check_layout):
     return out
 
 
-FIT_FIG = {"beside": (5.2, 3.8), "main": (7.0, 4.6)}   # 見積もりで置く図の大きさ（in）：figs_py が渡す大きさの中ほど（左文右図は 5.0〜5.8 in 幅）
+FIT_FIG = {"beside": (5.2, 3.8), "main": (6.6, 4.3)}   # 見積もりで置く図の大きさ（in）：figs_py が渡す大きさの中ほど（左文右図は 5.0〜5.8 in 幅）
 FIT_BIG = 0.3   # これより大きい超え（in）を先に出す（zemi が自分で詰めるのは 0.3 in まで）
 
 

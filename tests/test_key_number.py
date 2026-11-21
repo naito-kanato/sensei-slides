@@ -46,4 +46,4 @@ def test_notes_drop_fact_tags_and_memo_lines():
 
 def test_points_drop_data_marks():
     """要点の「（データN）」はスライドに出さない（地震の試しで本文に残り、採点者2人が減点した）。"""
-    assert scaffold.items_of("最短：12年（データ1）／最長：38年（データ1・2）〔事実3〕") == ["最短：12年", "最長：38年"]
+    assert scaffold.items_of("最短：12年（データ1）／最長：38年（データ1・2）〔事実3〕") == ["最短：12年", "最長：{r:38年}"]   # ★が無い枚は、事実の印の付いた要点の数値を赤字に

@@ -153,3 +153,30 @@ def test_kept_and_repeated_warnings_are_quiet(tmp_path):
     assert [r[1] for r in shown] == ["道筋"] and same == ["ゴールの図"]
     shown, same = cm.quiet_repeats(m, [("△", "ゴールの図", "文が変わった")])
     assert [r[1] for r in shown] == ["ゴールの図"] and same == []
+
+def test_slide_without_star_gets_its_fact_number_in_red():
+    """★を付け忘れた枚は、事実の印の付いた要点の数値（単位まで）だけを赤字に。★があればそれに従う。印の無い数は赤にしない。"""
+    import scaffold
+    assert scaffold.items_of("見出し：Aは約12cmで変わる〔事実3〕／B〔事実4〕") == ["見出し：Aは{r:約12cm}で変わる", "B"]
+    assert scaffold.items_of("★A は約3倍〔事実1〕／B は 40%〔事実2〕")[1] == "B は 40%"
+    assert scaffold.items_of("Aは3つ／B") == ["Aは3つ", "B"]
+
+
+def test_table_row_labels_fit_on_one_line_or_break_after_a_particle():
+    """行ラベルの列は、いちばん長いラベルが1行に入る幅に。入らなければ真ん中に近い助詞の後ろで2行に。"""
+    import scaffold
+    code = scaffold.table_code("違い：表：説×正しい所｜誤り（短い説＝a｜b／とても長い名前の説明だから危険＝c｜d）")
+    assert "label_w=1.5" not in code and "\\n" in code
+    assert scaffold.split_label("Xの説明だから危険説") == "Xの説明だから\n危険説"
+
+
+def test_main_figure_hint_fits_the_slot_without_shrinking(tmp_path):
+    """図が主役の枚に案内する大きさは、置き場所（右の列 4.2 in を残した幅・本文の高さ）に縮まずに入る。"""
+    import re
+    import scaffold
+    from zemi import Deck
+    d = Deck(workdir=tmp_path)
+    w, h = scaffold.FIT_FIG["main"]
+    assert w <= d.area["right"] - d.area["x"] - 0.5 - 4.2 and h <= d.content_bottom - d.area["top"] - 0.4
+    src = open(scaffold.__file__, encoding="utf-8").read()
+    assert re.search(rf"\(({w:g}), ({h:g})\)・図が主役", src)
