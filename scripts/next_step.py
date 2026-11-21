@@ -142,15 +142,15 @@ RETURN_HEAD = "## 設計に戻す穴"
 
 
 def returned_holes(review: Path, plan: Path, pending: bool = True) -> list:
-    """推論距離の担当が {review} の「## 設計に戻す穴」に書いた行（設計の担当がまだ直していないもの）。
-    設計メモ（構成案）が review より新しければ、設計の担当が直したとみなして空。"""
+    """推論距離の担当が {review} の「## 設計に戻す穴」に書いた行（pending なら、設計の担当がまだ ✔ を付けていない行だけ）。
+    更新時刻では決めない（推論距離の担当は、穴を書いたあとに自分の手当てで設計メモを書き換えるので、時刻では直したかどうか分からない）。"""
     if not review.exists():
         return []
     t = review.read_text(encoding="utf-8")
     m = re.search(rf"^{re.escape(RETURN_HEAD)}\s*$(.*?)(?=^##\s|\Z)", t, re.S | re.M)
     rows = [l.strip() for l in (m.group(1).splitlines() if m else []) if l.strip().startswith("- ") and "なし" not in l]
-    if pending and rows and plan.exists() and plan.stat().st_mtime > review.stat().st_mtime:
-        return []
+    if pending:
+        rows = [r for r in rows if not r.startswith(("- ✔", "- [✔"))]
     return rows
 
 
@@ -197,7 +197,7 @@ def light_steps(work: Path, kind: str):
     if holes and not build.exists():   # 推論距離の担当が、事実か筋が要る穴を設計の担当に戻した
         add(False, "設計に戻す穴", f"{len(holes)} 件")
         return out, (f"設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：{review.name} の「{RETURN_HEAD[3:]}」の {len(holes)} 件を埋める"
-                     "（事実が要る穴は確かめて3節の行に足し、筋の穴は青帯・筋を直す）。直したら検査の ✘ 0 まで。戻ったら next_step をもう一度")
+                     "（事実が要る穴は確かめて3節の行に足し、筋の穴は青帯・筋を直す）。埋めた行は頭を「- ✔ 」に書き換える。直したら検査の ✘ 0 まで")
     # 推論距離（スキルの要）：設計の担当とは別の目で推論距離を見て、手当てまで入れる小さな担当（会話が短いので、設計の担当に続けて頼むより安い）
     if not build.exists():
         add(review.exists(), "推論距離", "" if review.exists() else "まだ")
