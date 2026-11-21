@@ -475,7 +475,8 @@ def figs_py(work: Path, rows, text: str) -> str:
          "HERE = Path(__file__).resolve().parent",
          f'sys.path.insert(0, str((HERE / "{rel}").resolve()))',
          "from figkit import COL, LW, arrow, blank, box, fig, noticks, save  # noqa: E402,F401",
-         "import figlib  # noqa: E402,F401", "",
+         "import figlib  # noqa: E402,F401",
+         "import figschema  # noqa: E402,F401", "",
          'OUT = HERE / "figs"', "OUT.mkdir(exist_ok=True)", ""]
     for r in rows:
         if (col(r, "役割") or "本文") != "本文":
@@ -512,8 +513,11 @@ def figs_py(work: Path, rows, text: str) -> str:
             if d and d.get("rows"):   # 2列でない表（組の棒など）は描かないが、値はここに（data_N.md を開かずに描ける）
                 hd = d.get("head") or []
                 size += f"。データ{refs[0]}" + "の値（" + q("｜".join(hd)) + "）：" + q("／".join("｜".join(str(c) for c in r_) for r_ in d["rows"])[:300])
+            import figschema
+            h = figschema.hint(fig)
             L += [f"def f_s{n:02d}():",
                   f'    """TODO 図の案：{q(fig[:100])}（大きさ：{size}）',
+                  *([f"    {q(h)}"] if h else []),
                   '    （figdraft.py の下書きの雛形を埋めて、ここに書き、描く）"""',
                   f'    raise NotImplementedError("s{n:02d} の図はまだ（図の案のとおりに描く）")', ""]
     L += ["", 'if __name__ == "__main__":',

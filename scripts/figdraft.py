@@ -149,6 +149,10 @@ def template(n: int, kind: str, cell: str, text: str) -> str:
                   "    気づく：（見た人が気づく1点。比べるなら、比べの相手も同じ図に描く）",
                   "    配置：（左右で比べる／前後／断面／斜めから）",
                   "    ラベル：（名詞だけ、3つまで）"]
+        import figschema
+        h = figschema.hint(cell)
+        if h:
+            lines.append("    " + h + "（ラベルを図の案の言葉に替えて呼ぶ。足りない所だけ figkit で描き足す）")
     else:
         ds = data.datasets(text)
         surprise = [ds[d]["fields"].get("驚き", "") for d in data.refs(cell) if d in ds]

@@ -201,7 +201,7 @@ python <skill>/scripts/pdf_pages.py extract "<発表フォルダ>/資料/その�
 - 図スクリプトは `def f_<名前>()` を並べ、`python figs.py <名前> ...` で一部だけ再生成できる形にする（引数は関数名の `f_` を除いた部分。例 `examples/zemi/figs.py`）
 - **スライドの型を内容で選ぶ**（左に文・右に図／図が主役（左に図・右に補足）／上に文・下に横長の図／全面の図／2つを並べて比べる／大きな数字・結論／表／流れ図／図解の型）。部品と名前は `references/structures.md`。同じ型は4枚まで、左に文・右に図は本文の半分まで（ほかの型に当たらないときだけ）。図解の型（カード・段違い・循環・ツリー・判定・前後）も内容が合う所でときどき使う
 - **描く前に、これまでの図と型を確認する**：`python <skill>/scripts/catalog.py _work _work/figure-catalog`（`_work` がまだ無いときは飛ばす）。同じ話題・形の図があれば、その figs.py の関数を流用する。よく使う形は `figlib.py` の型（figures.md 4b節）
-- 図がない話題は `figkit.py`（部品）と `figlib.py`（型）で描く。何を図にするか・種類の選び方・レシピは figures.md の 1, 1b, 4, 4b 節
+- 図がない話題は `figkit.py`（部品）と `figlib.py`（型）で描く。仕組みの模式図は先に `figschema.py --match "<図の案>"` で合う型を探す。何を図にするか・種類の選び方・レシピは figures.md の 1, 1b, 4, 4b, 4c 節
 - 箱と矢印だけの流れ図は、画像ではなく `s.flow([...])`（PowerPointの図形、後で編集できる）で置く
 - 形は式から計算して物理的に正しく、数値は資料にある値か確かな値だけ。教科書外の値・概略図には `s.caption(box, "（概略）")`
 - 教科書の図：`python <skill>/scripts/pdf_pages.py crop <work>/src/p05_L.png <work>/figs/fig7_14.png --box x0 y0 x1 y1`
