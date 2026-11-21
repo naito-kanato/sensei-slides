@@ -302,20 +302,22 @@ def goal_figure_check(text: str):
 
 
 ASKS_REASON = re.compile(r"なぜ|理由|どう変わる|どうなる|比べ|違い|予想")
-GIVES_REASON = re.compile(r"から|ため|ので|なぜなら|により|によって|ことで|結果|せいで|おかげで|すると|すれば|⇒|→")
+GIVES_REASON = re.compile(r"から|ため|ので|なぜなら|により|によって|ことで|結果|せいで|おかげで|すると|すれば|⇒|→|その[^、。]{1,10}で|\bbecause\b|\bso\b|\bsince\b|therefore|\bthus\b|as a result|which means")
 
 
 def quiz_reason_check(text: str):
-    """理由・変化・比べを問う問題の解答に、理由のつなぎ（〜から・〜ため・〜ことで）が無ければ △。
-    比べで、「大きすぎると失速する」のように結論だけの解答が、採点者2人に「なぜかが無い」と減点された。"""
+    """どの解答にも、理由のつなぎ（〜から・〜ため・〜ことで）が無ければ △（理由を問わない問題も。誤りの指摘ならなぜ誤りか、
+    やり方ならなぜ効くか）。比べで、「〜を超えると〜になる」のような結論だけの解答が、採点者2人に「なぜかが無い」と減点された。
+    理由を問う問題に限っていたときは、「何を変えるか」の解答の理由の無さを採点者が減点し続けた。"""
     import structures
     items = structures.quiz_items(text)
-    bare = [k for k, v in items.items() if ASKS_REASON.search(v[0]) and v[3] and not GIVES_REASON.search(re.sub(r"〔[^〕]*〕", "", v[3]))]
+    bare = [k for k, v in items.items() if v[3] and not GIVES_REASON.search(re.sub(r"〔[^〕]*〕", "", v[3]))]
     if not items:
         return []
     if not bare:
-        return [("✔", "解答の理由", "理由を問う問題の解答に、理由がある")]
-    return [("△", "解答の理由", "解答は、結論だけでなく、なぜそうなるかまで書く（学習者が自分の答えのどこが足りないかを確かめられる）。"
+        return [("✔", "解答の理由", "どの解答にも理由がある")]
+    return [("△", "解答の理由", "解答は、結論だけでなく、なぜそうなるかまで1文で書く（誤りの指摘ならなぜ誤りか、やり方ならなぜ効くか、"
+             "計算なら何が何倍に効くから）。学習者が自分の答えのどこが足りないかを確かめられる。"
              "理由のつなぎ（〜から・〜ため・〜ことで）が無い解答：" + "・".join(bare[:6]))]
 
 
@@ -542,9 +544,36 @@ def fullwidth_alnum(rows, what="設計メモ2節"):
 MEMO_REVIEW = "memo_review.md"
 
 
+CLAIM_LEFT = re.compile(r"[ぁ-ん](?:る|い|た|ない|れる)$|[くしい]て$|と$|ほど$|[がはを][^、]{1,12}(?:る|い)$")
+
+
+def claim_term_holes(memo: Path) -> list:
+    """memo_review.md の用語の行のうち、「A ⇒ B」の A が主張（〜が増える・〜が先に起きる）なのに、同じ枚に論拠・出どころの行が無い行 → △。
+    比べで、推論距離の担当が「X が増える ⇒ Y」を用語（Y の語の意味）だけで済ませ、A がなぜ成り立つかの穴を
+    書かずに残し、採点者が全員「説明の飛躍」と減点した。A の理由がその枚か前の枚にあるなら、行の末尾に「A の理由：N枚目」と書く。"""
+    import check_outline as co
+    rp = memo.parent / MEMO_REVIEW
+    if not rp.exists():
+        return []
+    rows = co.HOLE_ANY.findall(rp.read_text(encoding="utf-8"))
+    why = {n for n, _, kind, _, _ in rows if kind.strip() in ("論拠", "出どころ")}
+    bad = []
+    for n, joint, kind, need, rest in rows:
+        if kind.strip() != "用語" or n in why or "の理由：" in rest or "⇒" not in joint:
+            continue
+        left = joint.split("⇒")[0].strip(" 「」")
+        if CLAIM_LEFT.search(left):
+            bad.append(f"[{n}]「{left[:16]}」")
+    if not bad:
+        return []
+    return [("△", "主張の継ぎ目", "「A ⇒ B」の A が主張（〜が増える・〜が先に起きる）なら、B の語の中身だけでなく、A がなぜ成り立つかも試す"
+             "（その枚か前の枚に理由が無ければ、論拠の行を別に立てる。答えにつながるなら筋）。用語だけで済ませた行："
+             + "・".join(bad[:5]) + "。理由がもうあるなら、行の末尾に「A の理由：N枚目」")]
+
+
 def answer_chain_holes(memo: Path) -> list:
     """memo_review.md の推論距離の行のうち、論拠（なぜ・どうやって）の穴に深・あとだけが付き、「答えにつながらない：理由」も無い行 → △。
-    比べで、4本とも推論距離の担当が「なぜ上面が速くなるか」を見つけたのに、2本は深・あとにして残し、採点者が全員減点した
+    比べで、4本とも推論距離の担当が答えの理由の1段を見つけたのに、2本は深・あとにして残し、採点者が全員減点した
     （答えの理由そのものの穴だった）。答えにつながるかは担当が決める：つながるなら筋に、つながらないなら理由を1行。"""
     import check_outline as co
     rp = memo.parent / MEMO_REVIEW
@@ -863,6 +892,7 @@ def check(memo: Path, require_review: bool = False):
     import check_outline  # 関数の中で読む（check_outline → check_memo の循環を避ける）
     res += check_outline.reasoning(memo, text, require_review, review=MEMO_REVIEW, default_level=0, what="設計メモ")
     res += answer_chain_holes(memo)
+    res += claim_term_holes(memo)
     return res
 
 

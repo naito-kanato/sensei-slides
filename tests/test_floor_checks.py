@@ -54,8 +54,8 @@ def test_answer_without_reason_warns():
          "1-2. 速度が2倍なら揚力は何倍か。〔ゴール1・4枚目〕〔型：計算〕\n\n### 解答\n"
          "1-1. 小さい範囲では増え、大きすぎると失速する。〔要素：増える／失速〕\n1-2. 4倍。〔要素：4倍／2乗〕\n")
     res = cm.quiz_reason_check(memo(BODY, quiz=q))
-    assert res[0][0] == "△" and "1-1" in res[0][2] and "1-2" not in res[0][2]   # 計算の問は理由を問うていない
-    ok = q.replace("大きすぎると失速する。", "大きすぎると流れがはがれるため失速する。")
+    assert res[0][0] == "△" and "1-1" in res[0][2] and "1-2" in res[0][2]   # 理由を問わない問題の解答にも理由が要る
+    ok = q.replace("大きすぎると失速する。", "大きすぎると流れがはがれるため失速する。").replace("4倍。", "揚力は速度の2乗で効くので4倍。")
     assert cm.quiz_reason_check(memo(BODY, quiz=ok))[0][0] == "✔"
 
 
@@ -98,3 +98,28 @@ def test_reason_holes_left_as_deep_or_later_are_flagged(tmp_path):
         "[9] 「迎え角」｜用語｜深｜補う前提：角度の定義｜使う所：なし｜架け方：※\n", encoding="utf-8")
     res = cm.answer_chain_holes(tmp_path / "memo.md")
     assert res and res[0][0] == "△" and "[6]" in res[0][2] and "[7]" not in res[0][2] and "[8]" not in res[0][2] and "[9]" not in res[0][2]
+
+
+def test_claim_left_of_a_term_row_is_flagged(tmp_path):
+    """用語の行の「A ⇒ B」の A が主張で、同じ枚に論拠の行も「A の理由：」も無ければ △。A が語だけの行・論拠の行がある枚は拾わない。"""
+    (tmp_path / "memo.md").write_text("# 設計メモ\n", encoding="utf-8")
+    (tmp_path / "memo_review.md").write_text(
+        "## 推論距離\n\n"
+        "[3] 「上の面は流れが速い ⇒ 圧力が低い」｜用語｜語｜補う前提：圧力＝面を押す力｜使う所：3｜架け方：括弧\n"
+        "[4] 「失速 ⇒ 力が急に減る」｜用語｜像｜補う前提：像：速さが落ちる → 実際は力が減る｜使う所：4｜架け方：原稿\n"
+        "[5] 「流れが曲がる ⇒ 下へ押す」｜用語｜語｜補う前提：反作用の意味｜使う所：5｜架け方：括弧\n"
+        "[5] 「流れが曲がる ⇒ 下へ押す」｜論拠｜筋｜補う前提：曲げると下向きの運動が増える｜使う所：5｜架け方：原稿\n"
+        "[6] 「角度が増える ⇒ 揚力」｜用語｜語｜補う前提：揚力の意味｜使う所：6｜架け方：括弧　A の理由：5枚目\n", encoding="utf-8")
+    res = cm.claim_term_holes(tmp_path / "memo.md")
+    assert res and res[0][0] == "△" and "[3]" in res[0][2] and not any(f"[{n}]" in res[0][2] for n in (4, 5, 6))
+
+
+def test_answer_slide_shows_where_it_was_taught():
+    """解答の枚の文には根拠の枚（N枚目）を付ける。原稿は「N枚目で見たことを思い出して」があるので付けない。"""
+    import scaffold
+    q = ("### 問題\n1-1. 揚力のしくみを説明せよ。〔ゴール1・3枚目〕〔型：仕組み〕\n\n### 解答\n"
+         "1-1. 空気を下へ曲げるので、反作用で上へ押される。〔要素：下へ曲げる／反作用〕\n")
+    rows = [{"#": 9, "役割": "確認問題"}, {"#": 10, "役割": "解答"}]
+    t = memo(BODY, quiz=q)
+    assert scaffold.quiz_slices(t, rows, "（{}枚目）")[10][0][1].endswith("（3枚目）")
+    assert not scaffold.quiz_slices(t, rows)[10][0][1].endswith("枚目）")

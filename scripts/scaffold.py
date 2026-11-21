@@ -423,8 +423,9 @@ def unbuildable(rows) -> list:
     return out
 
 
-def quiz_slices(text: str, rows):
-    """{枚: [(番号, 文)]}：設計メモ6節の問題と解答を、確認問題・解答の枚に順に割り振る（〔…〕の印は外す）。"""
+def quiz_slices(text: str, rows, ref: str = ""):
+    """{枚: [(番号, 文)]}：設計メモ6節の問題と解答を、確認問題・解答の枚に順に割り振る（〔…〕の印は外す）。
+    ref（「（{}枚目）」など）を渡すと、解答の文の後ろに根拠の枚を付ける（スライド用。採点者が「どの枚で習ったかが無い」と減点した）。"""
     import structures
     try:
         qi = structures.quiz_items(text) or {}
@@ -440,7 +441,8 @@ def quiz_slices(text: str, rows):
             continue
         per = -(-len(ids) // len(slides))
         for j, n in enumerate(slides):
-            out[n] = [(i, answer_text(qi[i]) if k == 3 else TAG.sub("", qi[i][k]).strip()) for i in ids[j * per:(j + 1) * per]]
+            out[n] = [(i, answer_text(qi[i]) + (ref.format(qi[i][2]) if ref and qi[i][2] else "") if k == 3
+                       else TAG.sub("", qi[i][k]).strip()) for i in ids[j * per:(j + 1) * per]]
     return out
 
 
@@ -604,7 +606,7 @@ def build_py(work: Path, kind, title, rows) -> str:
     qa_slices = qa_split(work, kind, rows)
     place = placements(rows)
     ptext = plan.read_text(encoding="utf-8") if plan.exists() else ""
-    quiz = quiz_slices(ptext, rows) if kind == "memo" else {}
+    quiz = quiz_slices(ptext, rows, " (slide {})" if foreign else "（{}枚目）") if kind == "memo" else {}
     import data as datamod
     dsets = datamod.datasets(ptext) if ptext else {}
     for r in rows:
