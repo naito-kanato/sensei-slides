@@ -220,15 +220,27 @@ def bars(ax, labels, values, highlight=None, unit="", fmt="{:g}", xmax=None, fs=
     n = len(values)
     ys = list(range(n))[::-1]
     colors = [COL.blue if i in hi else COL.gray for i in range(n)]
-    ax.barh(ys, values, color=colors, height=0.6)
-    top = xmax or max(values) * 1.25
+    pos = [v for v in values if v > 0]
+    wide = xmax is None and len(pos) == n and min(pos) > 0 and max(pos) / min(pos) >= 30   # 値の差が30倍以上：小さい棒が見えなくなる
+    if wide:
+        import math
+        lo = 10 ** math.floor(math.log10(min(pos) / 2))
+        ax.set_xscale("log")
+        ax.barh(ys, [v - lo for v in values], left=lo, color=colors, height=0.6)
+        top = 10 ** math.ceil(math.log10(max(pos) * 8))
+    else:
+        ax.barh(ys, values, color=colors, height=0.6)
+        top = xmax or max(values) * 1.25
     for y, v, i in zip(ys, values, range(n)):
-        ax.text(v + top * 0.015, y, fmt.format(v) + unit, va="center", fontsize=fs,
+        ax.text(v * 1.12 if wide else v + top * 0.015, y, fmt.format(v) + unit, va="center", fontsize=fs,
                 color=COL.blue if i in hi else COL.ink, fontweight="bold" if i in hi else "normal")
     ax.set_yticks(ys)
     ax.set_yticklabels(labels, fontsize=fs)
-    ax.set_xlim(0, top)
+    ax.set_xlim(lo if wide else 0, top)
     ax.set_xticks([])
+    ax.minorticks_off()
+    if wide:
+        ax.set_xlabel("（目盛りは10倍ごと）", fontsize=fs, color=COL.ink)
     ax.tick_params(axis="y", length=0)
     for side in ("top", "right", "bottom"):
         ax.spines[side].set_visible(False)

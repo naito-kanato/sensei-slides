@@ -561,7 +561,8 @@ def figs_py(work: Path, rows, text: str) -> str:
         L.append("")
         if vals:
             unit = d["fields"].get("単位", "")
-            unit = "%" if unit in ("％", "%") else ("" if len(unit) > 3 else unit)
+            unit = (re.match(r"[^\s（(／/、,]*", unit.strip()).group(0) or "")   # 「cm（何の深さ）」→「cm」
+            unit = "%" if unit in ("％", "%") else ("" if len(unit) > 4 else unit)
             tail = d["fields"].get("驚き", "").split("実際")[-1]   # 驚きの文で「実際」のあとに先に出る値の棒を強調（ラベルは前半にも出る）
             pos = sorted((tail.find(f"{v:g}"), i) for i, (_, v) in enumerate(vals) if tail.find(f"{v:g}") >= 0)
             hi = pos[0][1] if pos else next((i for i, (lab, _) in enumerate(vals) if lab and lab in tail), None)

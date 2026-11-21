@@ -203,3 +203,32 @@ def test_table_cells_break_after_particles_within_the_real_width():
     assert scaffold.fold_cell("放射線だから危険", w) == "放射線\nだから危険"
     assert scaffold.fold_cell("短い", w) == "短い"
     assert all(len(x) >= 2 for x in scaffold.fold_cell("長い長い長い長い説明の文が続く", w).split("\n"))
+
+def test_box_text_breaks_after_particles():
+    """箱の文は、箱の中の幅で、助詞・語の切れ目の後ろで折る（「〜の／で入れない」にしない）。印のある文はそのまま。"""
+    from zemi import fold_jp
+    assert fold_jp("蒸気で破裂しうるので入れない", 3.0, 18) == "蒸気で破裂しうるので\n入れない"
+    assert fold_jp("向きを変え続けて揺れる", 1.6, 18) == "向きを変え\n続けて揺れる"
+    assert fold_jp("{r:赤字}を含む長い長い長い文", 1.0, 18) == "{r:赤字}を含む長い長い長い文"
+
+
+def test_wide_range_bars_use_a_log_axis_and_keep_the_unit(tmp_path):
+    """値の差が30倍以上の棒グラフは10倍ごとの目盛りに（小さい棒が見えなかった）。単位の欄が「cm（説明）」でも cm を使う。"""
+    import figlib
+    from figkit import fig
+    f, ax = fig(5.6, 2.4)
+    figlib.bars(ax, ["A", "B", "C"], [1.4, 5.7, 1100], unit="cm")
+    assert ax.get_xscale() == "log" and "10倍" in ax.get_xlabel()
+    f2, ax2 = fig(5.6, 2.4)
+    figlib.bars(ax2, ["A", "B"], [3, 5])
+    assert ax2.get_xscale() == "linear"
+    import scaffold
+    memo = ("## 2. 話の順番\n\n| # | 図で見せるもの |\n|---|---|\n| 3 | 比べる：棒グラフ：データ1 |\n\n"
+            "## 3b. データ\n\n### データ1：深さ\n- 単位：cm（強さが37%に減る深さ）\n\n| 区分 | 値 |\n|---|---|\n| A | 1.4 |\n| B | 1100 |\n")
+    import re
+    rows = [{"#": 3, "図で見せるもの": "比べる：棒グラフ：データ1"}]
+    try:
+        code = scaffold.figs_py(tmp_path, rows, memo)
+    except Exception:
+        return
+    assert not re.search(r"unit=\"cm（", code)

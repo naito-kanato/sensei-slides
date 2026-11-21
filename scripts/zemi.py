@@ -972,6 +972,15 @@ class Slide:
         if style is not None:
             sh._element.remove(style)
         if text:
+            folded = fold_jp(text, w - 0.24 - 0.08, size, bold)
+            if folded != text:   # 行が増えるなら折らない（箱の高さは折る前の行数で決めてある）
+                m = self.deck.meter
+                try:
+                    before = m.nlines(split_lines(parse_markup(text)), size, bold, max(0.3, w - 0.29)) if m is not None else None
+                except Exception:   # noqa: BLE001
+                    before = None
+                if before is None or len(folded.split("\n")) <= before:
+                    text = folded
             tf = sh.text_frame
             tf.word_wrap = True
             tf.margin_left = tf.margin_right = Inches(0.12)
@@ -2605,6 +2614,37 @@ class Deck:
         self.prs.core_properties.language = self.lang_code   # check_layout・notes_html がこれで言語を知る
         self.prs.save(str(path))
         print(f"saved {path} ({len(self.prs.slides)} slides)")
+
+
+FOLD_CUT = "、・，,がはをにでの"
+
+
+def fold_jp(text: str, inner: float, size: float, bold: bool = False) -> str:
+    """箱の中の幅 inner (in) に入らない日本語の行を、入る所までのうち、いちばん後ろの助詞・区切り・語の切れ目の後ろで折る。
+    最後の行が1字だけにならないように。印（{r:…} など）を含む文・日本語の無い文はそのまま返す。"""
+    if not text or "{" in text or not re.search(r"[ぁ-んァ-ヶ一-龥]", text):
+        return text
+
+    def fits(s):
+        return text_width_pt(parse_markup(s), size, bold) / 72.0 <= inner
+
+    out = []
+    for line in text.split("\n"):
+        t = line.strip()
+        while t and not fits(t):
+            n = len(t)
+            while n > 1 and not fits(t[:n]):
+                n -= 1
+            cut = [i + 1 for i in range(1, n) if t[i + 1:i + 2] not in FOLD_CUT and (
+                t[i] in FOLD_CUT or t[i - 1:i + 1] in ("から", "まで", "より", "ので", "ため", "のに")
+                or (re.match(r"[ぁ-ん]", t[i]) and re.match(r"[一-龥ァ-ヶーA-Za-z0-9]", t[i + 1:i + 2] or " ")))]
+            k = max([c for c in cut if c >= max(2, n // 2)], default=0) or max([c for c in cut if c >= 2], default=n)
+            if len(t) - k < 2:
+                k = max(1, len(t) - 2)
+            out.append(t[:k].strip())
+            t = t[k:].strip()
+        out.append(t)
+    return "\n".join(out)
 
 
 def wrap_to(text: str, width: float, size: float) -> str:
