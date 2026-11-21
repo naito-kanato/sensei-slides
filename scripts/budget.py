@@ -112,11 +112,6 @@ def percent_limits(work: Path) -> dict:
     return out
 
 
-def percent_limit(work: Path) -> float:
-    """月の枠の上限（%）。"""
-    return percent_limits(work)["月"] or DEFAULT_PERCENT
-
-
 def used_by_window(points) -> dict:
     """[(時刻, 枠の長さ（分）, 使った％)] → {枠の名前: この回で増えた％}。
     同時に動いた担当が同じ枠の％を少しずつずれて書くので、1つずつの増え方は足さない。枠がリセットされる（％が大きく下がる）までの区切りごとに

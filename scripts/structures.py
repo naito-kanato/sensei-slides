@@ -34,27 +34,6 @@ TEXT_FORMS = [
 FORM_KEYS = [f["key"] for f in TEXT_FORMS]
 NONE_FORM = ("—", "-", "－", "なし", "")   # 本文の形が無い枚（全面の図・大きな数字だけ・区切り）
 
-# ---- 図解のスライドの型（figplan.slide_type が名前で見分ける）
-DIAGRAM_TYPES = [
-    dict(key="並列カード", part='s.cards(items, layout="row")', when="手法の要素・条件・候補を同格に2〜4個", shape="カード_並列"),
-    dict(key="格子のカード", part='s.cards(items, layout="grid")', when="同格の要素が4〜6個", shape="カード_格子"),
-    dict(key="段違いの順序", part='s.cards(items, layout="steps")', when="段階のある手順（3〜4段）", shape="カード_段違い"),
-    dict(key="循環", part='s.cards(items, layout="cycle")', when="測定→解析→モデル→次の測定のような繰り返し（4つ）", shape="カード_循環"),
-    dict(key="ツリー", part="s.tree(root, children)", when="分類・階層（大分類から小分類）", shape="ツリー"),
-    dict(key="前後", part="s.before_after(before, after, value)", when="従来と改善を並べ、差を1つの数で", shape="前後"),
-    dict(key="2つ並べた図", part="s.pair(left, right, labels, values)", when="条件の違う2つの図を並べ、下に数値", shape="並べた図"),
-]
-SKELETONS = [   # テンプレート1〜8（構造。番号は見やすさの順）。色は配色で変える（assets/templates/配色.json）
-    dict(key="結論ヘッダー", when="上に小さく話題と見出し、その下に大きく結論の一文（左に主色の短い縦棒）、細い線で本文と分ける。下の帯は無く、本文が一番広い（テンプレート1）", style="header"),
-    dict(key="結論タイトル", when="上に小さく話題、その下に大きく結論の一文。下の帯は無し（結論を見出しにする形）（テンプレート2）", style="title"),
-    dict(key="細い左帯と副題", when="左端に主色の細い帯、大きなタイトルの下に結論の副題の1行。下の帯は無し（テンプレート3）", style="lead"),
-    dict(key="下の帯", when="左上の縦棒とタイトル、下の帯に結論の1行（ゼミの基本の形）（テンプレート4）", style="band"),
-    dict(key="上の帯", when="上の濃い帯にタイトル、下に「まとめ」の札つきの淡い帯（テンプレート5）", style="band"),
-    dict(key="章のナビ", when="上に章の並び（今の章を主色に）、その下にタイトル、下に線で挟んだ結論の1行（長い発表）（テンプレート6）", style="band"),
-    dict(key="結論の囲み", when="上に淡い帯（タイトルは中央）、下の帯は無く、結論は淡い色の囲みに（学会発表）（テンプレート7）", style="box"),
-    dict(key="左の淡い柱", when="左の 34% の淡い柱にタイトル・結論・短い要点、右に図を大きく（図が主役の枚）（テンプレート8）", style="column"),
-]
-
 # 構造（json の "conclusion"）と本文の形の相性。本文の広さと結論の置き場が違うので、合わない形がある。
 # 割合で決めるのではなく（形は中身で選ぶもの）、合わない組み合わせだけを △ にする
 TOP_CONCLUSION = "結論を上の一文（見出しの下・副題）で言うので、本文の最後の「⇒ 赤字の帰結」が結論と重なりやすい。根拠を見せる形（ラベル・展開・問い）にする"

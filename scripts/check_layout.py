@@ -1760,9 +1760,4 @@ if __name__ == "__main__":
         k = args.index("--template")
         tmpl = args[k + 1]
         del args[k:k + 2]
-    lang = None
-    if "--lang" in args:   # 言語を決めて見るとき（ふつうは pptx の言語の印から決まる）
-        k = args.index("--lang")
-        lang = args[k + 1]
-        del args[k:k + 2]
-    sys.exit(main(args[0], args[1] if len(args) > 1 else None, template=tmpl, lang=lang))
+    sys.exit(main(args[0], args[1] if len(args) > 1 else None, template=tmpl))

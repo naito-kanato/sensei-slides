@@ -17,7 +17,7 @@
 | 【ファイルを書き換える】 | 改行や `\` を含む文字列を、ファイルの中で正確に置き換える | apply_patch | Edit ツール | edit_file（新しく作るなら write_file） | apply_patch |
 | （シェル） | コマンドを実行する | exec_command | Bash / PowerShell | run_command | powershell |
 
-表の道具の名前は、それぞれのツールでこのスキルを試したときの記録から取った。道具の名前はツールの版で変わることがある。名前が違っても、同じ働きの道具を使う。
+道具の名前はツールの版で変わることがある。名前が違っても、同じ働きの道具を使う。
 どのエージェントでも、モデルが分からなければユーザーに聞く。`render_check.ps1`・`export_pdf.ps1` は、どのエージェントでも Windows の PowerShell で動かす。
 
 **PowerPoint を使うスクリプト（`render_check.ps1`・`export_pdf.ps1`・`notes_html.py`・`make_deck.py`）は、サンドボックスの中では止められることがある**（`make_deck.py` はふだん PowerPoint を使わない描画で検査し、ERROR 0 の回にだけ PowerPoint で確かめる。止められたらそう出して、新しい描画の結果のまま進む。references/tools.md「PowerPoint の決まり」）（Codex では「Retrieving the COM class factory … 80070005 Access is denied」）。Codex なら exec_command に `sandbox_permissions: "require_escalated"` を付けて、ユーザーの許可を得てサンドボックスの外で動かす（試験ではこれで通った）。毎回の許可を省くには、同梱の `assets/codex/sensei-slides.rules` を、スライドを作るフォルダの `.codex/rules/` に置いてもらう（Codex がそのフォルダを信頼しているときに読む。この3つのスクリプトだけを、確認なしでサンドボックスの外で動かす決まり）。止められても、自作の HTML や別の描き方で代えない（SKILL.md）。また、画面操作の機能（Codex の Computer Use など）で PowerPoint を開かない。サンドボックスの外での実行は、画面は変わらず、コマンドの許可を求める確認が出るだけ。
@@ -42,8 +42,8 @@ Glob・Grep・WebSearch・WebFetch に絞った担当の型で、1回あたり�
 ## モデル
 
 決まりは SKILL.md「必ず守る」（メインのモデルで全部。【別のエージェント】にモデルを指定しない）。ここには道具ごとの注意だけを置く。
-- **軽量モデル（例：Codex・GitHub Copilot の GPT-6 Luna）は非推奨（使うことはできる）。** 試したところ、手順は最後まで進められたが、図の中身が薄く、
-  資料にない仕組みを簡単にしすぎることがあった。軽いモデルで作るときは、ユーザーに図と事実の確認を頼む
+- **軽量モデル（例：Codex・GitHub Copilot の GPT-6 Luna）は非推奨（使うことはできる）。** 図の中身が薄くなり、
+  資料にない仕組みを簡単にしすぎやすい。軽いモデルで作るときは、ユーザーに図と事実の確認を頼む
 
 ## 別のエージェントが無いとき
 
@@ -98,8 +98,8 @@ python -X utf8 build.py
 |---|---|---|
 | Codex | `.agents/skills/sensei-slides/` | `~/.agents/skills/sensei-slides/` |
 | Claude Code | `.claude/skills/sensei-slides/` | `~/.claude/skills/sensei-slides/` |
-| Antigravity | `.agents/skills/sensei-slides/`（これで試した） | — |
-| GitHub Copilot | `.github/skills/sensei-slides/`（CLI はこれで試した。VS Code なら `.agents/skills/`・`.claude/skills/` も可） | `~/.copilot/skills/sensei-slides/` |
+| Antigravity | `.agents/skills/sensei-slides/` | — |
+| GitHub Copilot | `.github/skills/sensei-slides/`（VS Code なら `.agents/skills/`・`.claude/skills/` も可） | `~/.copilot/skills/sensei-slides/` |
 
 `.agents/skills/` に置くと、Codex・Antigravity と、VS Code の Copilot（ローカルのエージェント）から読める。
 Copilot CLI やクラウドのエージェントで使うなら `.github/skills/` に置く。

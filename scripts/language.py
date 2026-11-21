@@ -104,13 +104,6 @@ def words(t: str) -> int:
     return len(re.findall(r"\S+", t or ""))
 
 
-def script_amount(t: str, lang=None) -> int:
-    """原稿の量：字数で見る言語は句読点・空白を除いた字数、ほかは語数。"""
-    if spaced(lang):
-        return words(t)
-    return len(re.sub(r"[\s、。，．,.・「」『』（）()]", "", t or ""))
-
-
 def script_unit(lang=None) -> str:
     return "語" if spaced(lang) else "字"
 
@@ -200,8 +193,6 @@ def sibling(path, src_kind: str, dst_kind: str):
 
 KANA = re.compile(r"[ぁ-んァ-ヶー]")
 KANJI = re.compile(r"[一-龥々]")
-FULL_SPACE = "　"
-
 
 def japanese_left(t: str, lang=None) -> bool:
     """日本語でないデッキの文字に、日本語が残っているか。かなは中国語でも残り、漢字は中国語のデッキでは数えない。

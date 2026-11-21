@@ -2,9 +2,7 @@
 
     python <skill>/scripts/make_deck.py <work>               # 作業フォルダ（_work/<資料名>/）
     python <skill>/scripts/make_deck.py <work> --no-render   # 描かずに組むだけ（ふだんは使わない）
-    python <skill>/scripts/make_deck.py <work> --pp          # 毎回 PowerPoint で描く（前のやり方。ふだんは使わない）
     python <skill>/scripts/make_deck.py <work> --no-pp       # ERROR 0 の回も PowerPoint で確かめない
-    python <skill>/scripts/make_deck.py <work> --lo          # LibreOffice で描く（ふだんは使わない）
     python <skill>/scripts/make_deck.py <work> --over        # 回数の上限を超えて回す（ユーザーが許したときだけ）
     python <skill>/scripts/make_deck.py <work> --final       # 上限のあと、直したものを描いて確かめるだけの1回（段階ごとに1回。回数に数えない）
 
@@ -42,6 +40,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import check_env  # noqa: E402
 
 KEEP = re.compile(r"WARN|ERROR|Error|Traceback|失敗|見つから|無い|✘|△")
 
@@ -73,14 +72,6 @@ def figs_stale(work: Path) -> bool:
         return False
     pngs = list((work / "figs").glob("*.png")) if (work / "figs").is_dir() else []
     return not pngs or max(p.stat().st_mtime for p in pngs) < max(f.stat().st_mtime for f in fs)
-
-
-def has_powerpoint() -> bool:
-    try:
-        import check_env
-        return bool(check_env.has_powerpoint())
-    except Exception:
-        return False
 
 
 def why_pp_failed(text: str) -> str:
@@ -122,19 +113,13 @@ def render_lo(pptx: Path, out: Path):
     return False, short(text, 4)
 
 
-def render(pptx: Path, out: Path, mode: str = "py"):
-    """描く。mode："py"（ふだん。PowerPoint を使わない描画）・"pp"（PowerPoint）・"lo"（LibreOffice）。
+def render(pptx: Path, out: Path):
+    """描く。ふだんは PowerPoint を使わない描画。
     戻り値 (成功, 使った道具, 失敗の行)。新しい描画で描けないときだけ、PowerPoint（無ければ LibreOffice）に代える。"""
-    if mode == "lo":
-        ok, bad = render_lo(pptx, out)
-        return ok, "LibreOffice" if ok else "", bad
-    if mode == "pp":
-        ok, bad = render_pp(pptx, out)
-        return ok, "PowerPoint" if ok else "", bad
     ok, bad = render_py(pptx, out)
     if ok:
         return True, "新しい描画（PowerPoint を使わない）", []
-    if platform.system() == "Windows" and has_powerpoint():
+    if platform.system() == "Windows" and check_env.has_powerpoint():
         ok, bad2 = render_pp(pptx, out)
         return ok, "PowerPoint" if ok else "", bad + bad2
     ok, bad2 = render_lo(pptx, out)
@@ -335,8 +320,7 @@ def main(argv=None):
     if (out / "python").exists():   # 前の回の PowerPoint の確かめで移した新しい描画の分（この回は描き直す）
         import shutil
         shutil.rmtree(out / "python", ignore_errors=True)
-    mode = "lo" if "--lo" in argv else ("pp" if "--pp" in argv else "py")
-    ok, tool, bad = render(pptx, out, mode)
+    ok, tool, bad = render(pptx, out)
     if not ok:
         print("✘ 描けなかった。" + "\n  ".join(bad or ["check_env.py で確かめる"]))
         return 1
@@ -344,7 +328,7 @@ def main(argv=None):
     lay, lay_code = run_layout(out, pptx)
     pp_note = []
     if tool.startswith("新しい描画") and not re.search(r"\[ERROR\]", lay) and "--no-pp" not in argv \
-            and platform.system() == "Windows" and has_powerpoint():
+            and platform.system() == "Windows" and check_env.has_powerpoint():
         lay_pp, code_pp, diffs = verify_with_powerpoint(pptx, out, lay)
         if lay_pp is None:
             pp_note = ["△ PowerPoint で確かめられなかった（新しい描画の結果のまま進める）：" + " / ".join(diffs[:2])]

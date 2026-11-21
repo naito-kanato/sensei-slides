@@ -38,7 +38,8 @@ def test_light_briefs_are_whole(tmp_path, monkeypatch):
     own = d.split("\n---\n# 手順書の節")[0]
     assert "{" not in own and "[講座]" not in own and "[節]" not in own
     assert "① **数字**" in d and "facts.py split はしない" in d and "split --n" not in d
-    assert "4a. 流れと設計メモの中身" in d                     # 設計の担当と同じ節を写す
+    assert "4a. 設計メモの中身" in d and "4d. 担当の順" not in d   # 設計メモの中身だけを写す（念入りの担当の順は写さない）
+    assert "inference-distance.md" in d and "書くときから避ける" in d
     m = brief.build("軽量の制作の担当", str(w), count=False)
     assert "scaffold.py" in m and "--light" in m and "1回の応答で書く" in m and "3回まで" in m and "## 5. 描画して確認する" in m
 

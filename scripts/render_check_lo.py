@@ -3,7 +3,7 @@
 render_check.ps1 と同じ形の shapes.json と slide-NN.png を作る。shapes.json には "engine": "libreoffice" が入り、
 check_layout.py は本文と図の間隔を少しきびしめ（0.5 in）に見る（LibreOffice は文字の範囲を PowerPoint より少し狭く測るため）。
 
-    python render_check_lo.py -Pptx deck.pptx -OutDir <work>/render [-Width 1600] [-NoImages] [-KeepPdf]
+    python render_check_lo.py -Pptx deck.pptx -OutDir <work>/render [-Width 1600] [-NoImages]
 
 Windows で見本3つ（33枚）を PowerPoint と比べたとき、検査の判定（ERROR・WARN）と一覧の字数・行数・最長行は全部一致した。
 文字の範囲の差は中央値で数 pt。違いは、見出しの●が少し小さく出ることと、文字の幅が数 pt 違うこと。
@@ -252,10 +252,6 @@ def main():
     ap.add_argument("-OutDir", "--outdir", required=True)
     ap.add_argument("-Width", "--width", type=int, default=1600)
     ap.add_argument("-NoImages", "--noimages", action="store_true")
-    ap.add_argument("-KeepPdf", "--keeppdf", action="store_true",
-                    help="LibreOffice が作った PDF を OutDir/slides.pdf に残す")
-    ap.add_argument("-KeepAutofit", "--keepautofit", action="store_true",
-                    help="spAutoFit を外さずに変換する（既定は外す。折り返しの偽 ERROR を避けるため）")
     a = ap.parse_args()
     pptx = Path(a.pptx).resolve()
     out = Path(a.outdir)
@@ -267,8 +263,7 @@ def main():
     try:
         copy = tmp / ("render_" + uuid.uuid4().hex[:8] + ".pptx")
         shutil.copyfile(pptx, copy)
-        if not a.keepautofit:
-            strip_autofit(copy)
+        strip_autofit(copy)
         pdf = to_pdf(copy, tmp)
         prs = Presentation(str(copy))
         W = prs.slide_width / EMU_PT
@@ -309,8 +304,6 @@ def main():
                         r["size"] = round(lines[min(lis)]["size"], 1)
             allrows.extend(rows)
         doc.close()
-        if a.keeppdf:
-            shutil.copyfile(pdf, out / "slides.pdf")
         js = dict(pptx=str(pptx), engine="libreoffice", slideWidth=W, slideHeight=H, slides=n, shapes=allrows)
         (out / "shapes.json").write_text(json.dumps(js, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"rendered {n} slides -> {out}（LibreOffice。最後は画像を目で見て確かめる）")

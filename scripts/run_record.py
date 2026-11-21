@@ -1,7 +1,6 @@
 """作った記録：この作業フォルダを扱った会話（メインと担当）ごとに、モデル・思考の強さ・トークン・時間をまとめる。
 
     python <skill>/scripts/run_record.py <work>            # 表を出し、<work>/run_record.md と run_record.json に残す
-    python <skill>/scripts/run_record.py <work> --print    # 残さずに出すだけ
 
 読む記録は review_record.py と同じ（Claude Code・Codex の会話の記録。ほかの道具は読めない → 「記録なし」）。
 会話ごとに拾うもの
@@ -10,7 +9,7 @@
   - トークン：入力（キャッシュに無い分）・キャッシュの読み・キャッシュの書き・出力、呼び出しの回数
   - 始めと終わりの時刻、道具が記録していれば使用枠の％（会話の始めと終わり）
 あわせて build_log.py の行（make_deck の回数と作り直した枚）も載せる。
-数えるのは、会話を始めたフォルダが作業フォルダの一式（_work の1つ上）の中か、その1つ上のものだけ（--any-cwd で外も）。
+数えるのは、会話を始めたフォルダが作業フォルダの一式（_work の1つ上）の中か、その1つ上のものだけ。
 メインの会話が、ほかの回や別の作業もしていれば、その分も入る（会話の単位で数える）。数え方は道具ごとに違うので、道具をまたいで足さない。
 渡す前の確認（check_done.py）の最後にも1行で出す。合否には使わない。
 """
@@ -399,13 +398,10 @@ def save(work: Path, rows=None) -> list:
 def main(argv=None):
     ap = argparse.ArgumentParser(description="作った記録（モデル・思考・トークン）")
     ap.add_argument("work")
-    ap.add_argument("--print", action="store_true", help="ファイルに残さずに出すだけ")
-    ap.add_argument("--any-cwd", action="store_true", help="作業フォルダの一式の外で始めた会話も数える")
     a = ap.parse_args(argv)
     work = Path(a.work).resolve()
-    rows = collect(work, any_cwd=a.any_cwd)
-    if not a.print:
-        save(work, rows)
+    rows = collect(work)
+    save(work, rows)
     print(table(work, rows))
     return 0
 

@@ -137,9 +137,9 @@ def test_role_launch_cap_and_option(tmp_path):
     assert "上限" in budget.check_role(w, "仕上げ役")           # 2回目の起動は止まる
     assert budget.check_role(w, "仕上げ役", over=True) is None  # ユーザーが許したとき
     (w / "memo.md").write_text("## 1. この回のゴールと前提\n\n- 回数の上限：多め\n- 使用量の上限：15%\n", encoding="utf-8")
-    assert budget.cap(w, 4) == 8 and budget.percent_limit(w) == 15
+    assert budget.cap(w, 4) == 8
     (w / "memo.md").write_text("## 1. この回のゴールと前提\n\n- 回数の上限：なし\n", encoding="utf-8")
-    assert budget.cap(w, 4) is None and budget.percent_limit(w) == budget.DEFAULT_PERCENT
+    assert budget.cap(w, 4) is None
 
 
 def test_usage_by_window():

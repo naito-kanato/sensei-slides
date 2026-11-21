@@ -365,7 +365,6 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="渡す前の確認（手順を最後までやったか）")
     ap.add_argument("pptx")
     ap.add_argument("--work", help="作業フォルダ（省略時は自動で探す）")
-    ap.add_argument("--no-record", action="store_true", help="レビューの会話の記録を見ない（見本の確認など。ふだんは付けない）")
     ap.add_argument("--all", action="store_true", help="✔ の行も1行ずつ出す（ふだんは ✔ を1行にまとめる）")
     a = ap.parse_args(argv)
     pptx = Path(a.pptx).resolve()
@@ -381,7 +380,7 @@ def main(argv=None):
         print(f"[ERROR] {pptx} が無い")
         return 1
     work = Path(a.work).resolve() if a.work else find_work(pptx)
-    res = check(pptx, work, record=not a.no_record)
+    res = check(pptx, work, record=True)
     import report
     report.show(res, a.all)
     if work:
@@ -389,7 +388,7 @@ def main(argv=None):
         t = build_log.line(work)
         if t:
             print(f"（記録）作り直し：{t}")
-    if work and not a.no_record:
+    if work:
         try:
             import run_record
             print(f"（記録）会話：{run_record.short(run_record.save(work))}（{work.name}/run_record.md）")

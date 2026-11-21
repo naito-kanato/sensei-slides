@@ -34,11 +34,6 @@ INSTALL_PY = {
     "Darwin": "brew install python@3.12（または https://www.python.org/downloads/ から）",
     "Linux": "sudo apt install python3 python3-venv（Fedora などは sudo dnf install python3）",
 }
-INSTALL_LO = {
-    "Windows": "winget install TheDocumentFoundation.LibreOffice（または https://www.libreoffice.org/download/ から）",
-    "Darwin": "brew install --cask libreoffice（または https://www.libreoffice.org/download/ から）",
-    "Linux": "sudo apt install libreoffice-impress（Fedora などは sudo dnf install libreoffice-impress）",
-}
 INSTALL_FONT = {
     "Windows": "Windows には Meiryo・Yu Gothic が最初から入っている。無ければ Windows の「フォント」の設定から追加",
     "Darwin": "Mac にはヒラギノが最初から入っている",

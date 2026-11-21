@@ -138,8 +138,24 @@ def leave_outline(work: Path) -> bool:
     return any(k in v.lower() for k in ("任せる", "まかせる", "leave", "skip"))
 
 
+RETURN_HEAD = "## 設計に戻す穴"
+
+
+def returned_holes(review: Path, plan: Path, pending: bool = True) -> list:
+    """推論距離の担当が {review} の「## 設計に戻す穴」に書いた行（設計の担当がまだ直していないもの）。
+    設計メモ（構成案）が review より新しければ、設計の担当が直したとみなして空。"""
+    if not review.exists():
+        return []
+    t = review.read_text(encoding="utf-8")
+    m = re.search(rf"^{re.escape(RETURN_HEAD)}\s*$(.*?)(?=^##\s|\Z)", t, re.S | re.M)
+    rows = [l.strip() for l in (m.group(1).splitlines() if m else []) if l.strip().startswith("- ") and "なし" not in l]
+    if pending and rows and plan.exists() and plan.stat().st_mtime > review.stat().st_mtime:
+        return []
+    return rows
+
+
 def light_steps(work: Path, kind: str):
-    """オプション「軽さ：標準」（担当2人）の回：設計の担当 → 制作の担当 → 渡す前の確認、の3段。"""
+    """オプション「軽さ：標準」の回：設計の担当 → 推論距離の担当（戻す穴があれば設計の担当へ）→ 制作の担当 → 渡す前の確認。"""
     import budget
     out = []
 
@@ -154,7 +170,7 @@ def light_steps(work: Path, kind: str):
         add(False, "設計（軽量）", "まだ")
         if "軽量の設計の担当" in launched:
             return out, "軽量：設計の担当が書き終えるのを待つ（終わりの知らせを待つ。コマンドで様子を見ない）"
-        return out, (f"標準（担当2人）：設計の担当1人を起動（`brief.py 軽量の設計の担当 {w}`）。"
+        return out, (f"標準：設計の担当1人を起動（`brief.py 軽量の設計の担当 {w}`）。"
                      "数字・筋・事実の確かめまで1人で、検査の ✘ 0 まで")
     if kind == "memo":
         import check_memo
@@ -168,14 +184,20 @@ def light_steps(work: Path, kind: str):
         bad, todo = _fails(check_outline.check(plan)), []
     add(not bad and not todo, "設計（軽量）", "；".join(bad[:3]) + (f"（確認がまだの事実 {len(todo)} 行）" if todo else ""))
     review = work / ("memo_review.md" if kind == "memo" else "outline_review.md")
+    holes = returned_holes(review, plan)
     if bad or todo:
-        if review.exists() and "推論距離の担当" in launched and not (work / "build.py").exists():
+        # 穴を設計の担当に戻した回は、直しで出た ✘ も設計の担当へ（推論距離の担当に行くと、設計の担当の直しを知らずに直す）
+        if review.exists() and "推論距離の担当" in launched and not (work / "build.py").exists() and not returned_holes(review, plan, pending=False):
             # 推論距離の担当が手当てまで入れる（設計の担当の長い会話を読み直さない）。手当てで出た ✘ もこの担当が直す
             return out, ("推論距離の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
                          + "（手当ては `guide.py inference-distance 5`。青帯・話の筋を変えないと直らない筋の穴だけは、設計の担当に【続けて頼む】）")
         return out, ("軽量：設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
                      + (f"。確認がまだの事実 {len(todo)} 行をその場で確かめる" if todo else ""))
     build = work / "build.py"
+    if holes and not build.exists():   # 推論距離の担当が、事実か筋が要る穴を設計の担当に戻した
+        add(False, "設計に戻す穴", f"{len(holes)} 件")
+        return out, (f"設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：{review.name} の「{RETURN_HEAD[3:]}」の {len(holes)} 件を埋める"
+                     "（事実が要る穴は確かめて3節の行に足し、筋の穴は青帯・筋を直す）。直したら検査の ✘ 0 まで。戻ったら next_step をもう一度")
     # 推論距離（スキルの要）：設計の担当とは別の目で推論距離を見て、手当てまで入れる小さな担当（会話が短いので、設計の担当に続けて頼むより安い）
     if not build.exists():
         add(review.exists(), "推論距離", "" if review.exists() else "まだ")
@@ -195,8 +217,7 @@ def light_steps(work: Path, kind: str):
         if kind == "outline" and not build.exists() and not leave_outline(work):   # 発表：構成案をユーザーに見せてから組む（オプション「構成案の確認：見せる」）
             return out, ("構成案をユーザーに見せる（最初に筋の表の「対立」「それで」の2行＝問いの深め、次に outline.md の話の順番の表。オプション「構成案の確認：見せる」）。直しは設計の担当に【続けて頼む】。"
                          f"OK が出たら、制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）")
-        return out, (f"軽量：制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）。scaffold（設計メモから組む）→ 図 → 残った TODO と原稿 → --try → make_deck（3回まで）→ 原稿HTML。"
-                     "推論距離の担当が「事実が要る穴」「筋の穴」を返したときは、先に設計の担当に【続けて頼む】で戻す（制作の担当への補足に回さない：制作は事実を確かめない）")
+        return out, (f"軽量：制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）。scaffold（設計メモから組む）→ 図 → 残った TODO と原稿 → make_deck（3回まで）→ 原稿HTML")
     return out, (f"手順7：制作の担当の返答に make_deck の「渡す前の確認：渡してよい」があれば、そのままユーザーに渡す（check_done は make_deck が最後の回に走らせ済み。"
                  f"返答に無いときだけ python {SKILL}/scripts/check_done.py \"{pptx.as_posix()}\"）。"
                  "✘ が残ったら（制作の担当が make_deck の上限で止まったとき）、残った所を報告してユーザーに【質問】（越えて直す・このまま受け取る）。"

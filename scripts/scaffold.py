@@ -830,11 +830,6 @@ def cards(work: Path, kind, rows, care, minutes=None, source=None):
     return cardmod.writer(work, kind, rows, care, minutes, source)
 
 
-def api_lines(forms: str, figure: bool, table: bool, extra=()):
-    import cards as cardmod
-    return cardmod.api_lines(forms, figure, table, extra)
-
-
 def _flat(t: str) -> str:
     return re.sub(r"\{[rubi]:([^{}]*)\}", r"\1", t)
 

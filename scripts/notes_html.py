@@ -1,7 +1,7 @@
 """発表者ノート（原稿）を、スライド画像と横並びで読める1枚のHTMLにする。
 
     python notes_html.py "<資料名>_スライド.pptx"            # → <資料名>_原稿.html（スライドと同じフォルダ）
-    python notes_html.py deck.pptx --pdf deck.pdf -o out.html  # 既にあるスライドPDFを使う・出力先を指定
+    python notes_html.py deck.pptx -o out.html               # 出力先を指定
 
 - スライド画像は、PowerPoint で一時フォルダに書き出した PDF から作って HTML に埋め込み（1ファイルで完結）、PDF は消す
   （PowerPoint が無い PC では LibreOffice の PDF、それも無ければ PowerPoint を使わない描画 render_check_py.py の画像）
@@ -703,7 +703,6 @@ def main():
     fitz.TOOLS.mupdf_display_errors(False)   # LibreOffice の PDF の構造ツリーの警告（無害）を出さない
     ap = argparse.ArgumentParser()
     ap.add_argument("pptx")
-    ap.add_argument("--pdf", help="スライドのPDF（省略時は PowerPoint で一時フォルダに書き出して使い、終わったら消す）")
     ap.add_argument("-o", "--out", help="出力HTML（省略時は <資料名>_原稿.html）")
     a = ap.parse_args()
     pptx = Path(a.pptx)
@@ -712,17 +711,14 @@ def main():
     stem = language.strip_suffix(pptx.stem, "slides")
     out = Path(a.out) if a.out else pptx.with_name(stem + language.suffix("script", lang0) + ".html")   # 英語なら _script.html
     items = slide_texts(prs)
-    if a.pdf:
-        imgs = slide_images(Path(a.pdf))
-    else:
-        with tempfile.TemporaryDirectory() as td:
-            pdf = export_temp_pdf(pptx, td)
-            imgs = slide_images(pdf) if pdf else None
-        if imgs is None:
-            imgs = python_images(pptx)
-            print("スライド画像は PowerPoint を使わない描画で作った（PowerPoint も LibreOffice も無いため。見た目は近いが、同じではない）")
+    with tempfile.TemporaryDirectory() as td:
+        pdf = export_temp_pdf(pptx, td)
+        imgs = slide_images(pdf) if pdf else None
+    if imgs is None:
+        imgs = python_images(pptx)
+        print("スライド画像は PowerPoint を使わない描画で作った（PowerPoint も LibreOffice も無いため。見た目は近いが、同じではない）")
     if len(imgs) != len(items):
-        print(f"注意: スライド {len(items)} 枚に対し画像 {len(imgs)} 枚。--pdf で渡した PDF が古い可能性あり")
+        print(f"注意: スライド {len(items)} 枚に対し画像 {len(imgs)} 枚")
     deck_title = prs.core_properties.title or items[0][0] or stem
     save, cid = save_setting(pptx), course_id(pptx)
     lang = language.name_of_code(prs.core_properties.language)   # zemi.Deck が書いた言語の印（無ければ日本語）

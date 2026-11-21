@@ -1,6 +1,6 @@
 """手持ちのスライド（.pptx）を分析して、テンプレートの見た目の特徴を表にする（make_template.py が使う。単独でも動く）。
 
-    python <skill>/scripts/analyze_template.py <元のスライド.pptx> [--json 出力.json]
+    python <skill>/scripts/analyze_template.py <元のスライド.pptx>
 
 AI の判断を入れずに、毎回同じ結果になるように、python-pptx で数えた値だけを出す（どのモデルで動かしても同じ表になる）。
 値は「実際のスライドで一番多いもの」を基本にし、スライドに無いものはマスター・レイアウト・テーマから取る。
@@ -496,13 +496,9 @@ def print_report(res):
 def main():
     ap = argparse.ArgumentParser(description="手持ちのスライドを分析して、テンプレートの見た目の特徴を表にする")
     ap.add_argument("pptx")
-    ap.add_argument("--json", help="見た目の設定（style）を書き出す先")
     a = ap.parse_args()
     res = analyze(a.pptx)
     print_report(res)
-    if a.json:
-        Path(a.json).write_text(json.dumps(res["style"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        print(f"\nwrote {a.json}")
 
 
 if __name__ == "__main__":

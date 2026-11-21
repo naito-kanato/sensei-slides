@@ -44,7 +44,7 @@ def test_design_brief_carries_its_kind_only(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     course = brief.build("設計の担当", str(_work(tmp_path, "講座")), count=False)
     talk = brief.build("設計の担当", str(_work(tmp_path, "発表")), kind="発表", count=False)
-    assert "4a. 流れと設計メモの中身" in course and "4a. 流れと設計メモの中身" not in talk
+    assert "4a. 設計メモの中身" in course and "4a. 設計メモの中身" not in talk
     assert "## 1. 筋の表" in course and "## 1. 筋の表" in talk
     assert course.count("## 1b. 図の種類の選び方") == 1
 

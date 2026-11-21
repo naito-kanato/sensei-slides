@@ -2619,8 +2619,3 @@ def wrap_to(text: str, width: float, size: float) -> str:
     cands = [i + 1 for i, ch in enumerate(text[:-1]) if ch in "、，,・" or text[i:i + 1] in "でとがはをにの"]
     k = min(cands, key=lambda i: abs(i - mid)) if cands else int(mid)
     return text[:k] + "\n" + text[k:]
-
-
-def title_right_edge(title: str, size: float = 44) -> float:
-    """タイトル文字列の右端x（インチ）。図をタイトルの右に上詰めで置けるかの判断に使う。"""
-    return 0.63 + INSET_X + text_width_pt(parse_markup(title), size) / 72.0

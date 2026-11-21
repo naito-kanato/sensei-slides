@@ -518,14 +518,6 @@ class TextCtx:
                 return v
         return default
 
-    def body_child(self, names):
-        for bp in self.bodyprs:
-            for n in names:
-                e = bp.find(A + n)
-                if e is not None:
-                    return e
-        return None
-
     def ppr_chain(self, lvl, ppr):
         """段落の書式の要素を、低い方から高い方へ。"""
         ch = []
