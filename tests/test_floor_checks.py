@@ -85,3 +85,16 @@ def test_narration_must_talk_about_the_planned_figure():
     kinds = {4: "比較", 7: "流れ図", 5: "比較", 6: "概略グラフ", 9: "表"}
     got = {n: what for n, _, _, what in cm.figure_talk(secs, kinds)}
     assert got == {4: "絵の中身", 7: "グラフ"}
+
+
+def test_reason_holes_left_as_deep_or_later_are_flagged(tmp_path):
+    """論拠の穴を深・あとだけにして「答えにつながらない：理由」も無い行は △。筋が付いた行・理由のある行は拾わない。"""
+    (tmp_path / "memo.md").write_text("# 設計メモ\n", encoding="utf-8")
+    (tmp_path / "memo_review.md").write_text(
+        "## 推論距離\n\n"
+        "[6] 「細い所で流れが速い ⇒ 気圧が低い」｜論拠｜深｜補う前提：なぜ速いと低いか｜使う所：なし｜架け方：質問の材料\n"
+        "[7] 「上面は低圧 ⇒ なぜ速い」｜論拠｜筋・深｜補う前提：曲がる流れ｜使う所：7｜架け方：原稿\n"
+        "[8] 「失速」｜論拠｜深｜補う前提：はがれ｜使う所：なし｜架け方：※　答えにつながらない：用語の背景\n"
+        "[9] 「迎え角」｜用語｜深｜補う前提：角度の定義｜使う所：なし｜架け方：※\n", encoding="utf-8")
+    res = cm.answer_chain_holes(tmp_path / "memo.md")
+    assert res and res[0][0] == "△" and "[6]" in res[0][2] and "[7]" not in res[0][2] and "[8]" not in res[0][2] and "[9]" not in res[0][2]

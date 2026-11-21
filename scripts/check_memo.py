@@ -542,6 +542,27 @@ def fullwidth_alnum(rows, what="設計メモ2節"):
 MEMO_REVIEW = "memo_review.md"
 
 
+def answer_chain_holes(memo: Path) -> list:
+    """memo_review.md の推論距離の行のうち、論拠（なぜ・どうやって）の穴に深・あとだけが付き、「答えにつながらない：理由」も無い行 → △。
+    比べで、4本とも推論距離の担当が「なぜ上面が速くなるか」を見つけたのに、2本は深・あとにして残し、採点者が全員減点した
+    （答えの理由そのものの穴だった）。答えにつながるかは担当が決める：つながるなら筋に、つながらないなら理由を1行。"""
+    import check_outline as co
+    rp = memo.parent / MEMO_REVIEW
+    if not rp.exists():
+        return []
+    bad = []
+    for n, joint, kind, need, rest in co.HOLE_ANY.findall(rp.read_text(encoding="utf-8")):
+        ls = co.labels(need)
+        if kind.strip() != "論拠" or "要1" in ls or not (ls & {"深", "要3"}) or "答えにつながらない" in rest:
+            continue
+        bad.append(f"[{n}]「{joint.strip()[:20]}」（{need.strip()}）")
+    if not bad:
+        return []
+    return [("△", "答えにつながる穴", "答えに直接つながる穴は、深・あとだけにしない（その前提が無いと、話の筋の答えの「なぜ」が1段抜けるなら筋を付けて架ける）。"
+             "論拠の穴を深・あとだけにした行：" + "・".join(bad[:5]) + "。答えにつながるなら要否に筋を足して手当てする（事実が要れば「設計に戻す穴」へ）。"
+             "つながらないなら、行の末尾に「答えにつながらない：理由」")]
+
+
 def data_rows(text: str, work: Path, body_no, kind: str = "memo") -> list:
     """3b節「データ」：組の書き方、図の案が指すデータNがあるか、データを描く図があるか。kind="outline" は発表の構成案（3b節は任意）。"""
     import data
@@ -841,6 +862,7 @@ def check(memo: Path, require_review: bool = False):
         pass
     import check_outline  # 関数の中で読む（check_outline → check_memo の循環を避ける）
     res += check_outline.reasoning(memo, text, require_review, review=MEMO_REVIEW, default_level=0, what="設計メモ")
+    res += answer_chain_holes(memo)
     return res
 
 
