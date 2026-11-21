@@ -854,6 +854,8 @@ if __name__ == "__main__":   # python story.py --aims：ねらいと既定の型
         done = set_aim(w, a)
         want = dict((x[0], x[1]) for x in AIMS)[a.strip()]
         print((f"ねらい「{a}」を書いた：" + "・".join(done) if done else "✘ 書く所が無い（memo.md・outline.md・講座の地図）") + f"。既定の話の型は「{want}」")
+        # 図の案は型を決めたこの時点で拍のおすすめから選ぶ（あとの検査で「型の拍に合わない図」と言われて直していた）
+        print("\n" + figs_table(want) + "\n\n本文の要点は、文の塊2〜3つ（見出しの無い要点は1つで1塊。要点が4つなら、同じ見出しの下に2つまとめる）")
     else:
         print("python story.py --aims                  # 回のねらいと、既定の話の型の一覧\n"
               "python story.py --aim <work> <ねらい>   # ねらいを書く（講座は設計メモと地図のこの回の行。地図に列が無ければ足す。発表は outline.md のオプション）")

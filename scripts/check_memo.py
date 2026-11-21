@@ -491,10 +491,18 @@ DENOM = re.compile(r"分母|÷|／|うち|中\s*\d|中の|に対し|あたり|�
                    r"|(?i:\b(?:out of|of all|per|among|share of)\b)")
 
 
-def data_slides(rows, what="設計メモ2節"):
+def data_slides(rows, what="設計メモ2節", dsets=None):
     """データN を使う枚（図の案か本文の要点で指す）の青帯・本文の要点に、時点（年・年度・月・時点）が無い、
     割合（%・割）なのに分母（〜のうち・全国の・÷）が無い → △。試しの回で、時点の違う値が1枚に混ざり（7年前の平均と今年の値）、
-    よかった回は「分子：〇〇の数（各年3月末）／分母：全国の〇〇の数（各前年3月末）」まで書いていた。"""
+    よかった回は「分子：〇〇の数（各年3月末）／分母：全国の〇〇の数（各前年3月末）」まで書いていた。
+    データの段（3b節）の「時点」「分母」の欄に書いてあれば、その データN を使う枚には要らない（8本すべてで出て、担当が枚ごとに書き足していた）。"""
+    def field(refs, name):
+        out = []
+        for k in refs:
+            v = ((dsets or {}).get(k) or (dsets or {}).get(str(k)) or {}).get("fields", {}).get(name, "")
+            if re.sub(r"[—\-－\s]", "", v.split("（")[0]) or re.search(r"（.+）", v):
+                out.append(v)
+        return " ".join(out)
     head = [h.strip() for h in rows[0]]
     cols = [i for i, h in enumerate(head) if "青帯" in h or "結論" in h or "本文の要点" in h]
     if not cols:
@@ -503,10 +511,11 @@ def data_slides(rows, what="設計メモ2節"):
     for r in rows[1:]:
         if not r or not r[0].strip().isdigit() or not re.search(r"データ\s*\d", " ".join(r)):
             continue
+        refs = [int(x) for x in re.findall(r"データ\s*(\d+)", " ".join(r))]
         said = " ".join(r[i] for i in cols if i < len(r))
-        if not WHEN.search(said):
+        if not WHEN.search(said + " " + field(refs, "時点")):
             no_when.append(f"[{r[0].strip()}]")
-        if re.search(r"%|％|割", said) and not DENOM.search(said):
+        if re.search(r"%|％|割", said) and not DENOM.search(said) and not field(refs, "分母"):
             no_denom.append(f"[{r[0].strip()}]")
     notes = []
     if no_when:
@@ -767,7 +776,8 @@ def check(memo: Path, require_review: bool = False):
         ut = untagged_numbers(rows)
         if ut:
             res.append(ut)
-        for extra in (fullwidth_alnum(rows), hedged_facts(text, rows), data_slides(rows)):
+        import data as _dm
+        for extra in (fullwidth_alnum(rows), hedged_facts(text, rows), data_slides(rows, dsets=_dm.datasets(text))):
             if extra:
                 res.append(extra)
         import structures
@@ -864,6 +874,12 @@ def check(memo: Path, require_review: bool = False):
                     res.append(("△", "原稿の図の種類", "原稿は、その枚の図の案の図を話す（原稿は図より先に書くので、話す図が案と別物になりやすい）。"
                                 "食い違う枚：" + "・".join(f"{n}「{s[:14]}」→図の案は{k}" for n, s, k, _ in talk[:5])
                                 + "。原稿を図の案に合わせて直すか、図の案をその図に替える"))
+                # 手当てで原稿に回したものが script.md にあるか（制作の段の check_notes で見つかると、制作の担当が原稿を直していた）
+                import check_notes as _cn
+                lack = _cn.missing_care(text, secs)
+                if lack:
+                    res.append(("✘", "原稿の手当て", "手当てで原稿に回すと書いたのに、script.md に無い：" + "、".join(f"[{n}] {w}" for n, w in lack[:6])
+                                + "（手当ては script.md のその枚の原稿に直接入れる。制作の担当は原稿を書き直さない。言い方を変えたなら、手当ての行も直す）"))
                 # 図の中の位置で指す言い方（図の向き・並びは制作の担当があとで決めるので、原稿と食い違う。比べで「右端の〜」が横棒の一番下だった）
                 pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for m in [SCRIPT_POS.search(t)] if m]
                 if pos:
@@ -976,6 +992,34 @@ def design_content(text: str, light: bool):
     return out
 
 
+KEEP = re.compile(r"^\s*-\s*残す△\s*[：:](.+)$", re.M)
+SEEN = ".check_memo_seen.json"
+
+
+def quiet_repeats(memo: Path, res: list, full: bool = False):
+    """(出す結果, 前の回と同じで省いた △ の項目)。設計メモの「- 残す△：項目（理由）」に書いた項目の △ は出さない。
+    同じ文の △ が前の回にも出ていたら、中身を省いて名前だけにする（比べで、担当が直さないと決めた △ が呼ぶたびに長文で出ていた）。"""
+    import json
+    keep = set()
+    for m in KEEP.finditer(memo.read_text(encoding="utf-8")):
+        keep |= {re.sub(r"[（(].*$", "", x).strip() for x in re.split(r"[・、,]", m.group(1)) if x.strip()}
+    res = [r for r in res if not (r[0] == "△" and r[1] in keep)]
+    sp = memo.parent / SEEN
+    try:
+        seen = json.loads(sp.read_text(encoding="utf-8")) if sp.exists() else {}
+    except Exception:
+        seen = {}
+    now = {r[1]: r[2] for r in res if r[0] == "△"}
+    try:
+        sp.write_text(json.dumps(now, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    if full:
+        return res, []
+    same = [k for k, v in now.items() if seen.get(k) == v]
+    return [r for r in res if not (r[0] == "△" and r[1] in same)], same
+
+
 def main(argv=None):
     import report
     argv, full = report.take_all(sys.argv[1:] if argv is None else argv)
@@ -999,9 +1043,12 @@ def main(argv=None):
     except Exception:
         pass
     res = check(memo)
+    res, same = quiet_repeats(memo, res, full)
     report.show(res, full)
+    if same:
+        print("△ 前の回と同じ（中身は省く。直さずに残すなら、設計メモの末尾に「- 残す△：" + "・".join(same[:2]) + "（理由）」の1行で次から出ない）：" + "・".join(same))
     bad = sum(m == "✘" for m, _, _ in res)
-    warn = sum(m == "△" for m, _, _ in res)
+    warn = sum(m == "△" for m, _, _ in res) + len(same)
     try:
         import budget
         then = "制作に回す" if budget.light(memo.parent) else "レビューに回す"   # 担当2人の回には、別のレビューが無い

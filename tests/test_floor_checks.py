@@ -131,3 +131,25 @@ def test_caption_year_is_not_the_access_date():
     src = "Maker「Depth table」Table 1 https://example.com/2019/x （発行年の記載なし。取得 2026-11-21）"
     assert scaffold.short_source(src) == "（Maker）"
     assert scaffold.short_source("Walters, A. & Lee 2023, Nature（取得 2026-01-02）") == "（Walters ほか 2023）"
+
+def test_data_condition_written_once_in_the_data_block():
+    """データの段（3b節）の「時点」「分母」に書いてあれば、データN を使う枚の行に書き足さなくてよい。"""
+    rows = [["#", "青帯（結論）", "本文の要点", "図で見せるもの"],
+            ["3", "Aの値はBの約3割", "A：30%〔データ1〕", "比べる：棒グラフ：データ1"]]
+    assert cm.data_slides(rows) is not None
+    ds = {1: {"fields": {"時点": "2024年度", "分母": "全体の件数"}}}
+    assert cm.data_slides(rows, dsets=ds) is None
+    assert cm.data_slides(rows, dsets={1: {"fields": {"時点": "—", "分母": "—"}}}) is not None
+
+
+def test_kept_and_repeated_warnings_are_quiet(tmp_path):
+    """「- 残す△：項目（理由）」の項目は出さない。前の回と同じ文の △ は、2回目から名前だけ。"""
+    m = tmp_path / "memo.md"
+    m.write_text("# 設計メモ\n\n- 残す△：冒頭の問い（入口は経験から入れた）\n", encoding="utf-8")
+    res = [("△", "冒頭の問い", "長い説明"), ("△", "ゴールの図", "長い説明2"), ("✔", "道筋", "ok")]
+    shown, same = cm.quiet_repeats(m, res)
+    assert [r[1] for r in shown] == ["ゴールの図", "道筋"] and same == []
+    shown, same = cm.quiet_repeats(m, res)
+    assert [r[1] for r in shown] == ["道筋"] and same == ["ゴールの図"]
+    shown, same = cm.quiet_repeats(m, [("△", "ゴールの図", "文が変わった")])
+    assert [r[1] for r in shown] == ["ゴールの図"] and same == []

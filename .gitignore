@@ -45,3 +45,4 @@ run_record.json
 
 # 回数の予算（brief.py・make_deck が作業フォルダに足す）
 budget_log.jsonl
+**/.check_memo_seen.json
