@@ -126,3 +126,11 @@ def test_light_design_brief_does_not_grow_much(tmp_path, monkeypatch):
     (tmp_path / "_work").mkdir()
     t = brief.build("軽量の設計の担当", str(tmp_path / "_work" / "X講座_01"), kind="講座")
     assert len(t) < 25000
+
+
+def test_figure_step_is_only_for_answer_and_but_slides(root):
+    """図の段は答えの枚と しかし の枚だけ（全部の枚を2周すると設計の担当が重くなる。残りは本文と一緒に1枚ずつ）。"""
+    for rel in ("assets/briefs/設計の担当.md", "assets/briefs/軽量の設計の担当.md", "references/figures.md"):
+        t = (root / rel).read_text(encoding="utf-8")
+        assert "全部の枚の図で見せる" not in t and "全部の枚の「図で見せるもの」" not in t
+        assert "しかし の枚" in t and "本文と一緒に" in t
