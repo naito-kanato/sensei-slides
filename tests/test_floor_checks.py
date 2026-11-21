@@ -142,17 +142,23 @@ def test_data_condition_written_once_in_the_data_block():
     assert cm.data_slides(rows, dsets={1: {"fields": {"時点": "—", "分母": "—"}}}) is not None
 
 
-def test_kept_and_repeated_warnings_are_quiet(tmp_path):
-    """「- 残す△：項目（理由）」の項目は出さない。前の回と同じ文の △ は、2回目から名前だけ。"""
+def test_kept_warnings_are_quiet(tmp_path):
+    """「- 残す△：項目（理由）」の項目の △ は出さない。ほかの △ は何度でも中身ごと出す。"""
     m = tmp_path / "memo.md"
     m.write_text("# 設計メモ\n\n- 残す△：冒頭の問い（入口は経験から入れた）\n", encoding="utf-8")
     res = [("△", "冒頭の問い", "長い説明"), ("△", "ゴールの図", "長い説明2"), ("✔", "道筋", "ok")]
-    shown, same = cm.quiet_repeats(m, res)
-    assert [r[1] for r in shown] == ["ゴールの図", "道筋"] and same == []
-    shown, same = cm.quiet_repeats(m, res)
-    assert [r[1] for r in shown] == ["道筋"] and same == ["ゴールの図"]
-    shown, same = cm.quiet_repeats(m, [("△", "ゴールの図", "文が変わった")])
-    assert [r[1] for r in shown] == ["ゴールの図"] and same == []
+    assert [r[1] for r in cm.kept_out(m, res)] == ["ゴールの図", "道筋"]
+    assert [r[1] for r in cm.kept_out(m, res)] == ["ゴールの図", "道筋"]
+
+
+def test_designer_brief_shows_the_beat_figures_of_the_mapped_arc():
+    """地図のこの回の行の「ねらい」から型を引く（設計の担当の依頼文に、その型の拍ごとのおすすめの図を入れる）。"""
+    import story
+    aim, arc = story.AIMS[0][0], story.AIMS[0][1]
+    readme = f"| 回 | 題 | ねらい |\n|---|---|---|\n| 1 | 題 | {aim} |\n"
+    assert story.map_arc(readme, 1) == arc
+    assert story.map_arc("- 中身（話の型：" + arc + "）\n", 1) == arc
+
 
 def test_slide_without_star_gets_its_fact_number_in_red():
     """★を付け忘れた枚は、事実の印の付いた要点の数値（単位まで）だけを赤字に。★があればそれに従う。印の無い数は赤にしない。"""
@@ -180,3 +186,20 @@ def test_main_figure_hint_fits_the_slot_without_shrinking(tmp_path):
     assert w <= d.area["right"] - d.area["x"] - 0.5 - 4.2 and h <= d.content_bottom - d.area["top"] - 0.4
     src = open(scaffold.__file__, encoding="utf-8").read()
     assert re.search(rf"\(({w:g}), ({h:g})\)・図が主役", src)
+
+def test_auto_red_keeps_a_fraction_whole():
+    """「N分のM」は1つの数として赤字に（「4分」だけを赤字にすると時間に読める）。時間の「N分」はそのまま。"""
+    import scaffold
+    assert scaffold.items_of("Aは全体の4分の1まで〔事実9〕") == ["Aは全体の{r:4分の1}まで"]
+    assert scaffold.items_of("4分おく〔事実2〕") == ["{r:4分}おく"]
+
+
+def test_table_cells_break_after_particles_within_the_real_width():
+    """表のセルは、箱の中の幅で、助詞・語の切れ目の後ろで折る（1字だけの行や、語の途中で切らない）。"""
+    import scaffold
+    w = 1.57 - 0.34
+    assert scaffold.fold_cell("分子の動きが熱になる", w) == "分子の\n動きが\n熱になる"
+    assert scaffold.fold_cell("こすり合う摩擦ではない", w) == "こすり合う\n摩擦では\nない"
+    assert scaffold.fold_cell("放射線だから危険", w) == "放射線\nだから危険"
+    assert scaffold.fold_cell("短い", w) == "短い"
+    assert all(len(x) >= 2 for x in scaffold.fold_cell("長い長い長い長い説明の文が続く", w).split("\n"))

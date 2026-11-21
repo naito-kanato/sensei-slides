@@ -515,7 +515,8 @@ def data_slides(rows, what="設計メモ2節", dsets=None):
         said = " ".join(r[i] for i in cols if i < len(r))
         if not WHEN.search(said + " " + field(refs, "時点")):
             no_when.append(f"[{r[0].strip()}]")
-        if re.search(r"%|％|割", said) and not DENOM.search(said) and not field(refs, "分母"):
+        decided = any("分母" in ((dsets or {}).get(k) or (dsets or {}).get(str(k)) or {}).get("fields", {}) for k in refs)
+        if re.search(r"%|％|割", said) and not DENOM.search(said) and not decided:
             no_denom.append(f"[{r[0].strip()}]")
     notes = []
     if no_when:
@@ -993,31 +994,15 @@ def design_content(text: str, light: bool):
 
 
 KEEP = re.compile(r"^\s*-\s*残す△\s*[：:](.+)$", re.M)
-SEEN = ".check_memo_seen.json"
 
 
-def quiet_repeats(memo: Path, res: list, full: bool = False):
-    """(出す結果, 前の回と同じで省いた △ の項目)。設計メモの「- 残す△：項目（理由）」に書いた項目の △ は出さない。
-    同じ文の △ が前の回にも出ていたら、中身を省いて名前だけにする（比べで、担当が直さないと決めた △ が呼ぶたびに長文で出ていた）。"""
-    import json
+def kept_out(memo: Path, res: list) -> list:
+    """設計メモの「- 残す△：項目（理由）」に書いた項目の △ は出さない（担当が直さないと決めた △ が、呼ぶたびに長文で出ていた）。
+    同じ △ を2回目から名前だけにする形は試してやめた：担当が中身を知ろうと検査のスクリプトを調べ始め、往復が増えた。"""
     keep = set()
     for m in KEEP.finditer(memo.read_text(encoding="utf-8")):
         keep |= {re.sub(r"[（(].*$", "", x).strip() for x in re.split(r"[・、,]", m.group(1)) if x.strip()}
-    res = [r for r in res if not (r[0] == "△" and r[1] in keep)]
-    sp = memo.parent / SEEN
-    try:
-        seen = json.loads(sp.read_text(encoding="utf-8")) if sp.exists() else {}
-    except Exception:
-        seen = {}
-    now = {r[1]: r[2] for r in res if r[0] == "△"}
-    try:
-        sp.write_text(json.dumps(now, ensure_ascii=False), encoding="utf-8")
-    except Exception:
-        pass
-    if full:
-        return res, []
-    same = [k for k, v in now.items() if seen.get(k) == v]
-    return [r for r in res if not (r[0] == "△" and r[1] in same)], same
+    return [r for r in res if not (r[0] == "△" and r[1] in keep)]
 
 
 def main(argv=None):
@@ -1043,12 +1028,10 @@ def main(argv=None):
     except Exception:
         pass
     res = check(memo)
-    res, same = quiet_repeats(memo, res, full)
+    res = kept_out(memo, res)
     report.show(res, full)
-    if same:
-        print("△ 前の回と同じ（中身は省く。直さずに残すなら、設計メモの末尾に「- 残す△：" + "・".join(same[:2]) + "（理由）」の1行で次から出ない）：" + "・".join(same))
     bad = sum(m == "✘" for m, _, _ in res)
-    warn = sum(m == "△" for m, _, _ in res) + len(same)
+    warn = sum(m == "△" for m, _, _ in res)
     try:
         import budget
         then = "制作に回す" if budget.light(memo.parent) else "レビューに回す"   # 担当2人の回には、別のレビューが無い

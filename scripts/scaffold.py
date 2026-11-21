@@ -53,7 +53,7 @@ def items_of(cell: str):
     return [underline(red(re.sub(r"\s*(?:〔[^〕]*〕|[（(]データ\s*\d+(?:[・,、]\s*\d+)*[)）])", "", p))) for p in parts[:5]]
 
 
-AUTO_RED = re.compile(r"約?\d+(?:[.,]\d+)?\s?(?:[%％℃倍割]|[A-Za-zµ°]+|万|億|年|時間|分|秒|個|人|件|回|度)?")
+AUTO_RED = re.compile(r"約?\d+分の\d+|約?\d+(?:[.,]\d+)?\s?(?:[%％℃倍割]|[A-Za-zµ°]+|万|億|年|時間|分(?!の)|秒|個|人|件|回|度)?")
 
 
 def underline(p: str) -> str:
@@ -392,6 +392,34 @@ def split_label(lab: str) -> str:
     return lab[:i] + "\n" + lab[i:]
 
 
+CELL_CUT = "、・，,がはをにでの"   # 「も・と・か」は語の中にも多い（もっと・ところ）ので切らない
+
+
+def fold_cell(t: str, width: float, size: float = 16) -> str:
+    """表のセルの文を、箱の中の幅（in）に入る長さで、助詞・区切りの後ろで折る。最後の行が1字だけにならないように。
+    英字だけの文（空白で語を区切る言語）は折らずに返す（PowerPoint が語の切れ目で折る）。"""
+    t = (t or "").strip()
+    if "\n" in t or not re.search(r"[ぁ-んァ-ヶ一-龥]", t):
+        return t
+    n = max(3, int(width / (size / 72.0)))
+    out = []
+    while len(t) > n:
+        # 助詞が続く所（では・には）はその後ろで。余りが1行に入る切り方があれば、行の長さがそろうほうを選ぶ
+        cands = [i + 1 for i, ch in enumerate(t[:n]) if i + 1 >= 2 and t[i + 1:i + 2] not in CELL_CUT
+                 and (ch in CELL_CUT or ch == " " or t[max(0, i - 1):i + 1] in ("から", "まで", "より"))]
+        kj, hr = r"[一-龥ァ-ヶーA-Za-z0-9]", r"[ぁ-ん]"
+        if not cands:   # 助詞で切れなければ、語の始まり（ひらがなから漢字に変わる所）で。それも無ければ漢字の語の終わりで
+            cands = [i + 1 for i in range(1, min(n, len(t) - 1)) if re.match(hr, t[i]) and re.match(kj, t[i + 1])] \
+                or [i + 1 for i in range(1, min(n, len(t) - 1)) if re.match(kj, t[i]) and re.match(hr, t[i + 1])]
+        fit = [c for c in cands if len(t) - c <= n]
+        k = min(fit, key=lambda c: max(c, len(t) - c)) if fit else max(cands) if cands else n
+        if len(t) - k < 2:
+            k = len(t) - 2
+        out.append(t[:k].strip())
+        t = t[k:].strip()
+    return "\n".join(out + [t])
+
+
 def table_code(fig: str, beside: bool = True):
     """図の案「…：表：列1×列2（行1＝セル／行2＝セル）」（セルが2つ以上なら「｜」で区切る）から s.table の行。
     行の中身が無ければ None（担当が中身を考えることになるので、設計メモに書く）。"""
@@ -407,7 +435,7 @@ def table_code(fig: str, beside: bool = True):
     label_w = round(min(max(1.5 if beside else 1.8, need), total * 0.42), 2)
     col_w = round((total - label_w) / ncell, 2)
     rows = [(split_label(lab) if len(lab) * 16 / 72 * 1.05 + 0.35 > label_w else lab, c) for lab, c in rows]
-    cells = [(lab, [_fold(c, col_w - 0.2, 16) for c in cell.split("｜")]) for lab, cell in rows[:7]]
+    cells = [(lab, [fold_cell(c, col_w - 0.34, 16) for c in cell.split("｜")]) for lab, cell in rows[:7]]
     nl = max(c.count("\n") + 1 for _, cs in cells for c in cs)   # 行の高さは、いちばん行の多いセルに合わせる（固定だと2行のセルが重なった）
     row_h = round(0.2 + 0.28 * nl, 2)
     rr = ", ".join('("' + q(lab) + '", [' + qs(cs) + "])" for lab, cs in cells)

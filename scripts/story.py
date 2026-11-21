@@ -222,6 +222,22 @@ def set_aim(work: Path, aim: str) -> list:
     return done
 
 
+def map_arc(readme_text: str, n) -> str | None:
+    """講座の地図（README）から、この回の話の型の名前：表のこの回の行の「ねらい」→ 既定の型。無ければ「話の型：<名前>」の行。"""
+    rows = [[c.strip() for c in l.strip().strip("|").split("|")] for l in readme_text.splitlines() if l.strip().startswith("|")]
+    head = next((r for r in rows if "ねらい" in r), None)
+    if head:
+        i = head.index("ねらい")
+        for r in rows:
+            if r and re.sub(r"\D", "", r[0]) == str(n).lstrip("0") and i < len(r):
+                hit = next((a for a in sorted(AIMS, key=lambda a: -len(a[0])) if a[0] in r[i]), None)
+                if hit:
+                    return hit[1]
+    m = re.search(r"話の型[：:]\s*([^）)\n]+)", readme_text)
+    name = m.group(1).strip() if m else ""
+    return next((a[0] for a in ARCS if a[0] == name or a[0].split("（")[0] == name), None)
+
+
 def aims_table() -> str:
     return "\n".join(["| ねらい | 既定の話の型 | どんな回か |", "|---|---|---|"] + [f"| {a} | {t} | {d} |" for a, t, d in AIMS])
 ANSWER_BEAT = ("だから", "帰結", "答えと柱の一覧")

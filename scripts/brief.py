@@ -234,6 +234,15 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
     import language as LG
     if not LG.is_japanese(lang):
         text += "\n" + LANG_COMMON.format(lang=lang) + ("\n" + LANG_NOTES[role].format(lang=lang) if role in LANG_NOTES else "")
+    if role in ("軽量の設計の担当", "設計の担当") and k == "講座" and readme is not None and readme.exists():
+        try:   # この回の型の拍ごとのおすすめの図を、図を選ぶ前に目に入れる（ねらいは地図の担当が書いてあり、--aim を呼ばない回が多い。比べで、型と図の ✘ が最初の検査で出続けた）
+            import story
+            arc = story.map_arc(readme.read_text(encoding="utf-8"), n or 1)
+            if arc:
+                text += ("\n\n## この回の話の型の図（図で見せるものは、ここの拍のおすすめから。別の型にしたときだけ `story.py --figs <型>`）\n"
+                         + story.figs_table(arc) + "\n本文の要点は、文の塊2〜3つ（見出しの無い要点は1つで1塊。要点が4つなら、同じ見出しの下に2つまとめる）")
+        except Exception:
+            pass
     src = source_text_line(course if role in NO_WORK else str(Path(target).resolve().parents[1] / course) if k == "講座" else None, note) \
         if role in SOURCE_READERS else ""
     if src:
