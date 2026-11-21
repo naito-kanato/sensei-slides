@@ -16,6 +16,8 @@
      「## 9. 引っかかりへの手当て」に [番号] で全部載っている。レビューの前（memo_review.md が無い）なら数えない
      （ゼミの構成案と同じ照合。check_outline.py の reasoning）
   5. 話の筋・前の枚から：1節の筋の表（状況・複雑化・問い・答え）と、2節の表の「前の枚から」（そして・しかし・だから）。story.py
+  6. 題の問い：筋の問いが題の問い（設計メモの見出し・地図のこの回の題）と語を1つも共有しなければ △。筋の表の「たとえ」が無ければ △。
+     確認問題6問に、題の問いに答える問（〔題の問い〕か、答えの枚を根拠にした〔型：仕組み〕・なぜ の問）が無ければ △
 """
 import re
 import sys
@@ -104,7 +106,95 @@ def recap_check(text: str, srows, col):
             bad.append("対の片側は14字まで（箱の中で1行）：" + "・".join(f"「{s[:16]}」" for s in long_[:3]))
     if bad:
         return [("✘", "まとめの枚", f"{rec[0]}枚目（形「{kind_}」）：" + "。".join(bad))]
-    return [("✔", "まとめの枚", f"{rec[0]}枚目（形「{kind_}」）")]
+    out = [("✔", "まとめの枚", f"{rec[0]}枚目（形「{kind_}」）")]
+    ans = ((story.story_table(text) or {}).get("答え") or ("", None))[0]
+    if kind_ in ("前と後", "選び方") and ans:   # ほかの形は scaffold が筋の答えをそのまま入れる
+        right = " ".join(re.split(r"\s*(?:→|⇒)\s*", p, maxsplit=1)[-1] for p in pts if re.search(r"→|⇒", p))
+        if right and not (story.words(right) & story.words(ans)):
+            out.append(("△", "まとめの要点と答え", f"{rec[0]}枚目の対の右（今わかったこと）に、筋の答え（仕組みの一言）の語が無い。"
+                        "1組目を「題の問いへの素朴な答え → 仕組みの一言」に（片側14字まで）"))
+    return out
+
+
+def lesson_titles(text: str, memo: Path):
+    """(題の候補, 地図の問い) ：設計メモの見出し「# 設計メモ：第N回 <題>（<講座名>）」と、講座の地図のこの回の行の「題」（と「問い」の列があればそれ）。"""
+    titles, asks = [], []
+    m = re.search(r"^#\s*設計メモ\s*[：:]\s*(?:第\s*[0-9０-９]+\s*回\s*)?(.+?)\s*(?:（[^（）]*）)?\s*$", text, re.M)
+    if m and "<" not in m.group(1):
+        titles.append(m.group(1).strip())
+    work = Path(memo).resolve().parent
+    lesson = re.search(r"_(\d{2})$", work.name)
+    if lesson:
+        readme = work.parent.parent / work.name[:lesson.start()] / "00_README.md"
+        sec = re.search(r"^##\s*全体の地図.*?(?=^##\s|\Z)", readme.read_text(encoding="utf-8"), re.M | re.S) if readme.exists() else None
+        rows = [[c.strip() for c in l.strip().strip("|").split("|")] for l in (sec.group(0).splitlines() if sec else []) if l.strip().startswith("|")]
+        if len(rows) >= 3:
+            head = rows[0]
+            for r in rows[2:]:
+                if r and re.sub(r"\D", "", r[0]) == str(int(lesson.group(1))):
+                    for k, h in enumerate(head):
+                        v = r[k] if k < len(r) else ""
+                        if v and v not in ("—", "-"):
+                            if h == "題" and v not in titles:
+                                titles.append(v)
+                            elif h == "問い":
+                                asks.append(v)
+    return titles, asks
+
+
+def title_question_check(text: str, memo: Path):
+    """筋の問いが、題の問い（地図のこの回の題・問い）につながっているか（講座）。語が1つも重ならず、同じ問いの語（なぜ・本当 など）も無ければ △。
+    題が問いの形でない（「ベイズの定理」）・地図に問いの列も無いなら見ない（全部は機械で判定できないので、ゆるく）。
+    地震の比べで、冒頭の驚きのデータ（8%以下の断層でも起きた）に引っぱられ、筋の問いが「確率が低ければ安心か」にずれ、
+    まとめにも確認問題にも題の問い（なぜ予知できないのか）の答えが入らなかった。"""
+    import story
+    titles, asks = lesson_titles(text, memo)
+    qs = [t for t in titles if story.QUESTION_SHAPE.search(t)] + asks
+    q = ((story.story_table(text) or {}).get("問い") or ("", None))[0]
+    if not qs or q in ("", "—", "-"):
+        return []
+    if re.search(r"問いを(?:題から)?変える理由[：:]\s*\S", text):
+        return [("✔", "題の問い", "筋の問いを題から変えている（理由あり）")]
+    if any(story.linked(q, t) for t in qs):
+        return [("✔", "題の問い", f"筋の問い「{q[:24]}」は題「{qs[0][:24]}」につながる")]
+    return [("△", "題の問い", f"筋の問い「{q[:30]}」が、題の問い「{qs[0][:30]}」と語を1つも共有していない。"
+             "入口は身近な問い（ニュースの数字・体験）から入り、題の問いへ橋渡しする（「30年で8%なら安心？ → 8%でも起きた → では、なぜ前もって言い当てられないのか？」）。"
+             "題と違う問いにするなら1節に「問いを変える理由：…」")]
+
+
+def analogy_check(text: str, body_n: int):
+    """筋の表の「たとえ」（答えの仕組みを日常の何に置き換えるか）。講座の本文6枚以上で、行が無い・空なら △。"""
+    import story
+    st = story.story_table(text)
+    if st is None or body_n <= 5 or not (st.get("答え") or ("",))[0]:
+        return []
+    t = (st.get("たとえ") or ("", None))[0]
+    if t in ("", "—", "-"):
+        return [("△", "筋のたとえ", "筋の表に「たとえ」の行が無い（答えの下に「| たとえ | — | 〜は、〜のようなもの | <答えの枚> |」。"
+                 "答えの仕組みを学習者の日常に置き換える一文。答えの枚の図と原稿で使う）")]
+    return [("✔", "筋のたとえ", t[:30])]
+
+
+def quiz_title_check(text: str):
+    """確認問題6問のうち1問が、題の問いに答える問か：〔題の問い〕の印があるか、答えの枚（story.answer_slides）を根拠にした
+    〔型：仕組み〕か「なぜ」の問があれば ✔、無ければ △。地震の比べで、6問に題の問い（なぜ予知できないのか）を問う問が無かった。"""
+    import story
+    import structures
+    items = structures.quiz_items(text)
+    if not items:
+        return []
+    tagged = [k for k, v in items.items() if "題の問い" in v[0]]
+    if tagged:
+        return [("✔", "確認問題の題の問い", f"{tagged[0]}（〔題の問い〕）")]
+    ans = story.answer_slides(text, "memo")
+    hit = [k for k, v in items.items() if v[2] in ans and
+           ((m := structures.QUIZ_TYPE_TAG.search(v[0])) and m.group(1).strip() == "仕組み" or re.search(r"なぜ|どうして", v[0]))]
+    if hit:
+        return [("✔", "確認問題の題の問い", f"{hit[0]}（{items[hit[0]][2]}枚目＝答えの枚）")]
+    where = "・".join(map(str, ans)) or "<答えの枚>"
+    return [("△", "確認問題の題の問い", "6問に、題の問い（筋の問い）に答える問が無い。1問を「<題の問い>を、仕組みの一言とたとえで説明せよ。"
+             f"〔題の問い〕〔ゴールN・{where.split('・')[0]}枚目〕〔型：仕組み〕」にし、解答の〔要素〕に仕組みの一言とたとえを入れる"
+             f"（答えの枚：{where}。6問ちょうど・型3種類以上はそのまま）")]
 
 
 CONCRETE = re.compile(r"[0-9０-９]|「[^」]+」|例[：:）)]|たとえば|例えば")
@@ -485,6 +575,9 @@ def check(memo: Path, require_review: bool = False):
         res += structures.check_quiz_plan(text, "memo")
         import story
         res += story.check(text, "memo", story.body_numbers(text, "memo"), "設計メモ2節")
+        res += title_question_check(text, memo)   # 筋の問い・答え・確認問題を、題の問いにつなぐ（地震の比べ）
+        res += analogy_check(text, len(body_no))
+        res += quiz_title_check(text)
     res += data_rows(text, memo.parent, body_no)
     nfacts = fact_count(text)
     if nfacts is not None and body_no and nfacts < len(body_no):
@@ -559,7 +652,7 @@ def check(memo: Path, require_review: bool = False):
                              for m in [SCRIPT_MEMO.search("\n".join(l for l in t.splitlines() if not l.strip().startswith("※")))] if m]
                 if memo_hits:
                     res.append(("△", "原稿の作業メモ", "原稿に作り手の作業の言い方が残っている枚：" + "・".join(memo_hits[:6])
-                                + "（確かさの断り・作業の経緯は設計メモの3節の確認の列か8節へ。原稿は「〜とされます」のように聞き手に言う形だけ）"))
+                                + "（確かさの断り・作業の経緯は設計メモの3節の確認の列か8節へ。原稿は「〜とされます」「ここは講師のまとめです」のように聞き手に言う形だけ）"))
                 # 図の中の位置で指す言い方（図の向き・並びは制作の担当があとで決めるので、原稿と食い違う。比べで「右端の〜」が横棒の一番下だった）
                 pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for m in [SCRIPT_POS.search(t)] if m]
                 if pos:
