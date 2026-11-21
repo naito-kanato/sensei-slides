@@ -609,7 +609,10 @@ def build_py(work: Path, kind, title, rows) -> str:
         if role == "表紙":
             lines = pts[:1] if pts and kind == "outline" else ["T"]
             first = f'["{q(lines[0])}"]' if lines != ["T"] else "[T]"
-            L.append(f"deck.title_slide({first}, author=AUTHOR)" if n == 1 else
+            import check_memo as _cm
+            road = _cm.roadmap_of(ptext) if n == 1 else None   # 1節の「- 道筋：A → B → C」を表紙の題の下に
+            road_arg = (", roadmap=[" + qs(road) + "]") if road else ""
+            L.append(f"deck.title_slide({first}, author=AUTHOR{road_arg})" if n == 1 else
                      f'deck.title_slide(["TODO 題名"], subtitle="TODO")   # 論文の表紙など（{q(fig) or "表紙"}）')
         elif role == "区切り":
             L.append(f'deck.section({n}, "{q(head or "TODO 章の名前")}")')

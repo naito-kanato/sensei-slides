@@ -2361,10 +2361,11 @@ class Deck:
         return x0, x1
 
     def title_slide(self, lines: list[str], author: str | None = None, subtitle: str | None = None,
-                    size: float = 44, bold: bool = True) -> Slide:
+                    size: float = 44, bold: bool = True, roadmap: list[str] | None = None) -> Slide:
         """表紙／区切りスライド（左上の縦棒だけのレイアウト）。lines は節番号付きの題目を1行ずつ。
         論文の表紙（過去の論文紹介のデッキの形）は lines に英題（2行まで）、subtitle に和訳（28pt）、author に著者名（20pt、\\n で2行）。
-        元デッキの英題は太字でないので bold=False にする。"""
+        元デッキの英題は太字でないので bold=False にする。
+        roadmap（講座）は、問いから答えまでの段 ["A", "B", "C"]。題の下に「今日の道筋：A → B → C」を1行（入らなければ2行）で置く。"""
         slide = self.prs.slides.add_slide(self.layout_title)
         for ph in list(slide.placeholders):  # 空のタイトル枠は使わない（元デッキ同様テキストボックスで置く）
             ph._element.getparent().remove(ph._element)
@@ -2398,6 +2399,16 @@ class Deck:
             sw = max(text_width_pt(l, 28) for l in split_lines(parse_markup(subtitle))) / 72.0 + 0.3
             b = s.text(cx - sw / 2, y, subtitle, size=28, align="c", w=sw)
             y = b.bottom + 0.3
+        if roadmap:
+            head = "今日の道筋：" if self.lang == "日本語" else "Today: "
+            line = head + " → ".join(roadmap)
+            span = x1 - x0 - 0.8
+            if text_width_pt(parse_markup(line), 20) / 72.0 + 0.3 > span:   # 入らなければ段の区切りで2行に
+                k = -(-len(roadmap) // 2)
+                line = head + " → ".join(roadmap[:k]) + " →\n" + " → ".join(roadmap[k:])
+            rw = min(span, max(text_width_pt(l, 20) for l in split_lines(parse_markup(line))) / 72.0 + 0.3)
+            b = s.text(cx - rw / 2, y, line, size=20, color=C.TEXT, align="c", w=rw, name="道筋")
+            y = b.bottom + 0.1
         if author:
             aw = text_width_pt(parse_markup(author), 20) / 72.0 + 0.3
             s.text(cx - aw / 2, max(y + 0.6, 4.98), author, size=20, align="c", w=aw)

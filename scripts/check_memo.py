@@ -200,6 +200,121 @@ def quiz_title_check(text: str):
              f"答えの枚：{where}。6問ちょうど・型3種類以上はそのまま）")]
 
 
+# ---- 悪い回の底上げ（同じ版でも1本ごとに出来が揺れる。下振れの回に共通した抜けを、書いた段で知らせる） ----
+
+ROADMAP = re.compile(r"^\s*-\s*道筋\s*[：:]\s*(.+?)\s*$", re.M)
+ROADMAP_STEP_MAX = 14   # 1段の字数の目安（表紙の1行に3〜4段が入る）
+
+
+def roadmap_of(text: str):
+    """1節の「- 道筋：A → B → C」の段のリスト（無ければ None）。表紙に載る。"""
+    m = ROADMAP.search(text or "")
+    if not m or m.group(1).strip() in ("", "—", "-") or m.group(1).lstrip().startswith("<"):
+        return None
+    return [s.strip() for s in re.split(r"\s*(?:→|⇒|->)\s*", m.group(1)) if s.strip()]
+
+
+def roadmap_check(text: str, body_n: int):
+    """学習者が答えまでの地図を先に持てるように、表紙に今日の道筋を1行。本文6枚以上で、無い・段の数や長さが外れていれば △。"""
+    if body_n <= 5:
+        return []
+    steps = roadmap_of(text)
+    if steps is None:
+        return [("△", "道筋", "学習者が答えまでの地図を先に持てるように、1節に「- 道筋：<段1> → <段2> → <段3>」を1行"
+                 f"（3〜4段、1段{ROADMAP_STEP_MAX}字まで。問いから答えまでの大きな段。表紙の題の下に載る）")]
+    long_ = [s for s in steps if len(s) > ROADMAP_STEP_MAX]
+    if not 2 <= len(steps) <= 5 or long_:
+        return [("△", "道筋", f"道筋は3〜4段・1段{ROADMAP_STEP_MAX}字まで（今：{len(steps)}段"
+                 + (f"、長い段：{'・'.join(long_[:3])}" if long_ else "") + "）")]
+    return [("✔", "道筋", " → ".join(steps))]
+
+
+GOAL_STOP = {"説明", "理由", "自分", "見分", "判断", "根拠", "違", "仕組", "見方", "指摘", "場合", "全体", "一言", "部分"}
+DRAWN_KINDS = ("模式図", "棒グラフ", "折れ線", "概略グラフ", "帯グラフ", "年表", "資料の図", "写真", "流れ図", "判定の流れ図")   # 流れ図は順序・手順を見せる
+
+
+def goals_of(text: str) -> list:
+    """1節の「言えるようになること」の番号つきの行。"""
+    m = re.search(r"言えるようになること[^\n]*\n((?:\s*\d+[.．].*\n?)+)", text or "")
+    return [re.sub(r"^\s*\d+[.．]\s*", "", l).strip() for l in (m.group(1).splitlines() if m else []) if l.strip()]
+
+
+def goal_figure_check(text: str):
+    """ゴールに出てくる話題（漢字・カタカナの語）を見出し・青帯で扱う本文の枚が、どれも文字の箱（カード・比較・前後・表・流れ図）だけなら △。
+    比べで、ゴールの1つ（乱気流のとき機内で起きること）の枚が文字の箱だけで、採点者2人が「核心の一部にしか図が無い」と減点した。"""
+    import figplan
+    rows = table_rows(text, "話の順番")
+    goals = goals_of(text)
+    if not rows or not goals:
+        return []
+    head = rows[0]
+    ix = lambda *ns: next((k for k, h in enumerate(head) if any(n in h for n in ns)), None)   # noqa: E731
+    i_head, i_sum, i_fig, i_role = ix("見出し"), ix("青帯", "結論"), ix("図で見せる"), ix("役割")
+    get = lambda r, i: (r[i] if i is not None and i < len(r) else "")   # noqa: E731
+    body = [r for r in rows[1:] if r and r[0].strip().isdigit() and (get(r, i_role) or "本文").strip() == "本文"]
+    bad = []
+    for g in goals:
+        for w in dict.fromkeys(re.findall(r"[一-龥々ァ-ヴー]{2,}", g)):
+            if w in GOAL_STOP:
+                continue
+            hit = [r for r in body if w in get(r, i_head) + get(r, i_sum)]
+            if not hit or len(hit) == len(body):   # どの枚にも出ない語・全部の枚に出る語（テーマそのもの）は見ない
+                continue
+            if any(figplan.REASON_WORDS.search(get(r, i_fig)) for r in hit):   # 文字の比べが合う話題（誤りの説明の比べなど）は「外す理由：…」で通す
+                continue
+            if not any(figplan.parse_fig(get(r, i_fig))[1] in DRAWN_KINDS for r in hit):
+                bad.append(f"「{w}」（{'・'.join(r[0].strip() for r in hit)}枚目）")
+    if not bad:
+        return [("✔", "ゴールの図", "ゴールの話題を扱う枚に、図（模式図・グラフなど）がある")]
+    return [("△", "ゴールの図", "ゴールに入っている話題は、少なくとも1枚を図（模式図・グラフ）で見せる（文字の箱だけだと、その話題のしくみが残らない）。"
+             "文字の箱だけの話題：" + "・".join(bad[:4]) + "。その中の1枚の図の案を、模式図かグラフに"
+             "（誤りの説明の比べのように文字の比べが合う枚は、図の案に「外す理由：…」）")]
+
+
+ASKS_REASON = re.compile(r"なぜ|理由|どう変わる|どうなる|比べ|違い|予想")
+GIVES_REASON = re.compile(r"から|ため|ので|なぜなら|により|によって|ことで|結果|せいで|おかげで|すると|すれば|⇒|→")
+
+
+def quiz_reason_check(text: str):
+    """理由・変化・比べを問う問題の解答に、理由のつなぎ（〜から・〜ため・〜ことで）が無ければ △。
+    比べで、「大きすぎると失速する」のように結論だけの解答が、採点者2人に「なぜかが無い」と減点された。"""
+    import structures
+    items = structures.quiz_items(text)
+    bare = [k for k, v in items.items() if ASKS_REASON.search(v[0]) and v[3] and not GIVES_REASON.search(re.sub(r"〔[^〕]*〕", "", v[3]))]
+    if not items:
+        return []
+    if not bare:
+        return [("✔", "解答の理由", "理由を問う問題の解答に、理由がある")]
+    return [("△", "解答の理由", "解答は、結論だけでなく、なぜそうなるかまで書く（学習者が自分の答えのどこが足りないかを確かめられる）。"
+             "理由のつなぎ（〜から・〜ため・〜ことで）が無い解答：" + "・".join(bare[:6]))]
+
+
+EXPERIENCE = re.compile(r"体験|経験|予想|思って|思い込|感じ|あなた|ふだん|普段|いつも|日常|身近|したこと|見たこと|乗った|乗る|使った|使う|手を")
+
+
+def entry_experience_check(text: str):
+    """本文の最初の2枚の見出し・青帯・要点に、学習者がすでに持っている経験か予想が一言も無ければ △（数字・定義・よく聞く説明だけで始まる）。
+    比べで、本文の1枚目が数字の比べから入った回は、原稿の表紙で体験に触れていても、採点者2人が入口を低く付けた。"""
+    rows = table_rows(text, "話の順番")
+    if not rows:
+        return []
+    head = rows[0]
+    ix = lambda *ns: next((k for k, h in enumerate(head) if any(n in h for n in ns)), None)   # noqa: E731
+    i_role = ix("役割")
+    cols = [k for k in (ix("見出し"), ix("青帯", "結論"), ix("本文の要点")) if k is not None]
+    body = [r for r in rows[1:] if r and r[0].strip().isdigit()
+            and ((r[i_role] if i_role is not None and i_role < len(r) else "本文").strip() == "本文")]
+    if len(body) <= 5:
+        return []
+    first = body[:HOOK_BODY]
+    said = " ".join(r[k] for r in first for k in cols if k < len(r))
+    if EXPERIENCE.search(said):
+        return [("✔", "入口の経験", "本文の最初の枚に、学習者の経験か予想がある")]
+    return [("△", "入口の経験", "入口は学習者がすでに持っている経験か予想から入る（数字・定義・よく聞く説明だけで始めない）。"
+             f"本文の最初の {len(first)} 枚（{'・'.join(r[0].strip() for r in first)}枚目）の見出し・青帯・要点に、"
+             "学習者の体験や予想を一言（「〜したとき、〜と感じた」「〜だと思っていませんか」）。原稿だけで触れても画面に残らない")]
+
+
 CONCRETE = re.compile(r"[0-9０-９]|「[^」]+」|例[：:）)]|たとえば|例えば")
 CONCRETE_MIN = 0.5    # 本文のスライドのうち、具体的なもの（数値・具体例）がある枚の割合の下限
 
@@ -586,6 +701,7 @@ def check(memo: Path, require_review: bool = False):
         res += title_question_check(text, memo)   # 筋の問い・答え・確認問題を、題の問いにつなぐ（地震の比べ）
         res += analogy_check(text, len(body_no))
         res += quiz_title_check(text)
+        res += roadmap_check(text, len(body_no)) + goal_figure_check(text) + quiz_reason_check(text) + entry_experience_check(text)
     res += data_rows(text, memo.parent, body_no)
     nfacts = fact_count(text)
     if nfacts is not None and body_no and nfacts < len(body_no):
