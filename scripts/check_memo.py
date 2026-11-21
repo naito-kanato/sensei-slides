@@ -158,7 +158,7 @@ def title_question_check(text: str, memo: Path):
     if any(story.linked(q, t) for t in qs):
         return [("✔", "題の問い", f"筋の問い「{q[:24]}」は題「{qs[0][:24]}」につながる")]
     return [("△", "題の問い", f"筋の問い「{q[:30]}」が、題の問い「{qs[0][:30]}」と語を1つも共有していない。"
-             "入口は身近な問い（ニュースの数字・体験）から入り、題の問いへ橋渡しする（「30年で8%なら安心？ → 8%でも起きた → では、なぜ前もって言い当てられないのか？」）。"
+             "入口は身近な問い（ニュースの数字・体験）から入り、題の問いへ橋渡しする（「〇〇なら大丈夫？」（身近な疑問）→「それでも〜が起きた」（意外な事実）→「では、なぜ〜なのか？」（題の問い））。"
              "題と違う問いにするなら1節に「問いを変える理由：…」")]
 
 
@@ -657,7 +657,7 @@ def check(memo: Path, require_review: bool = False):
                 pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for m in [SCRIPT_POS.search(t)] if m]
                 if pos:
                     res.append(("△", "原稿の図の指し方", "図の中の位置で指している枚：" + "・".join(pos[:6])
-                                + "（図の向き・並びは組むときに決まる。位置ではなく中身で指す：「右端の棒」→「南海トラフの棒」）"))
+                                + "（図の向き・並びは組むときに決まる。位置ではなく中身で指す：「右端の棒」→「〇〇（その棒の名前）の棒」）"))
         import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
         bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
         if bad:

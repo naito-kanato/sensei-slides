@@ -7,7 +7,7 @@ area=(x0, y0, w, h) を渡すと、その四角の中だけに描く（2つの�
     from figkit import blank, save
     import figschema
     f, ax = blank(5.6, 3.4)
-    figschema.branch(ax, "破れの始まり", ["小さく止まる", "大きく広がる"], highlight=1, stops=[0])
+    figschema.branch(ax, "始まり", ["小さく止まる", "大きく広がる"], highlight=1, stops=[0])
     save(f, "figs/s10.png")
 
 設計メモの図の案の言葉から型を探す:  python figschema.py --match "<図の案の一文>"
@@ -26,7 +26,7 @@ area=(x0, y0, w, h) を渡すと、その四角の中だけに描く（2つの�
 | balance       | つり合い         | 2つの重みの、どちらに傾くか |
 | section       | 断面の層         | 層の重なりと、どの層のどこに何があるか |
 
-試しで、設計メモの答えの枚の図の案は「同じ始まりから小さく止まる道と大きく広がる道に分かれる断面」だったのに、
+試しで、設計メモの答えの枚の図の案は分かれ道の模式図だったのに、
 図の担当は描く部品が無く、一本の線に点と矢印だけの図にした。原稿は「分かれる道を描いています」と話し、2人の採点者が食い違いで減点した。
 """
 from __future__ import annotations
@@ -367,7 +367,7 @@ PATTERNS = [
             "build_release(ax)"),
     Pattern("funnel", "ふるい", r"ふるい|篩|絞り込|絞られ|漏斗|残ったのは|段ごとに減",
             "候補が段ごとに減り、最後に少ししか残らない",
-            'funnel(ax, [("報告", "729件"), ("記録あり", "160件"), ("続けて観察", "14件")])'),
+            'funnel(ax, [("候補", "1000件"), ("条件を満たす", "120件"), ("残った", "8件")])'),
     Pattern("cone", "先ほど広がる幅", r"幅が広が|広がる幅|先ほど|先へ行くほど|見込みの幅|予測の幅|不確かさが",
             "今から先へ行くほど、見込みの幅が広がる",
             'cone(ax, now="今", band="見込みの幅", actual="実際")'),
@@ -424,16 +424,16 @@ def _demo(outdir):
         save(f, p)
         out.append(p)
 
-    go("branch", lambda ax: branch(ax, "破れの始まり", ["小さく止まる", "大きく広がる"], highlight=1, stops=[0]))
-    go("hidden", lambda ax: hidden(ax, "地表の観測点", "見えない深さ", target="断層"))
-    go("need_have", lambda ax: need_have(ax, "予知に要る情報", "今測れる情報", gap="足りない分", level=0.28))
+    go("branch", lambda ax: branch(ax, "始まり", ["小さく止まる", "大きく広がる"], highlight=1, stops=[0]))
+    go("hidden", lambda ax: hidden(ax, "測る所", "見えない所", target="肝心の物"))
+    go("need_have", lambda ax: need_have(ax, "要る量", "手に入る量", gap="足りない分", level=0.28))
     go("build_release", lambda ax: build_release(ax))
-    go("funnel", lambda ax: funnel(ax, [("前兆の報告", "729件"), ("記録が残る", "160件"), ("続けて観察", "14件")]))
+    go("funnel", lambda ax: funnel(ax, [("候補", "1000件"), ("条件を満たす", "120件"), ("残った", "8件")]))
     go("cone", lambda ax: cone(ax, now="今", band="見込みの幅", past="これまでの記録", actual="実際"))
-    go("sensitive", lambda ax: sensitive(ax, labels=("大雨", "晴れ"), start="ほぼ同じ空模様"))
-    go("black_box", lambda ax: black_box(ax, ["入力の文"], ["次の単語"], inside="中の計算は見えない"))
-    go("balance", lambda ax: balance(ax, "手間", "安心", heavier="right", result="備える側に傾く"))
-    go("section", lambda ax: section(ax, [("地殻", 1.0), ("マントル", 2.2)], marks=[("震源", 0.55, 0.45)], top="地表"))
+    go("sensitive", lambda ax: sensitive(ax, labels=("結果A", "結果B")))
+    go("black_box", lambda ax: black_box(ax, ["入るもの"], ["出るもの"]))
+    go("balance", lambda ax: balance(ax, "重みA", "重みB", heavier="right", result="Bの側に傾く"))
+    go("section", lambda ax: section(ax, [("上の層", 1.0), ("下の層", 2.2)], marks=[("ここ", 0.55, 0.45)], top="表面"))
 
     def combo(ax):   # 2つの型を1枚に（area で左右に分ける）
         hidden(ax, "観測点", "見えない所", target=None, area=(0.0, 0.0, 2.6, 3.4))
