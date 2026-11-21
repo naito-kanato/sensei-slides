@@ -462,14 +462,18 @@ def quiz_wrapped(qz: dict) -> dict:
 
 
 def short_source(src: str) -> str:
-    """出典の欄 → 図の下の短い出典（「Walters ほか 2023」の形）。"""
-    m = re.match(r"\s*([A-Za-z][\w'-]+)", src or "")
-    y = re.search(r"(19|20)\d{2}", src or "")
+    """出典の欄 → 図の下の短い出典（「Walters ほか 2023」の形。年が無ければ名前だけ）。
+    URL と、取得日・閲覧日・「発行年の記載なし」の括弧の数字は年に取らない（比べで、取得日の年を発行年として図の下に出し、
+    原稿の「発行年の記載なし」と食い違った）。"""
+    src = re.sub(r"https?://\S+", "", src or "")
+    src = re.sub(r"[（(][^）)]*(?:取得|閲覧|アクセス|記載なし|accessed|retrieved)[^）)]*[）)]", "", src, flags=re.I)
+    m = re.match(r"\s*([A-Za-z][\w'-]+)", src)
+    y = re.search(r"(19|20)\d{2}", src)
     if m:
         who = m.group(1) + (" ほか" if re.search(r"&|et al|ほか|,\s*[A-Z]\.", src) else "")
     else:
         who = re.split(r"[「（(、,]", src or "")[0].strip()[:16]
-    return f"（{who} {y.group(0)}）" if who and y else ""
+    return f"（{who} {y.group(0)}）" if who and y else f"（{who}）" if who else ""
 
 
 def figs_py(work: Path, rows, text: str) -> str:

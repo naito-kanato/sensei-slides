@@ -123,3 +123,11 @@ def test_answer_slide_shows_where_it_was_taught():
     t = memo(BODY, quiz=q)
     assert scaffold.quiz_slices(t, rows, "（{}枚目）")[10][0][1].endswith("（3枚目）")
     assert not scaffold.quiz_slices(t, rows)[10][0][1].endswith("枚目）")
+
+
+def test_caption_year_is_not_the_access_date():
+    """図の下の短い出典に、取得日・URL の数字を発行年として出さない（年が無ければ名前だけ）。"""
+    import scaffold
+    src = "Maker「Depth table」Table 1 https://example.com/2019/x （発行年の記載なし。取得 2026-11-21）"
+    assert scaffold.short_source(src) == "（Maker）"
+    assert scaffold.short_source("Walters, A. & Lee 2023, Nature（取得 2026-01-02）") == "（Walters ほか 2023）"
