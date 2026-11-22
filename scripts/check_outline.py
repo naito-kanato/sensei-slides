@@ -17,9 +17,9 @@
     穴の行（「[番号] 「A ⇒ B」｜種類｜要否｜…」、穴1つに1行。要否は 筋・語・あと・像・深 のうち当たるもの全部）で、要1・要2・要4があるスライドと、要3が丁寧さより多いスライドが、
     outline.md の「## 引っかかりへの手当て」に [番号] で全部載っている（採らなかったものも理由つきで載せる）。「深」と、要と深の両方の行（迷い）は数えない（迷いは一覧に出す）。
     載っていなければ ✘。レビューの前（outline_review.md が無い）なら数えない
-  照合できるのは、数えた結果と手当てが食い違っていないかまで。穴の数そのものはレビュー担当の判断。
+  照合できるのは、数えた結果と手当てが食い違っていないかまで。穴の数そのものは推論距離の担当の判断。
   話の筋・前の枚から：筋の表（状況・複雑化・問い・答え）と、構成の表の「前の枚から」（そして・しかし・だから）。story.py
-  原稿（標準の回だけ）：設計の担当が書く script.md。無い・短い枚・字数の外れ（目安は 発表時間×300字÷本文の枚数）・図の指し方・
+  原稿：設計の担当が書く script.md。無い・短い枚・字数の外れ（目安は 発表時間×300字÷本文の枚数）・図の指し方・
     手当てで原稿に回したのに無い（✘）。check_memo と同じ検査（check_memo.script_checks）
 """
 import math
@@ -124,7 +124,7 @@ def hole_form(review_text: str):
     bad = [(int(n), kind) for n, _, kind, need, _ in rows if re.sub(r"[（(][^）)]*[）)]$", "", kind).strip() not in KINDS or not labels(need)]
     if bad:
         res.append(("✘", "推論距離の行の形", f"種類か要否が決まりの形でない行が {len(bad)} 行（" + "・".join(f"[{n}] {k}" for n, k in bad[:6])
-                    + ("…" if len(bad) > 6 else "") + "）。この行は数えていない。レビュー担当に推論距離の節だけやり直させる（`brief.py レビュー担当 <work>` に「推論距離の節だけ」と添える。種類は " + "・".join(KINDS) + " から1つ、要否は 筋・語・あと・像・深 のうち当たるもの全部）。メインが書き直さない"))
+                    + ("…" if len(bad) > 6 else "") + "）。この行は数えていない。推論距離の担当に推論距離の節だけやり直させる（【続けて頼む】。新しく起動するなら `brief.py 推論距離の担当 <work>` に「推論距離の節だけ」と添える。種類は " + "・".join(KINDS) + " から1つ、要否は 筋・語・あと・像・深 のうち当たるもの全部）。メインが書き直さない"))
     y4 = [int(n) for n, _, kind, need, rest in rows if "要4" in labels(need) and not re.search(r"補う前提\s*[：:]\s*像", rest)]
     if y4:
         res.append(("△", "推論距離の像", "像 なのに補う前提が「像：〇〇と思い浮かべる → 実際は△△」の形でない行：" + "・".join(f"[{n}]" for n in y4)
@@ -198,17 +198,10 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
                 else f"詳しさ {fam}・前提知識あり・丁寧さ {lv}"))
     rv = outline.with_name(REVIEW)
     if not rv.exists():
-        try:   # 標準（担当2人）にはレビューが無いので、「まだレビュー前」は出さない（雑音になる）
-            import budget
-            no_review = not require_review and budget.light(outline.parent)
-        except Exception:
-            no_review = False
-        if no_review:   # 標準（担当2人）：推論距離の担当が設計のあとに見る（next_step が起動を案内する）。抜けているのが見えるように1行出す
-            res.append(("・", "推論距離の手当て", f"まだ（標準の回は、設計のあとに推論距離の担当が {REVIEW} に書く。そのあと手当てを入れる）"))
+        if not require_review:   # 推論距離の担当が設計のあとに見る（next_step が起動を案内する）。抜けているのが見えるように1行出す
+            res.append(("・", "推論距離の手当て", f"まだ（設計のあとに推論距離の担当が {REVIEW} に書く。そのあと手当てを入れる）"))
             return res
-        res.append(("✘" if require_review else "・", "推論距離の手当て",
-                    f"{REVIEW} が無い（{what}のレビューの結果をそのまま残す）" if require_review else
-                    f"まだレビュー前（レビューのあと、結果を {REVIEW} に残してもう一度走らせる）"))
+        res.append(("✘", "推論距離の手当て", f"{REVIEW} が無い（{what}の推論距離の監査の結果をそのまま残す）"))
         return res
     rv_text = rv.read_text(encoding="utf-8")
     hs = holes(rv_text)
@@ -384,17 +377,11 @@ def main(argv=None):
     report.show(res, full)
     bad = sum(m == "✘" for m, _, _ in res)
     warn = sum(m == "△" for m, _, _ in res)
-    reviewed = p.with_name(REVIEW).exists()
-    try:
-        import budget
-        light = budget.light(p.parent)
-    except Exception:
-        light = False
-    nxt = "中身（図・ビルド）に進んでよい" if reviewed or light else "レビューに回してよい"
+    nxt = "中身（図・ビルド）に進んでよい"
     print("\n" + (f"✘ が {bad} 件。直してから先へ" if bad else
                   f"△ が {warn} 件。直すか理由を書いてから先へ" if warn else nxt) + f"（{p.name}）")
-    if not bad and light:
-        try:   # 担当2人の回：次の手順も続けて出す（設計の担当が返答の最後の行に写す。メインが next_step を別に呼ばずに済む）
+    if not bad:
+        try:   # 次の手順も続けて出す（設計の担当が返答の最後の行に写す。メインが next_step を別に呼ばずに済む）
             import next_step
             print(f"次：{next_step.steps_for(p.parent)[1]}")
         except Exception:

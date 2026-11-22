@@ -5,15 +5,13 @@
 （<work> は作業フォルダ。地図の担当だけは講座名。ユーザーの答えがあれば、その下に「ユーザーの答え：…」と続ける）
 
     python <skill>/scripts/brief.py --list                       # 担当の一覧
-    python <skill>/scripts/brief.py 仕上げ役 _work/〇〇講座_01
-    python <skill>/scripts/brief.py 裏取りの担当 _work/X講座_01 --n 2
+    python <skill>/scripts/brief.py 軽量の設計の担当 _work/〇〇講座_01
     python <skill>/scripts/brief.py 地図の担当 X講座 --note "学習者：…／回数：3"
-    python <skill>/scripts/brief.py 制作役 _work/X講座_01 --part 1/2   # 本文が8枚以上なら2人（next_step が言う）と、図の担当（brief.py 図の担当 <work>。自分で描く図が8枚以上なら --part 1/2・2/2 の2人）
-    python <skill>/scripts/brief.py 仕上げ役 _work/X講座_01 --over      # 回数の上限を超えて起動する（ユーザーが許したときだけ）
+    python <skill>/scripts/brief.py 制作役 _work/X講座_01/質問回答 --part 1/2   # 質問回答のデッキ：本文が8枚以上なら2人（next_step が言う）と、図の担当（brief.py 図の担当 <work>。自分で描く図が8枚以上なら --part 1/2・2/2 の2人）
+    python <skill>/scripts/brief.py 軽量の制作の担当 _work/X講座_01 --over      # 回数の上限を超えて起動する（ユーザーが許したときだけ）
 
 依頼文を出すたびに、その担当の起動を1回と数える（budget.py。上限なら依頼文を出さずに ✘ で止まる）。
-メインが中身を確かめるだけなら --peek（数えない）。
-直しの担当の依頼文を出すとき（--peek でないとき）は、直す前の memo.md・outline.md を <work>/memo_直す前.md・outline_直す前.md に写す（もうあれば上書きしない）。担当を起動したあと作業フォルダに何も書かれていなければ、次の起動と同じ1回とみなす。
+メインが中身を確かめるだけなら --peek（数えない）。担当を起動したあと作業フォルダに何も書かれていなければ、次の起動と同じ1回とみなす。
 
 雛形の書き方：{skill}・{work}・{course}・{plan_name}・{review_name}・{n} を埋める。
 `[節] steps 5 6 ／ tools コマンドの書き方` の行は、その手順書の節（guide.py と同じ切り方）を依頼文の終わりに写す
@@ -33,8 +31,8 @@ if hasattr(sys.stdout, "reconfigure"):
 SKILL = Path(__file__).resolve().parents[1]
 BRIEFS = SKILL / "assets" / "briefs"
 NO_WORK = ("地図の担当",)
-FIRST_ROLES = ("数字を探す担当", "設計の担当", "軽量の設計の担当")   # 作業フォルダがまだ無くても起動できる担当
-SPLIT_AT = 8   # カードがこの枚数以上なら、制作役を前半と後半の2人に分ける（1つの会話が長くなると、呼び出しごとに読み直す量が増える）
+FIRST_ROLES = ("軽量の設計の担当",)   # 作業フォルダがまだ無くても起動できる担当
+SPLIT_AT = 8   # カードがこの枚数以上なら、制作役（質問回答のデッキ）を前半と後半の2人に分ける（1つの会話が長くなると、呼び出しごとに読み直す量が増える）
 
 
 def card_numbers(work: Path) -> list[int]:
@@ -78,42 +76,25 @@ def rel(p: Path) -> str:
         return p.as_posix()
 
 
-def keep_before_fix(plan: Path) -> Path | None:
-    """直しの担当を起動する前の設計メモ・構成案を <work>/<memo|outline>_直す前.md に写す（あとで、直す前と後の穴を比べられるように）。
-    もうあれば上書きしない（2回目の起動では、最初の直しの前の版を残す）。"""
-    plan = Path(plan)
-    copy = plan.with_name(f"{plan.stem}_直す前.md")
-    if not plan.exists() or copy.exists():
-        return None
-    copy.write_bytes(plan.read_bytes())
-    return copy
-
-
 # 日本語でないデッキ（設定の「言語」）のときに、依頼の終わりに足す行。{lang} はその言語の名前
 LANG_COMMON = ("**出力の言語：{lang}**。スライド・原稿（notes.md）・確認問題と解答の文は{lang}で書く。"
                "構成案・設計メモの説明、手当ての書き方、返答は日本語のままでよい。")
 LANG_NOTES = {
-    "設計の担当": "表のタイトル・●見出し・青帯（結論）・本文の要点の列と、確認問題・解答の文は{lang}で書く（そのままスライドに載る）。"
-                 "表紙の行の「第N回」も {lang} で（英語なら Lecture N: …）。手当ての「原稿で「…」」の「…」と、用語の穴の語も{lang}で。数値・出典は元のまま。字数の目安は全角に直した幅（半角の字・空白は0.5）",
     "軽量の設計の担当": "表のタイトル・●見出し・青帯（結論）・本文の要点の列と、確認問題・解答の文は{lang}で書く（そのままスライドに載る）。"
                        "表紙の行の「第N回」も {lang} で（英語なら Lecture N: …）。数値・出典は元のまま。字数の目安は全角に直した幅（半角の字・空白は0.5）。引用する原文は元の言語のまま",
     "軽量の制作の担当": "書き方の読み替えは `cards/00_共通.md` の「## 言語」の節。図の中の文字も{lang}。スライドと原稿は{lang}で、日本語の文字を残さない",
-    "直しの担当": "直す行のうち、スライドに載る列（タイトル・●見出し・青帯・本文の要点）と確認問題の文は{lang}で書く",
     "制作役": "書き方の読み替えは `cards/00_共通.md` の「## 言語」の節（字数は全角に直した幅、本文は短い句、原稿は話し言葉の{lang}）",
     "図の担当": "図の中の文字（軸・目盛りの単位・ラベル・凡例）は{lang}で書く。数値と記号はそのまま",
     "仕上げ役": "スライドと原稿は{lang}。check_layout は全角に直した幅で数え、文末の記号で終わる行を「文の形の行」として出す（短い句に直す）。"
                "日本語の文字が残っていないかも見る",
     "仕上げの直しの担当": "スライドと原稿は{lang}。直した所も{lang}で書き、日本語の文字を残さない",
-    "レビュー担当": "スライドに載る列（タイトル・●見出し・青帯・本文の要点）と確認問題は{lang}で書いてある。{lang}として自然か・意味が元の事実と同じかも見る。指摘は日本語で書く",
     "完成後のレビュー担当": "スライドと原稿は{lang}で書いてある。{lang}として自然か、日本語が残っていないか、訳で意味が強まっていないかも見る。指摘は日本語で書く",
     "地図の担当": "講座の README の「学習者とゴール」に `- 言語：{lang}` の行を書く（各回の設計メモに写す）。各回の題は{lang}で",
-    "数字を探す担当": "集める表の説明は日本語でよい。引用する原文は元の言語のまま",
-    "裏取りの担当": "表の確かめは日本語でよい。引用する原文は元の言語のまま",
 }
 
 
 def plan_language(plan, note: str = "", readme=None) -> str:
-    """構成案・設計メモの設定の「言語」→ 講座の README の「- 言語：…」（設計メモがまだ無い設計の担当・数字を探す担当）
+    """構成案・設計メモの設定の「言語」→ 講座の README の「- 言語：…」（設計メモがまだ無い設計の担当）
     → ユーザーの答えの「言語：…」（地図の担当）。無ければ日本語。
     英語の試しで、設計の担当の依頼に言語の行が入らなかった（memo.md ができる前で、README を見ていなかった）。"""
     import language as LG
@@ -170,7 +151,7 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
             work.mkdir(parents=True, exist_ok=True)   # 回の最初に動く担当（作業フォルダはまだ無い。地図の担当は作らない）
         if count:   # 回数の予算（budget.py）：上限なら依頼文を出さずに止める
             import budget
-            msg = budget.check_tokens(work, over) or budget.check_role(work, role, part or (n if role in ("裏取りの担当", "数字を探す担当") else ""), over)
+            msg = budget.check_tokens(work, over) or budget.check_role(work, role, part, over)
             if msg:
                 raise SystemExit(msg)
         work = Path(rel(work))
@@ -180,8 +161,6 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
     mine = "[講座]" if k == "講座" else "[発表]"
     k_part, n_part = (int(x) for x in part.split("/")) if part else (1, 1)
     plan = (Path(target) / plan_name) if role not in NO_WORK else None
-    if role == "直しの担当" and count and plan is not None:
-        keep_before_fix(plan)
     from slide_profile import measure_only
     measure = bool(plan and plan.exists() and measure_only(plan.read_text(encoding="utf-8")))
     lines, specs = [], []
@@ -234,7 +213,7 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
     import language as LG
     if not LG.is_japanese(lang):
         text += "\n" + LANG_COMMON.format(lang=lang) + ("\n" + LANG_NOTES[role].format(lang=lang) if role in LANG_NOTES else "")
-    if role in ("軽量の設計の担当", "設計の担当") and k == "講座" and readme is not None and readme.exists():
+    if role == "軽量の設計の担当" and k == "講座" and readme is not None and readme.exists():
         try:   # この回の型の拍ごとのおすすめの図を、図を選ぶ前に目に入れる（ねらいは地図の担当が書いてあり、--aim を呼ばない回が多い。比べで、型と図の ✘ が最初の検査で出続けた）
             import story
             arc = story.map_arc(readme.read_text(encoding="utf-8"), n or 1)
@@ -252,7 +231,7 @@ def build(role: str, target: str, kind: str | None = None, n: str = "1", note: s
     return text + embed(specs) + TAIL
 
 
-SOURCE_READERS = ("地図の担当", "数字を探す担当", "設計の担当", "軽量の設計の担当", "裏取りの担当", "レビュー担当", "直しの担当")   # 制作・仕上げは資料を開かない（要る文言は設計メモにある）
+SOURCE_READERS = ("地図の担当", "軽量の設計の担当")   # 制作・仕上げは資料を開かない（要る文言は設計メモにある）
 
 
 def source_text_line(course_dir, note: str = "") -> str:

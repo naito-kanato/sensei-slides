@@ -113,15 +113,14 @@ SCRIPT_MEMO_TALK = re.compile(SCRIPT_MEMO.pattern.replace("私の概算|概算�
 
 
 def script_checks(work, srows, text: str, kind: str = "memo", aim=None) -> list:
-    """標準の回の script.md（設計の担当が書く読み上げ原稿。scaffold が notes.md に入れ、制作の担当は書き直さない）の [(印, 項目, 説明)]。
+    """script.md（設計の担当が書く読み上げ原稿。scaffold が notes.md に入れ、制作の担当は書き直さない）の [(印, 項目, 説明)]。
     講座（check_memo）と発表（check_outline、kind="outline"）で共通。aim＝本文の枚の字数の (下, 上, 目安の言い方)：
     省くと講座の 300〜400字。発表は check_outline が 発表時間×300字÷本文の枚数 から渡し、出どころ〔p.12〕は組むときに外すので数えない。
-    標準の回でないとき・同梱の見本（script.md より前に作った）では何も出さない。"""
+    同梱の見本（script.md より前に作った）では何も出さない。"""
     import os
-    import budget
     import scaffold
     work = Path(work)
-    if not budget.light(work) or "examples" in work.resolve().parts or os.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):
+    if "examples" in work.resolve().parts or os.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):
         return []
     lo, hi, say = aim or (SCRIPT_MIN, SCRIPT_MAX, "300〜400字")
     W = SCRIPT_WORDS[kind]
@@ -683,7 +682,7 @@ def data_rows(text: str, work: Path, body_no, kind: str = "memo") -> list:
         if kind == "outline":   # 発表も、探したかどうかは必ず残す（組が無ければ「見つからなかった：理由」でよい）
             return [("✘", "データ", "data_1.md が無い。資料の表・図から比べられる数字の組を2組まで書く。無ければ「## 見つからなかった：理由」と"
                      "「- 調べたこと：」。書いたら python <skill>/scripts/data.py merge <work>")]
-        return [("・", "データ", "3b節が無い（講座は、設計の前に数字を探す担当が比べられる数字の組を探す。references/course.md 手順4⓪）")]
+        return [("・", "データ", "3b節が無い（講座は、設計の担当が筋を決める前に比べられる数字の組を data_1.md に探す。references/course.md 手順4）")]
     ds = data.datasets(text)
     nf = data.memo_not_found(text)
     res = []
@@ -776,7 +775,7 @@ EVERYDAY_NAMES = ("PowerPoint", "Word", "Excel", "Google", "Windows", "Mac", "iP
 
 
 def term_order(text: str, rows, scaffold):
-    """用語の初出（推論距離の網。スクリプトで安く見られる所だけ。深い監査は推論距離の担当・レビュー担当がする）：
+    """用語の初出（推論距離の網。スクリプトで安く見られる所だけ。深い監査は推論距離の担当がする）：
     4節の用語が、本文の枚の青帯・要点に初めて出る枚で説明されているか（「語：」「語（」「語＝」が無く、あとの枚にあれば △）と、
     青帯・要点の英字の名前（3字以上か数字入り）が4節にも前提知識の「知っている」にも無い（△）。
     試しで、3枚目で「2048トークン」と使ってから4枚目でトークンを説明し、「BLOOM」は説明が無かった。"""
@@ -873,13 +872,12 @@ def check(memo: Path, require_review: bool = False):
     if bad is None:
         res.append(("✘", "出典", "3節「事実と出典」の表が無い"))
     elif bad:
-        res.append(("✘", "出典", f"○ なのに資料を特定できない行が {len(bad)} 件（書名・URL・頁などを足すか、確認を × にする。裏取りした行は facts_N.md の同じ行も直す：memo.md だけ直すと facts.py merge で戻る）："
+        res.append(("✘", "出典", f"○ なのに資料を特定できない行が {len(bad)} 件（書名・URL・頁などを足すか、確認を × にする）："
                     + " / ".join(f"「{a[:14]}」→{b[:20]}" for a, b in bad[:4])))
     else:
         res.append(("✔", "出典", "○ の行はすべて資料を特定できる"))
     try:
-        import budget as _b
-        res += design_content(text, _b.light(memo.parent))
+        res += design_content(text)
     except Exception:
         pass
     try:   # PowerPoint の部品で組む図の案を、スクリプトが読める書き方か（読めないと、制作の担当が中身を考えて手で組む。
@@ -911,7 +909,7 @@ def check(memo: Path, require_review: bool = False):
         if "examples" not in Path(memo).resolve().parts and not _os2.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):   # 見本はまとめの枚より前に作った（作り直すときに入れる）
             res += recap_check(text, srows, scaffold.col)
         res += example_copy(text, "memo", memo)
-        res += script_checks(memo.parent, srows, text)   # 標準の回：原稿は設計の担当が script.md に書く（制作の担当は書き直さない）
+        res += script_checks(memo.parent, srows, text)   # 原稿は設計の担当が script.md に書く（制作の担当は書き直さない）
         import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
         bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
         if bad:
@@ -919,17 +917,15 @@ def check(memo: Path, require_review: bool = False):
                         + "（中身まで設計メモに書く。表なら行ごとのセル、判定なら はい・いいえ の行き先）"))
     except Exception:
         pass
-    try:   # 軽量の回（裏取りの担当がいない）：確認がまだの事実を残さない（試しで、「一般」にした数値の行が2回とも残り、往復が増えた）
-        import budget
+    try:   # 確認がまだの事実を残さない（設計の担当がその場で確かめる。試しで、「一般」にした数値の行が2回とも残り、往復が増えた）
         import facts
-        if budget.light(memo.parent):
-            _, fh, frows = facts.memo_facts(text)
-            i_ok = next((k for k, h in enumerate(fh) if "確認" in h), 3)
-            todo = [r for r in frows if facts.unchecked(r, i_ok)]
-            if todo:
-                res.append(("✘", "事実の確かめ", f"確認がまだの行が {len(todo)} 行（軽量の回は設計の担当が確かめる）："
-                            + " / ".join(f"「{r[0][:16]}」" for r in todo[:5])
-                            + "。数値・年・固有の名前を含む行は「一般」にできない。確かめて ○・△ にするか、確かめきれなければ ×（確かめられず）"))
+        _, fh, frows = facts.memo_facts(text)
+        i_ok = next((k for k, h in enumerate(fh) if "確認" in h), 3)
+        todo = [r for r in frows if facts.unchecked(r, i_ok)]
+        if todo:
+            res.append(("✘", "事実の確かめ", f"確認がまだの行が {len(todo)} 行（設計の担当が確かめる）："
+                        + " / ".join(f"「{r[0][:16]}」" for r in todo[:5])
+                        + "。数値・年・固有の名前を含む行は「一般」にできない。確かめて ○・△ にするか、確かめきれなければ ×（確かめられず）"))
     except Exception:
         pass
     import check_outline  # 関数の中で読む（check_outline → check_memo の循環を避ける）
@@ -948,8 +944,8 @@ def _fig_src(text: str, n: int) -> list:
     return [" ".join(r) for r in rows[1:] if r and r[0].strip() == str(n)]
 
 
-def design_content(text: str, light: bool):
-    """[(印, 項目, 説明)]：設計の中身で、外から見た採点で毎回減点された所。軽量の回は ✘（レビュー担当がいない）、標準の回は △。
+def design_content(text: str):
+    """[(印, 項目, 説明)]：設計の中身で、外から見た採点で毎回減点された所（別のレビューが無いので ✘）。
     ・冒頭：本文の最初の HOOK_BODY 枚に、問い（？）か意外な事実（しかし・データN・数字の青帯）が無い
     ・くり返し：同じデータN を、本文の2枚以上の図で見せている（4枚目と9枚目で同じ表、と減点された）"""
     rows = table_rows(text, "話の順番")
@@ -962,7 +958,7 @@ def design_content(text: str, light: bool):
     body = [r for r in rows[1:] if r and r[0].strip().isdigit() and (get(r, i_role) or "本文").strip() == "本文"]
     if not body:
         return []
-    mark = "✘" if light else "△"
+    mark = "✘"
     out = []
     first = body[:HOOK_BODY]
     asks = lambda r: "？" in get(r, i_pts) + get(r, i_sum) or "?" in get(r, i_pts) + get(r, i_sum)   # noqa: E731
@@ -1042,13 +1038,12 @@ def main(argv=None):
         print(f"[ERROR] {memo} が無い")
         return 1
     try:
-        import budget
         import data as datamod
-        if budget.light(memo.parent) and datamod.files(memo.parent):
+        if datamod.files(memo.parent):
             before = memo.read_text(encoding="utf-8")
             datamod.merge(memo.parent)
             if memo.read_text(encoding="utf-8") != before:
-                print("（軽量の回：data_N.md を3b節に入れた。data.py merge を別に走らせなくてよい）")
+                print("（data_N.md を3b節に入れた。data.py merge を別に走らせなくてよい）")
     except SystemExit:
         pass
     except Exception:
@@ -1058,11 +1053,7 @@ def main(argv=None):
     report.show(res, full)
     bad = sum(m == "✘" for m, _, _ in res)
     warn = sum(m == "△" for m, _, _ in res)
-    try:
-        import budget
-        then = "制作に回す" if budget.light(memo.parent) else "レビューに回す"   # 担当2人の回には、別のレビューが無い
-    except Exception:
-        then = "レビューに回す"
+    then = "制作に回す"   # 別のレビューは無い（推論距離の担当のあと、制作の担当へ）
     if bad:
         print(f"\n✘ が {bad} 件。直してから{then}（{memo.name}）")
     elif warn:
@@ -1070,12 +1061,10 @@ def main(argv=None):
     else:
         print(f"\n{then.replace('回す', '回してよい')}（{memo.name}）")
     if not bad:
-        try:   # 軽量の回：次の手順も続けて出す（設計の担当が next_step を別に呼ぶ1回を省く）
-            import budget
-            if budget.light(memo.parent):
-                import next_step
-                _, nxt = next_step.steps_for(memo.parent)
-                print(f"次：{nxt}")
+        try:   # 次の手順も続けて出す（設計の担当が next_step を別に呼ぶ1回を省く）
+            import next_step
+            _, nxt = next_step.steps_for(memo.parent)
+            print(f"次：{nxt}")
         except Exception:
             pass
     return 1 if bad else 0

@@ -247,10 +247,10 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     else:
         res.append(("✔", "原稿のページ", html.name))
 
-    # 5. 完成後のレビュー（オプション「軽さ：標準」（担当2人）の回は省く。検査のスクリプトで代える）
+    # 5. 完成後のレビュー（担当2人の回＝講座・発表は省く。検査のスクリプトで代える。質問回答のデッキだけ要る）
     review = work / "review.md" if work else None
     if light and (not review or not review.exists()):
-        res.append(("✔", "完成後のレビュー", "軽量の回：別のレビューは省いた（オプション「軽さ：標準」（担当2人）。検査のスクリプトで代えた）"))
+        res.append(("✔", "完成後のレビュー", "担当2人の回：別のレビューは省いた（検査のスクリプトで代えた）"))
     elif not review or not review.exists():
         res.append(("✘", "完成後のレビュー", "review.md が無い（手順5b のレビューの判定と直した点を書く）"))
     else:
@@ -353,7 +353,7 @@ def check(pptx: Path, work: Path | None, record: bool = True):
     bad = vague_sources(memo) if memo and memo.exists() else None
     if bad is not None:
         if bad:
-            res.append(("✘", "出典", f"○ なのに資料を特定できない行が {len(bad)} 件（書名・URL・頁などを足すか、確認を × にする。裏取りした行は facts_N.md の同じ行も直す：memo.md だけ直すと facts.py merge で戻る）："
+            res.append(("✘", "出典", f"○ なのに資料を特定できない行が {len(bad)} 件（書名・URL・頁などを足すか、確認を × にする）："
                         + " / ".join(f"「{a[:14]}」→{b[:20]}" for a, b in bad[:4])))
         else:
             res.append(("✔", "出典", "○ の行はすべて資料を特定できる"))

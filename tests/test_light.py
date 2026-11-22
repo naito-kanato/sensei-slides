@@ -1,4 +1,4 @@
-"""オプション「軽さ：軽量」：担当2人（設計・制作）で作る流れ。"""
+"""担当2人（設計・制作）で作る流れ（講座・発表はいつもこれ。前の版の「軽さ：念入り」も標準として読む）。"""
 from pathlib import Path
 
 import brief
@@ -20,8 +20,11 @@ def test_light_is_read_from_the_course_readme(tmp_path):
     a, b = tmp_path / "a", tmp_path / "b"
     a.mkdir()
     b.mkdir()
-    assert budget.light(_course(a))
-    assert not budget.light(_course(b, light=False))
+    assert budget.light(_course(a)) and budget.careful_note(a / "_work" / "X講座_01") is None
+    old = _course(b, light=False)   # 前の版の念入り：標準として読み、1行知らせる
+    assert budget.light(old) and "念入りは無くなった" in budget.careful_note(old)
+    (old / "answers.md").write_text("", encoding="utf-8")   # 質問回答のデッキだけは別の流れ
+    assert not budget.light(old)
 
 
 def test_next_step_sends_the_light_design_role_first(tmp_path):
@@ -37,8 +40,8 @@ def test_light_briefs_are_whole(tmp_path, monkeypatch):
     d = brief.build("軽量の設計の担当", str(w), count=False)
     own = d.split("\n---\n# 手順書の節")[0]
     assert "{" not in own and "[講座]" not in own and "[節]" not in own
-    assert "① **数字**" in d and "facts.py split はしない" in d and "split --n" not in d
-    assert "4a. 設計メモの中身" in d and "4d. 担当の順" not in d   # 設計メモの中身だけを写す（念入りの担当の順は写さない）
+    assert "① **数字**" in d and "split --n" not in d
+    assert "4a. 設計メモの中身" in d and "4c. 担当の順" not in d   # 設計メモの中身だけを写す（担当の順は写さない）
     assert "inference-distance.md" in d and "書くときから避ける" in d
     m = brief.build("軽量の制作の担当", str(w), count=False)
     assert "scaffold.py" in m and "--light" in m and "1回の応答で書く" in m and "3回まで" in m and "## 5. 描画して確認する" in m
@@ -52,7 +55,7 @@ def test_light_make_deck_cap(tmp_path):
 
 
 def test_light_memo_stops_on_unchecked_facts(tmp_path):
-    """軽量の回は裏取りの担当がいないので、確認がまだの事実を check_memo が ✘ にする（標準の回は裏取りの段で見る）。"""
+    """裏取りの担当はいないので、確認がまだの事実を check_memo が ✘ にする（前の版の念入りの回も同じ）。"""
     import check_memo
     src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
     m = src.replace("| 175 billion、2020年 | Brown, T. et al.（2020）arXiv:2005.14165 Abstract | ○（計算：175 billion＝175×10⁹＝1750億） |",
@@ -66,7 +69,7 @@ def test_light_memo_stops_on_unchecked_facts(tmp_path):
     (tmp_path / "s").mkdir()
     sw = _course(tmp_path / "s", light=False)
     (sw / "memo.md").write_text(m, encoding="utf-8")
-    assert "事実の確かめ" not in {item for _, item, _ in check_memo.check(sw / "memo.md")}
+    assert {item: mk for mk, item, _ in check_memo.check(sw / "memo.md")}.get("事実の確かめ") == "✘"
 
 
 def test_scaffold_builds_more_from_the_memo():
@@ -84,18 +87,17 @@ def test_scaffold_builds_more_from_the_memo():
 
 
 def test_design_content_hook_and_repeat():
-    """設計の中身：本文の最初の2枚に問いか意外な事実が無い・同じデータを2枚で見せる、を軽量の回は ✘、標準の回は △。"""
+    """設計の中身：本文の最初の2枚に問いか意外な事実が無い・同じデータを2枚で見せる、は ✘（別のレビューが無い）。"""
     import check_memo
     head = "## 2. 話の順番\n\n| # | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 本文の要点 | 役割 |\n|---|---|---|---|---|---|---|\n"
     weak = head + ("| 1 | 表紙 | — | — | — | — | 表紙 |\n| 2 | 仕組み | — | 文はトークンに分かれる | 仕組み：模式図：x | a | 本文 |\n"
                    "| 3 | 確率 | そして | 次の語を確率で選ぶ | 仕組み：模式図：y | b | 本文 |\n"
                    "| 4 | 意外 | しかし | 誤りは17〜33%だった | 比べる：棒グラフ：データ1 | c | 本文 |\n"
                    "| 5 | 限り | しかし | 検索しても17〜33%残る | 比べる：棒グラフ：データ1 | d | 本文 |\n")
-    marks = {i: m for m, i, _ in check_memo.design_content(weak, True)}
+    marks = {i: m for m, i, _ in check_memo.design_content(weak)}
     assert marks.get("冒頭の問い") == "✘" and marks.get("同じデータのくり返し") == "✘"
-    assert {m for m, _, _ in check_memo.design_content(weak, False)} == {"△"}
     good = weak.replace("| 2 | 仕組み | — | 文はトークンに分かれる |", "| 2 | 問い | — | AIは調べて答えている？ |").replace("| 5 | 限り | しかし | 検索しても17〜33%残る | 比べる：棒グラフ：データ1 |", "| 5 | 限り | しかし | 検索しても残る | 仕組み：模式図：z |")
-    assert [m for m, _, _ in check_memo.design_content(good, True)] == ["✔"]
+    assert [m for m, _, _ in check_memo.design_content(good)] == ["✔"]
 
 
 def test_light_presentation_shows_the_outline_first(tmp_path):
@@ -130,14 +132,14 @@ def test_opening_mystery_points_to_the_surprise():
             "| 3 | 未検証 | しかし（壁） | 深さを分けた実験は無い | 違い：比較：x | 表面だけ弱いか？ | 本文 |\n"
             "| 4 | 結果 | だから | P は約55% | 比べる：棒グラフ：データ1 | c | 本文 |\n"
             "| 5 | まとめ | だから | 表面は弱まり P は TI より低い | 仕組み：模式図：z | d | 本文 |\n")
-    marks = {i: m for m, i, _ in check_memo.design_content(head + rows + tail, True)}
+    marks = {i: m for m, i, _ in check_memo.design_content(head + rows + tail)}
     assert marks.get("冒頭の問い") == "△"                       # 問い（？）はあるが、驚きのデータを指していない（知らせるだけ）
     teaser = rows.replace("| 2 | 背景 | — | 表面は金属 | 仕組み：模式図：x | a |",
                           "| 2 | 謎 | — | TKI なら約70%のはずが約55%。なぜ？ | 仕組み：模式図：x | 謎（データ1） |")
-    res = check_memo.design_content(head + teaser + tail, True)
+    res = check_memo.design_content(head + teaser + tail)
     assert [m for m, _, _ in res] == ["✔"], res                # 謎の枚の約55%は、4枚目のグラフと くり返しに数えない
     ends = teaser.replace("| 表面は弱まり P は TI より低い |", "| 混成の抑制がトポロジーを抑える？ |")
-    assert {i: m for m, i, _ in check_memo.design_content(head + ends + tail, True)}.get("結びの答え") == "△"
+    assert {i: m for m, i, _ in check_memo.design_content(head + ends + tail)}.get("結びの答え") == "△"
 
 
 def test_quoted_speech_is_not_prose():
@@ -391,7 +393,7 @@ def _zemi(tmp_path, lightness="標準"):
 
 def test_outline_script_fills_the_notes(tmp_path, monkeypatch):
     """発表の標準の回も、設計の担当が書いた script.md の原稿を scaffold が notes.md に入れる（読み上げる行の出どころ〔…〕は外し、※ の行には残す）。
-    原稿が無い・短い枚は check_outline が △。念入りの回は script.md を求めない。"""
+    原稿が無い・短い枚は check_outline が △。前の版で念入りにした構成案も、同じく script.md を求める。"""
     monkeypatch.delenv("SENSEI_SKIP_EXAMPLE_COPY", raising=False)
     import re
     import check_outline
@@ -407,7 +409,7 @@ def test_outline_script_fills_the_notes(tmp_path, monkeypatch):
     notes = re.sub(r"<!--.*?-->", "", (w / "notes.md").read_text(encoding="utf-8"), flags=re.S)   # 枚ごとのコメント（構成案の列）は見ない
     assert "い" * 440 + "と書かれています。" in notes and "〔Fig. 3〕" not in notes and "※（資料外の補足）根拠〔p.2〕" in notes
     careful = _zemi(tmp_path / "c", "念入り")
-    assert not {"原稿", "原稿の字数"} & {i for _, i, _ in check_outline.check(careful / "outline.md")}
+    assert "原稿" in {i for _, i, _ in check_outline.check(careful / "outline.md")}
 
 
 def test_outline_script_checks(tmp_path, monkeypatch):

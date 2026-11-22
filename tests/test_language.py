@@ -126,10 +126,10 @@ def test_briefs_and_cards_tell_the_language(tmp_path, monkeypatch):
     work = tmp_path / "_work" / "X"
     work.mkdir(parents=True)
     (work / "outline.md").write_text("## オプション\n\n| オプション | 今の値 |\n|---|---|\n| 言語 | 英語 |\n", encoding="utf-8")
-    text = brief.build("設計の担当", str(work), "発表")
+    text = brief.build("軽量の設計の担当", str(work), "発表")
     assert "出力の言語：英語" in text and "●見出し" in text.split("出力の言語")[1]
     (work / "outline.md").write_text("## オプション\n\n| オプション | 今の値 |\n|---|---|\n| 言語 | 日本語 |\n", encoding="utf-8")
-    assert "出力の言語" not in brief.build("設計の担当", str(work), "発表")
+    assert "出力の言語" not in brief.build("軽量の設計の担当", str(work), "発表")
     assert "言語：英語" in brief.build("地図の担当", "X講座", note="学習者：学生／言語：英語")
     rules = "\n".join(cards.language_rules("英語", "380字"))
     assert "190語" in rules and "Review Questions" in rules and "Yes／No" in rules
@@ -216,7 +216,7 @@ def test_course_parts_follow_the_language(tmp_path, monkeypatch):
     (work / "memo.md").unlink()
     (tmp_path / "How_GPS_Works").mkdir()
     (tmp_path / "How_GPS_Works" / "00_README.md").write_text("## 学習者とゴール\n\n- 言語：英語\n", encoding="utf-8")
-    assert "出力の言語：英語" in brief.build("設計の担当", str(work), "講座")
+    assert "出力の言語：英語" in brief.build("軽量の設計の担当", str(work), "講座")
 
 
 def test_course_readme_settings_reach_the_build(tmp_path):

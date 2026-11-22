@@ -49,14 +49,14 @@ def test_finds_course_work_folder(course):
 def test_unfinished_deck_is_not_ready(course):
     pptx, work = course
     (work / "review.md").unlink(missing_ok=True)                  # レビューの記録が無い状態にする
-    readme = pptx.parent / "00_README.md"                         # 見本は軽さ「標準」（別のレビューを省く）。念入りの回として見る
+    readme = pptx.parent / "00_README.md"                         # 前の版で念入りにした講座も、担当2人の回として見る（別のレビューは省く）
     readme.write_text(readme.read_text(encoding="utf-8").replace("- 軽さ：標準", "- 軽さ：念入り"), encoding="utf-8")
     m = marks(cd.check(pptx, cd.find_work(pptx)))
     assert m["作業フォルダ"] == "✔"           # memo.md・build.py・notes.md がある
     assert m["読み上げ原稿"] == "✔"           # build.py が notes.md を入れている
     assert m["描画の検査"] == "✘"             # まだ描画していない
     assert m["原稿のページ"] == "✘"
-    assert m["完成後のレビュー"] == "✘"
+    assert m["完成後のレビュー"] == "✔"
     assert cd.main([str(pptx)]) == 1
 
 

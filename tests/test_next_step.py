@@ -6,11 +6,15 @@ def test_empty_work_folder_starts_with_the_outline(tmp_path):
     w = tmp_path / "_work" / "論文"
     w.mkdir(parents=True)
     steps, nxt = next_step.steps_for(w)
-    assert "軽量の設計の担当" in nxt   # 既定（軽さ：標準）は担当2人
+    assert "軽量の設計の担当" in nxt   # 講座も発表も担当2人
+    import json
     import budget
-    budget.set_lightness(w, "念入り")   # 念入りを選んだ回は、構成案から
+    assert budget.careful_note(w) is None
+    (w / budget.LOG).write_text(json.dumps({"t": "", "ts": 0, "type": "set_lightness", "value": "念入り"}, ensure_ascii=False) + "\n",
+                                encoding="utf-8")   # 前の版で念入りを記録した作業フォルダ：標準として読み、1行知らせる
     steps, nxt = next_step.steps_for(w)
-    assert nxt.startswith("手順2")
+    assert "軽量の設計の担当" in nxt and "念入りは無くなった" in budget.careful_note(w)
+    assert budget.main([str(w), "--set-lightness", "念入り"]) == 0 and budget.light(w)
 
 
 def test_course_folder_points_to_the_first_memo(tmp_path):
@@ -30,13 +34,14 @@ def test_course_folder_points_to_the_first_memo(tmp_path):
 def test_example_course_reports_each_step(built, tmp_path):
     import shutil
     shutil.copytree(built / "examples" / "course", tmp_path / "course")
-    readme = tmp_path / "course" / "AI活用講座" / "00_README.md"   # 見本は軽さ「標準」。念入りの回の手順の一覧を見る
+    readme = tmp_path / "course" / "AI活用講座" / "00_README.md"   # 前の版で念入りにした講座も、担当2人の手順の一覧で見る
     readme.write_text(readme.read_text(encoding="utf-8").replace("- 軽さ：標準", "- 軽さ：念入り"), encoding="utf-8")
     w = tmp_path / "course" / "_work" / "AI活用講座_01"
     steps, nxt = next_step.steps_for(w)
     names = [s for _, s, _ in steps]
-    assert any("設計メモの確認" in n for n in names) and any("スライド" in n for n in names)
-    assert nxt.startswith(("手順5", "手順5b", "手順6", "手順7"))   # 組み終えたあと：描画・レビュー・原稿のページ・渡す前の確認のどれか
+    assert any("設計（軽量）" in n for n in names) and any("制作（軽量）" in n for n in names)
+    import budget
+    assert budget.careful_note(w) and budget.careful_note(readme.parent)
 
 
 def test_old_title_deck_is_not_a_new_lesson(tmp_path):
@@ -53,25 +58,21 @@ def test_old_title_deck_is_not_a_new_lesson(tmp_path):
     assert "第2回" in nxt and "作った回 1" in lines[0]
 
 
-def test_course_lesson_starts_with_finding_numbers(tmp_path):
-    """講座の回は、数字を探す担当 → 設計の担当の順（設計メモはデータを見てから）。"""
+def test_course_lesson_starts_with_the_light_designer(tmp_path):
+    """講座の回は、軽量の設計の担当が数字も探す（前の版で念入りにした講座も同じ）。"""
     w = tmp_path / "_work" / "焼き肉講座_01"
     w.mkdir(parents=True)
-    import budget
-    budget.set_lightness(w, "念入り")   # 念入りの回の流れ（既定の標準は、設計の担当が数字も探す）
     _, nxt = next_step.steps_for(w)
-    assert "数字を探す担当" in nxt
-    (w / "data_1.md").write_text("## データ：x\n", encoding="utf-8")
-    _, nxt = next_step.steps_for(w)
-    assert "設計の担当" in nxt
+    assert "軽量の設計の担当" in nxt and "数字を探す担当" not in nxt
     c = tmp_path / "別" / "焼き肉講座"   # まだ回の作業フォルダが無い講座
     c.mkdir(parents=True)
     (c / "00_README.md").write_text("# 焼き肉講座\n\n## 学習者とゴール\n\n- 軽さ：念入り\n\n## 全体の地図\n", encoding="utf-8")
-    assert "数字を探す担当" in next_step.course_next(c)[1]
+    nxt = next_step.course_next(c)[1]
+    assert "軽量の設計の担当" in nxt and "数字を探す担当" not in nxt
 
 
-def test_presentation_without_data_goes_back_only_before_build(tmp_path, root):
-    """発表：data_1.md が無ければ構成案の段では ✘ で手順2へ。組み始めたあと（build.py がある）は戻さない。"""
+def test_presentation_without_data_goes_back_to_the_designer(tmp_path, root):
+    """発表：data_1.md が無ければ、設計の担当に続けて頼む（前の版で念入りにした構成案も同じ）。"""
     import re
     import shutil
     w = tmp_path / "_work" / "ゼミ"
@@ -80,12 +81,13 @@ def test_presentation_without_data_goes_back_only_before_build(tmp_path, root):
         shutil.copy(root / "examples" / "zemi" / f, w / f)
     p = w / "outline.md"
     p.write_text(re.sub(r"## 3b\. データ.*?(?=^## )", "", p.read_text(encoding="utf-8"), flags=re.S | re.M)
-                 .replace("| 軽さ | 標準 |", "| 軽さ | 念入り |"), encoding="utf-8")   # 念入りの流れ（標準は設計の担当に続けて頼む）
+                 .replace("| 軽さ | 標準 |", "| 軽さ | 念入り |"), encoding="utf-8")   # 前の版の念入りの構成案
     _, nxt = next_step.steps_for(w)
-    assert nxt.startswith("手順2") and "check_outline" in nxt
-    (w / "build.py").write_text("", encoding="utf-8")
+    assert "data_1.md" in nxt and "軽量の設計の担当を新しく起動" in nxt   # 念入りの作業フォルダには、まだ軽量の設計の担当がいない
+    import brief
+    brief.build("軽量の設計の担当", str(w), kind="発表", count=True)   # 起動を記録する
     _, nxt = next_step.steps_for(w)
-    assert not nxt.startswith("手順2")
+    assert "data_1.md" in nxt and "設計の担当に続けて頼む" in nxt
 
 
 def test_final_review_asking_for_fixes_comes_before_check_done(tmp_path):

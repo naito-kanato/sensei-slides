@@ -3,7 +3,6 @@
     python <skill>/scripts/budget.py <work>                   # 今の回数・トークンと上限の一覧
     python <skill>/scripts/budget.py <work> --allow-tokens    # ユーザーが「続けてよい」と言ったとき：トークンの上限を1回分足す
     python <skill>/scripts/budget.py <work> --set-tokens "Codex 600万"   # ユーザーが上限を言ったとき：すぐ記録する（設計メモの前でも残る）
-    python <skill>/scripts/budget.py <work> --set-lightness 念入り     # ユーザーが「念入り」（担当を分けてレビューも）を選んだとき：構成案・設計メモの前でも残る
 
 数え方
   - 担当の起動：brief.py が依頼文を出すたびに <work>/budget_log.jsonl に1行（同じ担当・同じ分担が15分以内にもう一度なら数えない）
@@ -26,45 +25,55 @@ if hasattr(sys.stdout, "reconfigure"):
 
 LOG = "budget_log.jsonl"
 ROLE_CAPS = {   # 1回の講座・1つの発表で、担当を起動してよい回数（標準）
-    "数字を探す担当": 2, "図の担当": 2, "設計の担当": 1, "裏取りの担当": 2, "レビュー担当": 2, "直しの担当": 2,
-    "制作役": 2, "仕上げ役": 1, "完成後のレビュー担当": 1, "仕上げの直しの担当": 2,
-    "軽量の設計の担当": 1, "軽量の制作の担当": 1,   # オプション「軽さ：標準」（既定）の2人
-    "推論距離の担当": 1,   # 標準の回で、設計メモ・構成案の推論距離だけを別の目で見る（レビュー担当の推論距離の節だけ）
+    "軽量の設計の担当": 1, "軽量の制作の担当": 1,   # 担当2人（設計・制作）
+    "推論距離の担当": 1,   # 設計メモ・構成案の推論距離だけを別の目で見て、手当てまで入れる
+    "制作役": 2, "図の担当": 2, "仕上げ役": 1, "完成後のレビュー担当": 1, "仕上げの直しの担当": 2,   # 質問回答のデッキ（references/answer-deck.md）
 }
-LIGHT_MAKE_DECK = 3   # 軽量の回の make_deck の上限（制作の担当が --try で先に直してから組む）
+LIGHT_MAKE_DECK = 3   # 担当2人の回の make_deck の上限（制作の担当が --try で先に直してから組む）
 MAKE_DECK_CAPS = {"仕上げ": 4, "完成後のレビューのあとの直し": 2}
 SAME_WITHIN = 15 * 60   # 同じ担当が依頼文を読み直しただけなら数えない
 DEFAULT_PERCENT = 20
 
 
-CAREFUL = ("念入り",)   # オプション「軽さ」：担当を分け、設計メモと完成品を別の担当がレビューする流れ（前の標準）
-
-
 def light(work: Path) -> bool:
-    """担当2人（設計・制作）で作る回か。オプション「軽さ」：標準（＝担当2人。前の「軽量」も同じ）／念入り（担当を分けてレビューも）。
-    設定が無ければ標準（担当2人）。
-    伏せた採点で、担当2人の講座は前の標準（レビューあり）とほぼ同じ出来で、費用は約3分の1だった。"""
+    """担当2人（設計・制作）で作る回か。講座も発表もいつもそう（オプション「軽さ」は無くなった）。
+    偽になるのは質問回答のデッキ（answers.md がある作業フォルダ）だけ：制作役・仕上げ役・完成後のレビューの別の流れ（references/answer-deck.md）。"""
+    return not (Path(work) / "answers.md").exists()
+
+
+CAREFUL_GONE = "・ 念入りは無くなったので、標準（担当2人：設計の担当 → 推論距離の担当 → 制作の担当）で進める（前の版で選んだ「軽さ：念入り」は標準として読む）"
+
+
+def old_careful(work: Path) -> bool:
+    """前の版で「軽さ：念入り」を選んだ作業フォルダ・講座フォルダか（構成案・設計メモの設定、講座の README、--set-lightness の記録）。
+    念入り（担当を分け、設計メモと完成品を別の担当がレビューする流れ）は、伏せた採点で標準とほぼ同じ出来・費用は約3倍だったので無くした。"""
     import re
     work = Path(work)
     v = ""
     try:
         import slide_profile
         v = slide_profile.option(slide_profile.load_profile(work), "軽さ", "") or ""
-        if not v and re.search(r"_\d{2}$", work.name):   # 設計メモの前：講座の README の学習者とゴール
-            readme = work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md"
-            if readme.exists():
-                m = re.search(r"^-\s*軽さ\s*[:：]\s*(.+?)\s*$", readme.read_text(encoding="utf-8"), re.M)
-                v = m.group(1) if m else ""
     except Exception:
         v = ""
-    if not v:   # 構成案・設計メモの前：--set-lightness で記録した値
+    readmes = [work / "00_README.md"]
+    if re.search(r"_\d{2}$", work.name):   # 講座の回：講座の README の学習者とゴール
+        readmes.append(work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md")
+    for readme in readmes:
+        if not v and readme.exists():
+            m = re.search(r"^-\s*軽さ\s*[:：]\s*(.+?)\s*$", readme.read_text(encoding="utf-8"), re.M)
+            v = m.group(1) if m else ""
+    if not v:
         rows = [r for r in load(work) if r.get("type") == "set_lightness"]
         v = rows[-1].get("value", "") if rows else ""
-    if any(k in v for k in CAREFUL):
-        return False
-    if "軽量" in v or "標準" in v:
-        return True
-    return not (work / "answers.md").exists()   # 既定は担当2人（講座も発表も）。質問回答のデッキは別の流れ
+    return "念入り" in v
+
+
+def careful_note(work: Path) -> str | None:
+    """前の版の「念入り」の作業フォルダなら、知らせる1行。"""
+    try:
+        return CAREFUL_GONE if old_careful(work) else None
+    except Exception:
+        return None
 
 
 def scale(work: Path) -> float | None:
@@ -223,7 +232,7 @@ def main_web_problem(work: Path, rows: list | None = None) -> str | None:
     if n < MAIN_WEB_MAX:
         return None
     return (f"△ メインが自分で Web・ブラウザを {n} 回使った（メインの会話は呼び出しのたびに全部を読み直すので、いちばん重くなる）。"
-            "ここから先は調べない：事実が気になったら裏取りの担当に回し、担当を待つあいだは長めの wait を1回（SKILL.md「必ず守る」2）")
+            "ここから先は調べない：事実が気になったら設計の担当に回し、担当を待つあいだは長めの wait を1回（SKILL.md「必ず守る」2）")
 
 
 def check_role(work: Path, role: str, part: str = "", over: bool = False) -> str | None:
@@ -277,13 +286,6 @@ def token_caps(work: Path) -> dict:
     return out
 
 
-def set_lightness(work: Path, value: str):
-    Path(work).mkdir(parents=True, exist_ok=True)
-    with (Path(work) / LOG).open("a", encoding="utf-8") as f:
-        f.write(json.dumps({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "ts": time.time(), "type": "set_lightness", "value": value},
-                           ensure_ascii=False) + "\n")
-
-
 def set_tokens(work: Path, value: str):
     Path(work).mkdir(parents=True, exist_ok=True)
     with (Path(work) / LOG).open("a", encoding="utf-8") as f:
@@ -311,9 +313,9 @@ def token_usage(work: Path, rows: list | None = None) -> dict:
 # 役ごとの上限：道具ごとの全体の上限（TOKEN_CAPS）に対する割合。3段（大・中・小）。担当1人（会話1本）ごとに見る。
 # 試しの回の記録から：ふつうの回はどの役も届かず、暴走した担当（Codex の仕上げ役が make_deck を21回）だけが届く大きさ
 ROLE_TIERS = {"大": ("仕上げ役", "制作役", "軽量の制作の担当", "軽量の設計の担当"),
-              "中": ("設計の担当", "裏取りの担当", "数字を探す担当", "図の担当", "レビュー担当", "直しの担当", "仕上げの直しの担当", "完成後のレビュー担当"),
+              "中": ("図の担当", "仕上げの直しの担当", "完成後のレビュー担当"),
               "小": ("地図の担当", "推論距離の担当")}
-# Web を読む担当（数字を探す・裏取り）は、読んだページの分だけ重い。道具によって数倍ちがう。
+# Web を読む担当（設計の担当の数字と事実の確かめ）は、読んだページの分だけ重い。道具によって数倍ちがう。
 # 暴走した担当（仕上げ役が make_deck を回し続けた・制作役が1人で全部を書いた）は大で止まる大きさ
 ROLE_SHARES = {"大": 0.30, "中": 0.25, "小": 0.10}
 
@@ -497,13 +499,13 @@ def main(argv=None):
             return 1
         set_tokens(work, argv[k + 1])
         print(f"トークンの上限を、ユーザーの言った「{argv[k + 1]}」で記録した（設計メモ・構成案のオプションより先に使う）")
-    if "--set-lightness" in argv:
+    if "--set-lightness" in argv:   # 前の版の名残：オプション「軽さ」は無くなった（記録しない）
         k = argv.index("--set-lightness")
-        if len(argv) <= k + 1 or argv[k + 1].startswith("-"):
-            print("--set-lightness のあとに 標準 か 念入り を書く")
-            return 1
-        set_lightness(work, argv[k + 1])
-        print(f"軽さを「{argv[k + 1]}」で記録した（構成案・設計メモの設定より後ろに見る）")
+        v = argv[k + 1] if len(argv) > k + 1 and not argv[k + 1].startswith("-") else ""
+        print(CAREFUL_GONE.lstrip("・ ") if "念入り" in v else "軽さは記録しない（オプション「軽さ」は無くなった。いつも標準：担当2人）")
+    note = careful_note(work)
+    if note and "--set-lightness" not in argv:
+        print(note)
     if "--allow-role" in argv:
         k = argv.index("--allow-role")
         conv = argv[k + 1] if len(argv) > k + 1 and not argv[k + 1].startswith("-") else "all"

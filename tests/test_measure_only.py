@@ -51,10 +51,11 @@ def test_cards_get_no_deep_rows(tmp_path):
 
 
 def test_briefs_switch_lines(tmp_path):
-    fix = brief.build("直しの担当", str(make_work(tmp_path / "a", False)), "発表")
-    assert "inference-distance 5" in fix and "測るだけ" not in fix and "[直す]" not in fix
-    fix = brief.build("直しの担当", str(make_work(tmp_path / "b", True)), "発表")
-    assert "inference-distance 5" not in fix and "測るだけ" in fix and "[測る]" not in fix
+    """推論距離の担当：直す回は手当て（5節）まで、測るだけの回は監査だけ（8節）。"""
+    fix = brief.build("推論距離の担当", str(make_work(tmp_path / "a", False)), "発表")
+    assert "## 5. 手当て" in fix and "② 手当てはしない" not in fix and "## 8. 測るだけ" not in fix and "[直す]" not in fix
+    fix = brief.build("推論距離の担当", str(make_work(tmp_path / "b", True)), "発表")
+    assert "## 5. 手当て" not in fix and "② 手当てはしない" in fix and "## 8. 測るだけ" in fix and "[測る]" not in fix
     final = brief.build("完成後のレビュー担当", str(make_work(tmp_path / "c", True)), "発表")
     assert "D1" in final and "[測る]" not in final
 
@@ -62,29 +63,3 @@ def test_briefs_switch_lines(tmp_path):
 def test_rules_have_a_section(capsys):
     assert guide.main(["inference-distance", "8"]) == 0
     assert "測るだけ" in capsys.readouterr().out
-
-
-def test_fix_brief_keeps_plan_before_fix(tmp_path, monkeypatch):
-    """直しの担当の依頼文を出すと、直す前の構成案・設計メモの写しが残る（もうあれば上書きしない。--peek では作らない）。"""
-    monkeypatch.chdir(tmp_path)
-    work = make_work(tmp_path, False)
-    before = work / "outline_直す前.md"
-    brief.build("直しの担当", str(work), "発表")              # --peek（数えない）では作らない
-    assert not before.exists()
-    brief.build("直しの担当", str(work), "発表", count=True)
-    assert before.read_text(encoding="utf-8") == outline(False)
-    (work / "outline.md").write_text("直したあと", encoding="utf-8")
-    brief.build("直しの担当", str(work), "発表", count=True)  # 2回目の起動：最初の直しの前の版のまま
-    assert before.read_text(encoding="utf-8") == outline(False)
-    brief.build("レビュー担当", str(work), "発表", count=True)  # ほかの担当では作らない
-    assert not (work / "memo_直す前.md").exists()
-
-
-def test_fix_brief_keeps_memo_for_course(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    work = tmp_path / "_work" / "X講座_01"
-    work.mkdir(parents=True)
-    (work / "memo.md").write_text("## 1. 学習者とゴール\n", encoding="utf-8")
-    brief.build("直しの担当", str(work), count=True)
-    assert (work / "memo_直す前.md").read_text(encoding="utf-8") == "## 1. 学習者とゴール\n"
-    assert not (work / "outline_直す前.md").exists()

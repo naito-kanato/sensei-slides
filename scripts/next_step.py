@@ -21,19 +21,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 SKILL = "<skill>"
 
 
-ANY = "数字を探す担当を1人起動（`brief.py 数字を探す担当 <work> --n 1`。差と意外・変化と内訳の両方を1人で見る）"   # 前は2人。同じ組を拾って重なっていた
-ONE = "数字を探す担当を1人起動（`brief.py 数字を探す担当 <work> --n 1`。資料が土台なので、資料の表・図の数字と事実から先に探す）"
-
-
-def source_based(readme: Path) -> bool:
-    """README の「資料の扱い」が土台（資料で講座を作る）か。土台なら、数字と事実は資料の表・図から先に探せるので、数字を探す担当は1人。"""
-    try:
-        t = Path(readme).read_text(encoding="utf-8")
-    except OSError:
-        return False
-    return bool(re.search(r"資料の扱い[^\n]*土台", t))
-
-
 def _mtime(p: Path):
     return p.stat().st_mtime if p.exists() else None
 
@@ -56,17 +43,6 @@ def needs_final_fix(review: Path, pptx: Path) -> bool:
     if done and _re.search(r"^\s*[-*]\s*\S", done.group(1), _re.M):
         return False
     return bool(m and "直してから" in m.group(1)) and pptx.stat().st_mtime <= review.stat().st_mtime
-
-
-def fixed(work: Path) -> bool:
-    """レビューのあとの直しが済んだか：直しの担当を起動した記録があるか、もう骨組み（cards/・build.py）ができている（前の版で作った作業）。"""
-    try:
-        import budget
-        if any(r.get("role") == "直しの担当" for r in budget.load(work)):
-            return True
-    except Exception:
-        pass
-    return (work / "cards").is_dir() or (work / "build.py").exists()
 
 
 def _fails(res):
@@ -155,7 +131,7 @@ def returned_holes(review: Path, plan: Path, pending: bool = True) -> list:
 
 
 def light_steps(work: Path, kind: str):
-    """オプション「軽さ：標準」の回：設計の担当 → 推論距離の担当（戻す穴があれば設計の担当へ）→ 制作の担当 → 渡す前の確認。"""
+    """講座・発表の回（担当2人）：設計の担当 → 推論距離の担当（戻す穴があれば設計の担当へ）→ 制作の担当 → 渡す前の確認。"""
     import budget
     out = []
 
@@ -165,6 +141,9 @@ def light_steps(work: Path, kind: str):
 
     w = _shown(work)
     launched = {r.get("role") for r in budget.load(work)}
+    # 前の版の「念入り」の作業フォルダ：設計の担当（軽量の）はまだいないので、続けて頼めない。新しく起動する
+    again = ("設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）" if "軽量の設計の担当" in launched or not budget.old_careful(work)
+             else f"軽量の設計の担当を新しく起動して頼む（`brief.py 軽量の設計の担当 {w}`。前の版の念入りの作業フォルダなので）")
     plan = work / ("memo.md" if kind == "memo" else "outline.md")
     if not plan.exists():
         add(False, "設計（軽量）", "まだ")
@@ -191,12 +170,12 @@ def light_steps(work: Path, kind: str):
             # 推論距離の担当が手当てまで入れる（設計の担当の長い会話を読み直さない）。手当てで出た ✘ もこの担当が直す
             return out, ("推論距離の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
                          + "（手当ては `guide.py inference-distance 5`。青帯・話の筋を変えないと直らない筋の穴だけは、設計の担当に【続けて頼む】）")
-        return out, ("軽量：設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：" + "；".join(bad[:3])
+        return out, ("軽量：" + again + "：" + "；".join(bad[:3])
                      + (f"。確認がまだの事実 {len(todo)} 行をその場で確かめる" if todo else ""))
     build = work / "build.py"
     if holes and not build.exists():   # 推論距離の担当が、事実か筋が要る穴を設計の担当に戻した
         add(False, "設計に戻す穴", f"{len(holes)} 件")
-        return out, (f"設計の担当に続けて頼む（【続けて頼む】。新しく起動しない）：{review.name} の「{RETURN_HEAD[3:]}」の {len(holes)} 件を埋める"
+        return out, (f"{again}：{review.name} の「{RETURN_HEAD[3:]}」の {len(holes)} 件を埋める"
                      "（事実が要る穴は確かめて3節の行に足し、筋の穴は青帯・筋を直す）。埋めた行は頭を「- ✔ 」に書き換える。直したら検査の ✘ 0 まで")
     # 推論距離（スキルの要）：設計の担当とは別の目で推論距離を見て、手当てまで入れる小さな担当（会話が短いので、設計の担当に続けて頼むより安い）
     if not build.exists():
@@ -222,7 +201,7 @@ def light_steps(work: Path, kind: str):
                  f"返答に無いときだけ python {SKILL}/scripts/check_done.py \"{pptx.as_posix()}\"）。"
                  "✘ が残ったら（制作の担当が make_deck の上限で止まったとき）、残った所を報告してユーザーに【質問】（越えて直す・このまま受け取る）。"
                  "越えて直すなら、制作の担当に【続けて頼む】（`make_deck.py <work> --over` で残った所だけ。"
-                 "完成後のレビュー担当・直しの担当を新しく起動しない：起動のたびに資料と設計メモを読み直す分が丸ごと増える）")
+                 "新しい担当を起動しない：起動のたびに資料と設計メモを読み直す分が丸ごと増える）")
 
 
 def steps_for(work: Path):
@@ -230,11 +209,10 @@ def steps_for(work: Path):
     work = Path(work)
     kind = "answers" if (work / "answers.md").exists() else "memo" if (work / "memo.md").exists() else "outline"
     if kind != "answers":
-        import budget
-        if budget.light(work):
-            if kind == "outline" and re.search(r"_\d{2}$", work.name):
-                kind = "memo"   # 講座の回（設計メモはまだ）
-            return light_steps(work, kind)
+        if kind == "outline" and re.search(r"_\d{2}$", work.name):
+            kind = "memo"   # 講座の回（設計メモはまだ）
+        return light_steps(work, kind)
+    # ここから下は質問回答のデッキ（references/answer-deck.md）：制作役（と図の担当）→ 仕上げ役 → 完成後のレビュー → 仕上げの直し
     out = []
 
     def add(ok, step, msg=""):
@@ -242,64 +220,7 @@ def steps_for(work: Path):
         return ok
 
     nxt = None
-    # 1. 構成（ゼミ：outline.md、講座：memo.md、質問回答：answers.md）
-    plan = work / {"memo": "memo.md", "outline": "outline.md", "answers": "answers.md"}[kind]
-    if not plan.exists() and re.search(r"_\d{2}$", work.name) and kind == "outline":   # 講座の回（設計メモはまだ）
-        import data
-        found = data.files(work)
-        add(bool(found), "数字を探す（data_N.md）", "・".join(f.name for f in found) if found else "まだ")
-        add(False, "設計メモ（memo.md）", "まだ")
-        one = source_based(work.parent.parent / re.sub(r"_\d{2}$", "", work.name) / "00_README.md")
-        return out, ("references/course.md 手順4⓪：" + (ONE if one else ANY)
-                     if not found else
-                     "references/course.md 手順4①：設計の担当（`brief.py 設計の担当 <work>`）。data_N.md を見てから筋を決め、data.py merge で3b節に入れる")
-    if not plan.exists():
-        add(False, "構成案", "outline.md が無い")
-        return out, ("手順2：構成案（outline.md）を作る。`guide.py steps 2`。講座なら references/course.md の手順4（設計メモ memo.md）")
-    if kind == "outline":
-        import check_outline
-        res_ = check_outline.check(plan)
-        if (work / "build.py").exists():   # 組み始めたあとは、数字の組の抜けで構成案に戻さない（前の版で作り始めた構成案にも無い）
-            res_ = [r for r in res_ if not (r[1] == "データ" and r[2].startswith("data_1.md が無い"))]
-        bad = _fails(res_)
-        rv = work / "outline_review.md"
-        add(not bad, "構成案の確認（check_outline）", "；".join(bad[:3]))
-        add(rv.exists(), "構成案のレビュー（outline_review.md）")
-        if bad and not nxt:
-            nxt = f"手順2：check_outline の ✘ を直す（python {SKILL}/scripts/check_outline.py {plan.as_posix()}）"
-        if not rv.exists() and not nxt:
-            nxt = "手順2：レビュー担当を新しく起動し（`brief.py レビュー担当 <work>`。資料を読む A とレビューの B を続けて行う）、結果を outline_review.md に残す。そのあとユーザーに構成案を見せて OK をもらう"
-        if rv.exists() and not nxt and not fixed(work):
-            add(False, "レビューのあとの直し", "まだ")
-            nxt = "手順2：直し。直しの担当を新しく起動（`brief.py 直しの担当 <work>`。outline_review.md の採否を決めて直し、scaffold.py まで）。そのあと構成案をユーザーに見せる"
-    elif kind == "memo":
-        import check_memo
-        bad = _fails(check_memo.check(plan))
-        rv = work / "memo_review.md"
-        add(not bad, "設計メモの確認（check_memo）", "；".join(bad[:3]))
-        import facts
-        _, fh, frows = facts.memo_facts(plan.read_text(encoding="utf-8"))
-        i_ok = next((k for k, h in enumerate(fh) if "確認" in h), 3)
-        todo = [r for r in frows if facts.unchecked(r, i_ok)]
-        split = [f for f in work.glob("facts_*.md") if f.name != "facts_diff.md"]
-        add(not todo, "事実の裏取り（3節の確認）", f"まだ {len(todo)} 行" if todo else "")
-        add(rv.exists(), "設計メモのレビュー（memo_review.md）")
-        if bad and not nxt and all(b.startswith("推論距離の行の形") for b in bad):
-            nxt = (f"references/course.md 手順4：レビュー担当をもう1回起動し、推論距離の節だけやり直させる（`brief.py レビュー担当 {work.as_posix()}` に"
-                   "「memo_review.md の推論距離の節だけを、決まりの形で書き直す」と添える）。直しの担当やメインは書き直さない")
-        elif bad and not nxt:
-            nxt = f"references/course.md 手順4：check_memo の ✘ を直す（python {SKILL}/scripts/check_memo.py {plan.as_posix()}）"
-        if todo and not nxt and not (work / "build.py").exists():   # 制作に進んだあとは、裏取りに戻さない（直しの担当が足した行など）
-            nxt = (f"references/course.md 手順4②：裏取りの担当（facts_N.md ごとに1人、同時に）の結果を待ち（終わりの知らせを待つ。コマンドで様子を見ない）、全員が終わってから1回だけ python {SKILL}/scripts/facts.py merge {work.as_posix()}"
-                   if split else
-                   f"references/course.md 手順4①の終わり：python {SKILL}/scripts/facts.py split {work.as_posix()} --n 2 → 裏取りの担当を2人、同時に起動")
-        if not rv.exists() and not nxt:
-            nxt = "references/course.md 手順4：設計メモを【別のエージェント】にレビューさせ、結果を memo_review.md に残し、9節に手当てを書く"
-        if rv.exists() and not nxt and not fixed(work):
-            add(False, "レビューのあとの直し", "まだ")
-            nxt = "references/course.md 手順4⑤：直し。直しの担当を新しく起動する（`brief.py 直しの担当 <work>`。設計の担当に続けて頼むと、長い会話のまま何度も読み直して重い）"
-    else:
-        add(True, "答えの下書き（answers.md）")
+    add((work / "answers.md").exists(), "答えの下書き（answers.md）")
     # 2. 図
     figs = work / "figs.py"
     pngs = list((work / "figs").glob("*.png")) if (work / "figs").is_dir() else []
@@ -386,12 +307,7 @@ def course_next(course: Path):
         return lines, f"{w.name} の途中：{steps_for(root / w.name)[1]}"   # その回の次の1手まで（メインが next_step をもう1回呼ばずに済む）
     n = max(int(m[:2]) for m in made) + 1 if made else 1
     w = f"_work/{course.name}_{n:02d}"
-    import budget
-    if budget.light(root / f"{course.name}_{n:02d}"):   # 既定（軽さ：標準）：設計の担当が数字も探す
-        first = f"軽量の設計の担当を起動（`brief.py 軽量の設計の担当 {w}`）。数字・筋・事実の確かめまで1人で {w}/memo.md を書く"
-    else:
-        first = ((ONE if source_based(readme) else ANY).replace("<work>", w) + " → "
-                 f"設計の担当が data_N.md を見て {w}/memo.md を書く（references/course.md 手順4）")
+    first = f"軽量の設計の担当を起動（`brief.py 軽量の設計の担当 {w}`）。数字・筋・事実の確かめまで1人で {w}/memo.md を書く"
     if made:
         return lines, f"第{n}回：{first}。設計の前に、前の回のコメント・答え（00_README.md のつまずき一覧）を読む"
     t = readme.read_text(encoding="utf-8")
@@ -438,9 +354,9 @@ START_ASK = {
 }
 START_NEXT = {
     "講座": ("答えがそろったら（聞かない回はすぐ）、地図の担当を【別のエージェント】で起動：依頼は「`python <skill>/scripts/brief.py 地図の担当 <講座名>` を走らせ、出た依頼のとおりに進める」の1行と、"
-            "その下の「ユーザーの答え：…」（テーマ・詳しさ・回数・資料・ゴール・軽さ。講座名は講座フォルダの名前になる）。"),
+            "その下の「ユーザーの答え：…」（テーマ・詳しさ・回数・資料・ゴール。講座名は講座フォルダの名前になる）。"),
     "発表": ("答えがそろったら（聞かない回はすぐ）、設計の担当を【別のエージェント】で起動：依頼は「`python <skill>/scripts/brief.py 軽量の設計の担当 _work/<資料名>` を走らせ、出た依頼のとおりに進める」の1行と、"
-            "その下の「ユーザーの答え：…」（詳しさ・発表時間・構成案・資料の場所）。念入りなら先に `budget.py _work/<資料名> --set-lightness 念入り` で、担当は next_step のとおり。"),
+            "その下の「ユーザーの答え：…」（詳しさ・発表時間・構成案・資料の場所）。"),
 }
 
 
@@ -484,6 +400,10 @@ def main(argv=None):
     if not p.exists():
         print(f"{p} が無い")
         return 1
+    import budget
+    note = budget.careful_note(p.resolve())   # 前の版の「念入り」の作業フォルダ・講座：標準として読み、1行だけ知らせる
+    if note:
+        print(note)
     if (p / "00_README.md").exists() and not any((p / f).exists() for f in ("outline.md", "memo.md")):
         lines, nxt = course_next(p)
         print("\n".join(lines))

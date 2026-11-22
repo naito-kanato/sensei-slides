@@ -118,7 +118,7 @@ def test_figs_table_points_to_the_figure_step():
 
 def test_design_briefs_put_the_figure_step_before_the_points():
     """設計の依頼文：筋の表 → 話の型 → 青帯を全部 → 図の段 → 本文の形と要点 → まとめ・確認問題。題の問いにつなぐ。"""
-    for role in ("軽量の設計の担当", "設計の担当"):
+    for role in ("軽量の設計の担当",):
         t = (brief.BRIEFS / f"{role}.md").read_text(encoding="utf-8")
         assert "図の段" in t and "題の問い" in t and "たとえ" in t
         assert t.index("青帯の並びを全部") < t.index("図の段") < t.index("本文の形（")
@@ -134,7 +134,7 @@ def test_light_design_brief_does_not_grow_much(tmp_path, monkeypatch):
 
 def test_figure_step_is_only_for_answer_and_but_slides(root):
     """図の段は答えの枚と しかし の枚だけ（全部の枚を2周すると設計の担当が重くなる。残りは本文と一緒に1枚ずつ）。"""
-    for rel in ("assets/briefs/設計の担当.md", "assets/briefs/軽量の設計の担当.md", "references/figures.md"):
+    for rel in ("assets/briefs/軽量の設計の担当.md", "references/figures.md"):
         t = (root / rel).read_text(encoding="utf-8")
         assert "全部の枚の図で見せる" not in t and "全部の枚の「図で見せるもの」" not in t
         assert "しかし の枚" in t and "本文と一緒に" in t

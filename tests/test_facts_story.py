@@ -1,11 +1,10 @@
-"""裏取りの分け方（facts.py）・答えの位置（story.py）・作業フォルダの置き場所（scaffold.py）。"""
+"""答えの位置（story.py）・作業フォルダの置き場所（scaffold.py）・依頼文の雛形（brief.py）。"""
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import facts  # noqa: E402
 import scaffold  # noqa: E402
 import story  # noqa: E402
 
@@ -41,50 +40,6 @@ def _work(tmp_path):
     w.mkdir(parents=True)
     (w / "memo.md").write_text(MEMO, encoding="utf-8")
     return w
-
-
-def test_split_only_unchecked_rows(tmp_path):
-    w = _work(tmp_path)
-    out = facts.split(w, 2)
-    assert [p.name for p in out] == ["facts_1.md"]                   # 2行だけなら1人（1人に6行まで）
-    t1 = out[0].read_text(encoding="utf-8")
-    assert "| 2 | 認定病院の数" in t1 and "| 3 | 改定の年" in t1      # ○ と「図に（例）」の行は渡さない
-    assert "| 3 | 改定の年 | 2013年 |  |  | 3 |" in t1                # 使う枚は2節の〔事実N〕から
-    assert "1行終えるごとに" in t1                                    # やり方はファイルの先頭に
-
-
-def test_split_skips_general_rows_but_not_numbers(tmp_path):
-    w = _work(tmp_path)
-    m = (w / "memo.md").read_text(encoding="utf-8").replace(
-        "| 図の例 | 例 | | 図に（例）と書く |",
-        "| パンダは竹を主に食べる | 竹 | 教科書 | 一般 |\n| 竹を1日20kg食べる | 20kg | | 一般 |"
-        + "".join(f"\n| 数{i} | {i}件 | | 未確認 |" for i in range(6)))
-    (w / "memo.md").write_text(m, encoding="utf-8")
-    out = facts.split(w, 2)
-    text = "".join(p.read_text(encoding="utf-8") for p in out)
-    assert "竹を主に食べる" not in text and "1日20kg" in text      # 数値のある「一般」は回す
-    assert len(out) == 2                                             # 9行なら2人
-
-
-def test_merge_back_and_diff(tmp_path):
-    w = _work(tmp_path)
-    facts.split(w, 2)
-    p = w / "facts_1.md"
-    p.write_text(p.read_text(encoding="utf-8").replace(
-        "| 2 | 認定病院の数 | 2,000 |  | 未確認 | 2 |  |",
-        "| 2 | 認定病院の数 | 2,188（2026年3月末） | 「報告書」https://e.x/b 2026 | ○ | 2 | 違う：数が古い |\n"
-        "| + | 新しい版 | Ver.3.0 | 「一覧」https://e.x/c 2023 | ○ | 3 | 新しく足した |"), encoding="utf-8")
-    before = (w / "memo.md").read_text(encoding="utf-8")
-    import pytest
-    with pytest.raises(SystemExit):   # ほかの行がまだ（裏取りの途中）なら、memo.md を書き換えずに止める
-        facts.merge(w)
-    assert (w / "memo.md").read_text(encoding="utf-8") == before
-    diffs = facts.merge(w, partial=True)
-    memo = (w / "memo.md").read_text(encoding="utf-8")
-    assert "| 認定病院の数 | 2,188（2026年3月末） | 「報告書」https://e.x/b 2026 | ○ |" in memo
-    assert "| 新しい版 | Ver.3.0 |" in memo and memo.index("新しい版") < memo.index("## 4.")
-    assert len(diffs) == 2 and (w / "facts_diff.md").exists()
-    assert "事実5" in (w / "facts_diff.md").read_text(encoding="utf-8")   # 足した行は表の最後の番号
 
 
 def test_answer_position_default_and_option():
@@ -152,11 +107,11 @@ def test_brief_fills_template_and_keeps_kind_lines(tmp_path, monkeypatch):
         own = text.split("\n---\n# 手順書の節")[0]   # 写した手順書の節には、{r:赤字} のような書き方がもともとある
         assert "{" not in own and "[発表]" not in text and "[講座]" not in text and "[節]" not in text, role
         assert "ユーザーには質問しません" in text and "10行まで" in text
-    t = brief.build("直しの担当", str(w))
-    assert "_work/X講座_01/memo_review.md" in t and "facts_diff.md" in t and "outline.md" not in t
+    t = brief.build("推論距離の担当", str(w))
+    assert "_work/X講座_01/memo_review.md" in t and "outline.md" not in t.split("\n---\n# 手順書の節")[0]   # 写した節（5節）は両方の名前を書く
     p = tmp_path / "_work" / "論文"
     p.mkdir()
-    assert "outline_review.md" in brief.build("直しの担当", str(p))
+    assert "outline_review.md" in brief.build("推論距離の担当", str(p))
 
 
 def test_brief_refuses_misplaced_work(tmp_path):
@@ -430,17 +385,6 @@ def test_aim_not_in_list_and_citation_leak():
     res = story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")
     assert any(i == "ねらい" and m == "△" and "一覧に無い" in x for m, i, x in res)
     assert check_layout.re.search(r"〔\s*(事実|データ)\s*\d+", "S・A・B・Cは中項目ごと〔事実14〕")
-
-
-def test_search_rule_for_fact_rows(tmp_path):
-    """裏取りの検索：1行につき、2回目からは理由を書いてから、5回まで。facts_N.md に欄があり、merge が守っていない行を出す。"""
-    w = _work(tmp_path)
-    out = facts.split(w, 2)
-    t = out[0].read_text(encoding="utf-8")
-    assert "検索（回数：2回目からの理由）" in t and "5回まで" in t
-    assert facts.search_problem("1") is None and facts.search_problem("3：2 一次資料が無い／3 最新版") is None
-    assert "理由が 1 個" in facts.search_problem("3：2 一次資料が無い")
-    assert "超えた" in facts.search_problem("6：2 a／3 b／4 c／5 d／6 e")
 
 
 def test_schematic_needs_a_reading_line():

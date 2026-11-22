@@ -382,7 +382,7 @@ def main(argv=None):
     if runs > 6 and (n_err or n_warn or n_x):
         print(f"△ make_deck は {runs} 回目。出た所を1回で全部直す（直す前に、上の一覧を全部読んでから手を付ける）。"
               "同じ枚が何度も出るなら、本文を削るか図を小さくするなど、形を変える")
-    # 標準（担当2人）は ERROR 0・✘ 0 で止める。WARN・← は返答に並べるだけ（念入りは WARN まで直す）。
+    # 担当2人の回は ERROR 0・✘ 0 で止める。WARN・← は返答に並べるだけ（質問回答のデッキは WARN まで直す）。
     # コミュニケーション講座の試しで、合格のあと WARN を追った3回が新しい ✘・ERROR を生み、制作の担当の読み直しの4割を使った
     try:
         stop_at_pass = stage == "仕上げ" and budget.light(work)
