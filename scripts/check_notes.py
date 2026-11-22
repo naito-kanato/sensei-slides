@@ -106,7 +106,8 @@ def sentences(text: str):
 
 
 def talk_minutes(plan_text: str):
-    m = re.search(r"\|\s*発表時間\s*\|\s*(\d+(?:\.\d+)?)\s*分", plan_text or "")
+    """構成案の「## オプション」の表の発表時間（分）。「20 分」「20」のどちらも読む（check_outline.minutes と同じ目安になるように）。"""
+    m = re.search(r"\|\s*発表時間\s*\|\s*(\d+(?:\.\d+)?)", plan_text or "")
     return float(m.group(1)) if m else None
 
 
