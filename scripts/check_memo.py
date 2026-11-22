@@ -105,6 +105,74 @@ SCRIPT_POS = {"棒グラフ": re.compile(r"右端|左端|(?:棒|グラフ)の(?:
 RECAP_MIN_BODY = 6   # 本文がこの枚数以上の講座は、最後にまとめの枚（輪読の型は、最後の拍が節のまとめなので要らない）
 
 
+SCRIPT_WORDS = {   # script.md の検査の言い方（講座：講師が学習者に／発表：発表者が聞き手に）
+    "memo": {"who": "学習者", "where": "設計メモの3節の確認の列か8節", "mine": "ここは講師のまとめです"},
+    "outline": {"who": "聞き手", "where": "構成案の末尾の「## 迷った所」", "mine": "ここからは私のまとめです"},
+}
+SCRIPT_MEMO_TALK = re.compile(SCRIPT_MEMO.pattern.replace("私の概算|概算です|", ""))   # 発表の原稿：「私の概算です」は発表者が言ってよい
+
+
+def script_checks(work, srows, text: str, kind: str = "memo", aim=None) -> list:
+    """標準の回の script.md（設計の担当が書く読み上げ原稿。scaffold が notes.md に入れ、制作の担当は書き直さない）の [(印, 項目, 説明)]。
+    講座（check_memo）と発表（check_outline、kind="outline"）で共通。aim＝本文の枚の字数の (下, 上, 目安の言い方)：
+    省くと講座の 300〜400字。発表は check_outline が 発表時間×300字÷本文の枚数 から渡し、出どころ〔p.12〕は組むときに外すので数えない。
+    標準の回でないとき・同梱の見本（script.md より前に作った）では何も出さない。"""
+    import os
+    import budget
+    import scaffold
+    work = Path(work)
+    if not budget.light(work) or "examples" in work.resolve().parts or os.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):
+        return []
+    lo, hi, say = aim or (SCRIPT_MIN, SCRIPT_MAX, "300〜400字")
+    W = SCRIPT_WORDS[kind]
+    res = []
+    sp = work / "script.md"
+    body_n = [r["#"] for r in srows if (scaffold.col(r, "役割") or "本文") in ("本文", "まとめ")]
+    if not sp.exists():
+        return [("△", "原稿", "script.md が無い（本文の枚ごとに「## N」と読み上げる原稿。設計の担当が書き、scaffold が notes.md に入れる）")]
+    secs = {int(m.group(1)): m.group(2) for m in scaffold.NOTE_SEC.finditer(sp.read_text(encoding="utf-8"))}
+    plain = (lambda s: scaffold.SRC_TAG.sub("", s)) if kind == "outline" else (lambda s: s)
+    # 読み上げる字数（※ の出典・要確認の行は数えない）
+    got = {n: len(re.sub(r"\s", "", plain("\n".join(l for l in t.splitlines() if not l.strip().startswith("※"))))) for n, t in secs.items()}
+    short = [n for n in body_n if got.get(n, 0) < 150]
+    if short:
+        res.append(("△", "原稿", "script.md に原稿が無いか短い枚（150字未満）：" + "・".join(map(str, short[:8]))
+                    + f"（本文の枚は{say}。1文目で前の枚からつなぎ、図の読み方・根拠・橋渡し・次への予告）"))
+    # 本文の枚の字数の幅（比べの4本で、300〜400字に入ったのは 3〜10 枚/10 とばらつき、最大 501 字の枚があった。少しの外れは許す）
+    body_only = [r["#"] for r in srows if (scaffold.col(r, "役割") or "本文") == "本文"]
+    off = [f"{n}（{got[n]}字）" for n in body_only if got.get(n, 0) >= 150 and not lo <= got[n] <= hi]
+    if off:
+        res.append(("△", "原稿の字数", f"本文の枚の原稿が{say}から外れた枚：" + "・".join(off[:8])
+                    + f"（長い枚は1文を短くして補足を削る。短い枚は根拠の数字・例か、{W['who']}の経験への橋渡しを足す）"))
+    # 作業の経緯の言い方（※ の行は出典・要確認の行なので見ない）。断りは設計メモ・構成案へ、原稿は聞き手に言う言い方だけ
+    memo_re = SCRIPT_MEMO if kind == "memo" else SCRIPT_MEMO_TALK
+    memo_hits = [f"{n}「{m.group(0)}」" for n, t in secs.items()
+                 for m in [memo_re.search("\n".join(l for l in t.splitlines() if not l.strip().startswith("※")))] if m]
+    if memo_hits:
+        res.append(("△", "原稿の作業メモ", "原稿は聞き手に向けた言葉だけにする。作り手の作業の言い方が残っている枚：" + "・".join(memo_hits[:6])
+                    + f"（確かさの断り・作業の経緯は{W['where']}へ。原稿は「〜とされます」「{W['mine']}」のように聞き手に言う形だけ）"))
+    import figplan as _fp
+    kinds = {r["#"]: _fp.parse_fig(scaffold.col(r, "図で見せるもの", "図"))[1] for r in srows}
+    # 部品の図の向きと合わない指し方（比べと見本で「右端の〜」「棒グラフの左が」が横棒の上下、「左から」が縦の流れ図だった）
+    pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for k in [kinds.get(n)] if k in SCRIPT_POS
+           for m in [SCRIPT_POS[k].search(t)] if m]
+    if pos:
+        res.append(("△", "原稿の図の指し方", "部品の図の向きと合わない指し方（棒グラフは横棒で図の案の順に上から、流れ図は上から下）：" + "・".join(pos[:6])
+                    + "（「右の棒」→「下の『〇〇』の棒」、「左から見て」→「上から見て」。位置で指すのはよい）"))
+    talk = figure_talk(secs, {n: k for n, k in kinds.items() if k})
+    if talk:
+        res.append(("△", "原稿の図の種類", "原稿は、その枚の図の案の図を話す（原稿は図より先に書くので、話す図が案と別物になりやすい）。"
+                    "食い違う枚：" + "・".join(f"{n}「{s[:14]}」→図の案は{k}" for n, s, k, _ in talk[:5])
+                    + "。原稿を図の案に合わせて直すか、図の案をその図に替える"))
+    # 手当てで原稿に回したものが script.md にあるか（制作の段の check_notes で見つかると、制作の担当が原稿を直していた）
+    import check_notes as _cn
+    lack = _cn.missing_care(text, secs)
+    if lack:
+        res.append(("✘", "原稿の手当て", "手当てで原稿に回すと書いたのに、script.md に無い：" + "、".join(f"[{n}] {w}" for n, w in lack[:6])
+                    + "（手当ては script.md のその枚の原稿に直接入れる。制作の担当は原稿を書き直さない。言い方を変えたなら、手当ての行も直す）"))
+    return res
+
+
 def recap_check(text: str, srows, col):
     """講座の最後のまとめの枚（役割「まとめ」）。本文6枚以上で無ければ ✘。睡眠の比べで、まとめの枚が無いと採点者2人が減点した
     （部品 s.recap と scaffold の組みはあったが、標準の回の設計の担当に知らせる所も検査も無く、作られなかった）。"""
@@ -843,52 +911,7 @@ def check(memo: Path, require_review: bool = False):
         if "examples" not in Path(memo).resolve().parts and not _os2.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):   # 見本はまとめの枚より前に作った（作り直すときに入れる）
             res += recap_check(text, srows, scaffold.col)
         res += example_copy(text, "memo", memo)
-        import budget as _bud   # 標準の回：原稿は設計の担当が script.md に書く（制作の担当は書き直さない）
-        import os as _os
-        if _bud.light(memo.parent) and "examples" not in Path(memo).resolve().parts and not _os.environ.get("SENSEI_SKIP_EXAMPLE_COPY"):
-            sp = memo.parent / "script.md"
-            body_n = [r["#"] for r in srows if (scaffold.col(r, "役割") or "本文") in ("本文", "まとめ")]
-            if not sp.exists():
-                res.append(("△", "原稿", "script.md が無い（本文の枚ごとに「## N」と読み上げる原稿。設計の担当が書き、scaffold が notes.md に入れる）"))
-            else:
-                secs = {int(m.group(1)): m.group(2) for m in scaffold.NOTE_SEC.finditer(sp.read_text(encoding="utf-8"))}
-                # 読み上げる字数（※ の出典・要確認の行は数えない）
-                got = {n: len(re.sub(r"\s", "", "\n".join(l for l in t.splitlines() if not l.strip().startswith("※")))) for n, t in secs.items()}
-                short = [n for n in body_n if got.get(n, 0) < 150]
-                if short:
-                    res.append(("△", "原稿", "script.md に原稿が無いか短い枚（150字未満）：" + "・".join(map(str, short[:8]))
-                                + "（本文の枚は300〜400字。1文目で前の枚からつなぎ、図の読み方・根拠・橋渡し・次への予告）"))
-                # 本文の枚の字数の幅（比べの4本で、300〜400字に入ったのは 3〜10 枚/10 とばらつき、最大 501 字の枚があった。少しの外れは許す）
-                body_only = [r["#"] for r in srows if (scaffold.col(r, "役割") or "本文") == "本文"]
-                off = [f"{n}（{got[n]}字）" for n in body_only if got.get(n, 0) >= 150 and not SCRIPT_MIN <= got[n] <= SCRIPT_MAX]
-                if off:
-                    res.append(("△", "原稿の字数", "本文の枚の原稿が300〜400字から外れた枚：" + "・".join(off[:8])
-                                + "（長い枚は1文を短くして補足を削る。短い枚は根拠の数字・例か、学習者の経験への橋渡しを足す）"))
-                # 作業の経緯の言い方（※ の行は出典・要確認の行なので見ない）。断りは設計メモ（3節の確認の列・8節）へ、原稿は聞き手に言う言い方だけ
-                memo_hits = [f"{n}「{m.group(0)}」" for n, t in secs.items()
-                             for m in [SCRIPT_MEMO.search("\n".join(l for l in t.splitlines() if not l.strip().startswith("※")))] if m]
-                if memo_hits:
-                    res.append(("△", "原稿の作業メモ", "原稿は聞き手に向けた言葉だけにする。作り手の作業の言い方が残っている枚：" + "・".join(memo_hits[:6])
-                                + "（確かさの断り・作業の経緯は設計メモの3節の確認の列か8節へ。原稿は「〜とされます」「ここは講師のまとめです」のように聞き手に言う形だけ）"))
-                import figplan as _fp
-                kinds = {r["#"]: _fp.parse_fig(scaffold.col(r, "図で見せるもの", "図"))[1] for r in srows}
-                # 部品の図の向きと合わない指し方（比べと見本で「右端の〜」「棒グラフの左が」が横棒の上下、「左から」が縦の流れ図だった）
-                pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for k in [kinds.get(n)] if k in SCRIPT_POS
-                       for m in [SCRIPT_POS[k].search(t)] if m]
-                if pos:
-                    res.append(("△", "原稿の図の指し方", "部品の図の向きと合わない指し方（棒グラフは横棒で図の案の順に上から、流れ図は上から下）：" + "・".join(pos[:6])
-                                + "（「右の棒」→「下の『〇〇』の棒」、「左から見て」→「上から見て」。位置で指すのはよい）"))
-                talk = figure_talk(secs, {n: k for n, k in kinds.items() if k})
-                if talk:
-                    res.append(("△", "原稿の図の種類", "原稿は、その枚の図の案の図を話す（原稿は図より先に書くので、話す図が案と別物になりやすい）。"
-                                "食い違う枚：" + "・".join(f"{n}「{s[:14]}」→図の案は{k}" for n, s, k, _ in talk[:5])
-                                + "。原稿を図の案に合わせて直すか、図の案をその図に替える"))
-                # 手当てで原稿に回したものが script.md にあるか（制作の段の check_notes で見つかると、制作の担当が原稿を直していた）
-                import check_notes as _cn
-                lack = _cn.missing_care(text, secs)
-                if lack:
-                    res.append(("✘", "原稿の手当て", "手当てで原稿に回すと書いたのに、script.md に無い：" + "、".join(f"[{n}] {w}" for n, w in lack[:6])
-                                + "（手当ては script.md のその枚の原稿に直接入れる。制作の担当は原稿を書き直さない。言い方を変えたなら、手当ての行も直す）"))
+        res += script_checks(memo.parent, srows, text)   # 標準の回：原稿は設計の担当が script.md に書く（制作の担当は書き直さない）
         import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
         bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
         if bad:

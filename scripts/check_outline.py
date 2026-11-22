@@ -19,6 +19,8 @@
     載っていなければ ✘。レビューの前（outline_review.md が無い）なら数えない
   照合できるのは、数えた結果と手当てが食い違っていないかまで。穴の数そのものはレビュー担当の判断。
   話の筋・前の枚から：筋の表（状況・複雑化・問い・答え）と、構成の表の「前の枚から」（そして・しかし・だから）。story.py
+  原稿（標準の回だけ）：設計の担当が書く script.md。無い・短い枚・字数の外れ（目安は 発表時間×300字÷本文の枚数）・図の指し方・
+    手当てで原稿に回したのに無い（✘）。check_memo と同じ検査（check_memo.script_checks）
 """
 import math
 import re
@@ -263,7 +265,27 @@ def check(outline: Path, require_review: bool = False):
         except Exception:   # noqa: BLE001
             fit = []
     return (count(text, body) + ([tp] if tp else []) + ([ut] if ut else []) + ([fw] if fw else []) + story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")
-            + copied + flows(text, outline.parent) + roadmap(text, rows) + fit + reasoning(outline, text, require_review and not small, small))
+            + copied + flows(text, outline.parent) + roadmap(text, rows) + fit + script(outline, text)
+            + reasoning(outline, text, require_review and not small, small))
+
+
+def script(outline: Path, text: str):
+    """標準の回の原稿 script.md（設計の担当が、発表者の読み上げる言葉で書く。scaffold が notes.md に入れる）の検査。
+    講座と同じ検査（check_memo.script_checks）で、本文の枚の字数の目安だけ発表のもの（発表時間×300字÷本文の枚数、無ければ400字。その2割の外れまでは知らせない）。
+    前は構成の表の「ノートへ」の列に原稿の中身を書き、制作の担当が書き直していたので、推論距離の担当が本物の原稿を見られず、制作の段で入った語が監査をすり抜けた。"""
+    if (outline.parent / "memo.md").exists():   # 講座の作業フォルダ（check_memo が見る）
+        return []
+    try:
+        import check_memo
+        import scaffold
+        _, _, srows, _ = scaffold.plan(outline.parent)
+        n = sum(1 for r in srows if (scaffold.col(r, "役割") or "本文") == "本文")
+        t = minutes(text)
+        per = t * 300 / max(n, 1) if t else 400
+        say = f"{per:.0f}字前後" + (f"（発表 {t:g}分×300字÷本文 {n}枚）" if t else "")
+        return check_memo.script_checks(outline.parent, srows, text, "outline", (round(per * 0.8), round(per * 1.2), say))
+    except Exception:   # noqa: BLE001
+        return []
 
 
 def roadmap(text: str, rows):

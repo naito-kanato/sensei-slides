@@ -1219,19 +1219,24 @@ def figs_todo(work: Path) -> list:
 
 NOTE_TAG = re.compile(r"\s*〔事実\s*\d+[^〕]*〕")       # 設計メモの事実の印（原稿には要らない）
 MEMO_LINE = re.compile(r"^\s*※\s*[（(]メモ[)）].*$\n?", re.M)   # 作り手のメモの行（読み上げない）
+SRC_TAG = re.compile(r"\s*〔[^〔〕\n]{1,60}〕")   # 発表の原稿の出どころ〔p.12〕〔Fig. 2〕〔II〕（設計の担当が script.md の事実に添える。読み上げない）
 
 
-def spoken(text: str) -> str:
-    """script.md の1枚の原稿から、読み上げない物を外す：〔事実N〕の印と「※（メモ）」の行。
-    地震の試しで、推論距離の担当が足した〔事実16〕などの印と作業のメモが原稿に残り、採点者2人が「読み上げられない」と減点した。"""
-    return NOTE_TAG.sub("", MEMO_LINE.sub("", text)).strip()
+def spoken(text: str, src_tags: bool = False) -> str:
+    """script.md の1枚の原稿から、読み上げない物を外す：〔事実N〕の印と「※（メモ）」の行。src_tags（発表）なら、読み上げる行の出どころ〔…〕も
+    （※ の行の出どころは残す）。地震の試しで、推論距離の担当が足した〔事実16〕などの印と作業のメモが原稿に残り、採点者2人が「読み上げられない」と減点した。"""
+    t = NOTE_TAG.sub("", MEMO_LINE.sub("", text))
+    if src_tags:
+        t = "\n".join(l if l.strip().startswith("※") else SRC_TAG.sub("", l) for l in t.split("\n"))
+    return t.strip()
 
 
 def fill_notes(work: Path, src: Path):
     """「## N」ごとの原稿を、notes.md のその枚の TODO の行に入れる（ほかの行はそのまま）。入れた枚と、まだ TODO の枚を返す。"""
     f = work / "notes.md"
     text = f.read_text(encoding="utf-8")
-    new = {int(m.group(1)): spoken(m.group(2)) for m in NOTE_SEC.finditer(src.read_text(encoding="utf-8")) if spoken(m.group(2))}
+    tags = (work / "outline.md").exists() and not (work / "memo.md").exists()   # 発表：原稿の出どころ〔p.12〕は読み上げない
+    new = {int(m.group(1)): spoken(m.group(2), tags) for m in NOTE_SEC.finditer(src.read_text(encoding="utf-8")) if spoken(m.group(2), tags)}
     done = []
 
     def put(m):
@@ -1418,7 +1423,7 @@ def main(argv=None):
             continue
         p.write_text(text, encoding="utf-8")
         made.append(name)
-    script = work / "script.md"   # 設計の担当が書いた原稿（標準の回）：notes.md の TODO の枚に入れる（制作の担当は書き直さない）
+    script = work / "script.md"   # 設計の担当が書いた原稿（標準の回。講座も発表も）：notes.md の TODO の枚に入れる（制作の担当は書き直さない）
     if "notes.md" in made and script.exists():
         done, left = fill_notes(work, script)
         made.append(f"原稿を script.md から {len(done)} 枚入れた" + (f"（まだ TODO：{'・'.join(map(str, left))}）" if left else ""))

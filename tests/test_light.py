@@ -375,3 +375,60 @@ def test_script_length_and_position_words(tmp_path, monkeypatch):
     out = {i: (m, t) for m, i, t in check_memo.check(w / "memo.md")}
     assert out["原稿の字数"][0] == "△" and "4（500字）" in out["原稿の字数"][1]
     assert out["原稿の図の指し方"][0] == "△" and "3「グラフの右」" in out["原稿の図の指し方"][1] and "5「左から見」" in out["原稿の図の指し方"][1]
+
+
+def _zemi(tmp_path, lightness="標準"):
+    """ゼミの見本の構成案を写した発表の作業フォルダ（軽さを替えられる）。"""
+    import re
+    src = (Path(__file__).resolve().parents[1] / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
+    src, n = re.subn(r"(\|\s*軽さ\s*\|\s*)[^|]*\|", rf"\g<1>{lightness} |", src, count=1)
+    assert n == 1
+    w = tmp_path / "_work" / "ゼミ"
+    w.mkdir(parents=True)
+    (w / "outline.md").write_text(src, encoding="utf-8")
+    return w
+
+
+def test_outline_script_fills_the_notes(tmp_path, monkeypatch):
+    """発表の標準の回も、設計の担当が書いた script.md の原稿を scaffold が notes.md に入れる（読み上げる行の出どころ〔…〕は外し、※ の行には残す）。
+    原稿が無い・短い枚は check_outline が △。念入りの回は script.md を求めない。"""
+    monkeypatch.delenv("SENSEI_SKIP_EXAMPLE_COPY", raising=False)
+    import re
+    import check_outline
+    import scaffold
+    w = _zemi(tmp_path)
+    assert {i: m for m, i, _ in check_outline.check(w / "outline.md")}.get("原稿") == "△"   # script.md が無い
+    say = "い" * 440 + "と書かれています〔Fig. 3〕。"
+    body = "".join(f"## {n}\n{say}\n※（資料外の補足）根拠〔p.2〕\n\n" for n in range(1, 18))
+    (w / "script.md").write_text(body, encoding="utf-8")
+    items = {i: (m, x) for m, i, x in check_outline.check(w / "outline.md")}
+    assert "原稿" not in items and "原稿の字数" not in items   # 目安 20分×300字÷本文13枚＝約462字（出どころは数えない）
+    assert scaffold.main([str(w)]) == 0
+    notes = re.sub(r"<!--.*?-->", "", (w / "notes.md").read_text(encoding="utf-8"), flags=re.S)   # 枚ごとのコメント（構成案の列）は見ない
+    assert "い" * 440 + "と書かれています。" in notes and "〔Fig. 3〕" not in notes and "※（資料外の補足）根拠〔p.2〕" in notes
+    careful = _zemi(tmp_path / "c", "念入り")
+    assert not {"原稿", "原稿の字数"} & {i for _, i, _ in check_outline.check(careful / "outline.md")}
+
+
+def test_outline_script_checks(tmp_path, monkeypatch):
+    """発表の script.md の字数は 発表時間×300字÷本文の枚数 の目安から（講座の300〜400字ではない）。横棒の「右端」は △、
+    手当てで原稿に回した言い回しが script.md に無ければ ✘（check_memo と同じ検査）。「私の概算です」は発表者が言ってよい。"""
+    monkeypatch.delenv("SENSEI_SKIP_EXAMPLE_COPY", raising=False)
+    import check_outline
+    w = _zemi(tmp_path)
+    o = w / "outline.md"
+    s = o.read_text(encoding="utf-8").replace("## 引っかかりへの手当て\n", "## 引っかかりへの手当て\n- [5] 効きの意味 → 原稿で「同じ伸びを重ねて拾う」と言う\n", 1)
+    o.write_text(s, encoding="utf-8")
+    ok = "あ" * 350   # 講座なら目安に入るが、20分・本文13枚の発表では短い
+    bad = {4: "あ" * 460 + "これは私の概算です。", 13: "あ" * 460 + "棒グラフの右端が型を使う探索です。"}
+    (w / "script.md").write_text("".join(f"## {n}\n{bad.get(n, ok)}\n\n" for n in range(1, 18)), encoding="utf-8")
+    out = {i: (m, x) for m, i, x in check_outline.check(o)}
+    assert out["原稿の字数"][0] == "△" and "2（350字）" in out["原稿の字数"][1] and "462字前後" in out["原稿の字数"][1]
+    assert "4（" not in out["原稿の字数"][1]
+    assert out["原稿の図の指し方"][0] == "△" and "13「グラフの右」" in out["原稿の図の指し方"][1]
+    assert "原稿の作業メモ" not in out
+    assert out["原稿の手当て"][0] == "✘" and "[5]" in out["原稿の手当て"][1]
+    (w / "script.md").write_text("".join(f"## {n}\n" + "あ" * 440 + ("同じ伸びを重ねて拾うからです。" if n == 5 else "") + "\n\n"
+                                         for n in range(1, 18)), encoding="utf-8")
+    out = {i: m for m, i, _ in check_outline.check(o)}
+    assert not {"原稿", "原稿の字数", "原稿の図の指し方", "原稿の手当て"} & set(out)

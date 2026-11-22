@@ -215,7 +215,7 @@ def light_steps(work: Path, kind: str):
         if "軽量の制作の担当" in launched:
             return out, "軽量：制作の担当が書き終えるのを待つ（終わりの知らせを待つ）。担当がもう戻っていて残っているなら、残った所を【続けて頼む】"
         if kind == "outline" and not build.exists() and not leave_outline(work):   # 発表：構成案をユーザーに見せてから組む（オプション「構成案の確認：見せる」）
-            return out, ("構成案をユーザーに見せる（最初に筋の表の「対立」「それで」の2行＝問いの深め、次に outline.md の話の順番の表。オプション「構成案の確認：見せる」）。直しは設計の担当に【続けて頼む】。"
+            return out, ("構成案をユーザーに見せる（最初に筋の表の「対立」「それで」の2行＝問いの深め、次に outline.md の話の順番の表。オプション「構成案の確認：見せる」）。直しは設計の担当に【続けて頼む】（直した枚は script.md の原稿も）。"
                          f"OK が出たら、制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）")
         return out, (f"軽量：制作の担当1人を起動（`brief.py 軽量の制作の担当 {w}`）。scaffold（設計メモから組む）→ 図 → 残った TODO と原稿 → make_deck（3回まで）→ 原稿HTML")
     return out, (f"手順7：制作の担当の返答に make_deck の「渡す前の確認：渡してよい」があれば、そのままユーザーに渡す（check_done は make_deck が最後の回に走らせ済み。"
