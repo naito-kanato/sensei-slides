@@ -1,184 +1,140 @@
 ## 1
-<!-- 表紙の枚 ／ ノートへ：この回のゴール3つ -->
+<!-- 表紙の枚 -->
 
-Welcome. In this lecture, we look at what a chat AI actually computes when it writes a reply to you.
-
-By the end, you should be able to do three things. First, explain how the model writes: one token at a time, it gives every possible next token a probability and draws one. Second, explain why fluent but wrong answers, such as made-up facts, sources and numbers, are a natural result of that process, not a rare accident. Third, check an answer yourself: open the cited source, re-ask in a new chat, and recompute the numbers.
-
-Our theme today: fluent is not the same as true.
-
-You only need to have used a chat AI before. Let's start with what happens when it reads your question.
+Welcome. Today you will find out what a chatbot actually computes when it writes a reply, and why that same computation sometimes produces confident mistakes. By the end, you should be able to say in one sentence what generative AI computes, explain why a fluent answer can still be wrong, and name what to check before you rely on one. We start with a real court case from 2023. Keep one question in mind: what does generative AI actually compute?
 
 ## 2
-You have probably typed a question into a chatbot and got a smooth, confident answer back. So what is actually going on inside?
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 手当て：[2] 本文の Belief の主がない → 本文を「a lawyer thought it "could not" fabricate」にし、原稿に「One lawyer testified he thought ChatGPT could not possibly make up cases.」（事実2）。経験の問いは3枚目にあるので、2枚目の原稿の同じ問いは外した -->
 
-Look at the chart on the right. It shows what the model sees after the words "The capital of Australia is". Each bar is one candidate for the next token, and its height is the probability the model gives it. Canberra, in blue, is tall. Sydney, in red, is shorter, but it is clearly there. The numbers on this chart are only an example.
+In 2023, in a New York case, Mata versus Avianca, lawyers cited six court cases. Under "What the lawyers assumed": ChatGPT looked them up, and they were real. Under "What actually happened": ChatGPT wrote them, none existed, and the judge fined the lawyers 5,000 dollars. One lawyer testified he thought ChatGPT could not possibly make up cases. So how can a citation look real and not be? Start with your phone keyboard, which already predicts your next word.
 
-The model does this for every token in its vocabulary. GPT-2, for instance, has 50,257 of them. Then it draws one, weighted by those probabilities, appends it to the text, and does the whole thing again.
-
-Think of the next-word suggestions on your phone keyboard, scaled up until it writes the whole reply. And here is a trap: Sydney is Australia's largest city, but it is not the capital, and it still gets a real share of the probability.
-
-Before we go on, make a guess. When it answered, did it look the answer up somewhere? Keep that guess in mind. First, let's see what a token actually is.
+※ Source: ABA Journal "Lawyers who 'doubled down' and defended ChatGPT's fake cases must pay $5K, judge says" (2023) https://abajournal.com/web/article/lawyers-who-doubled-down-and-defended-chatgpts-fake-cases-must-pay-5k-judge-says ; Bloomberg Law "Phony ChatGPT Brief Leads to $5,000 Fine for NY Lawyers" (2023) https://news.bloomberglaw.com/litigation/chatgpt-phony-legal-filing-case-gets-lawyers-a-5-000-fine
+※ Source: ABA Journal (2023), same article as row 1
 
 ## 3
-Let's look more closely at the candidates from the last slide. The unit the model chose from was not a word. It was a token.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（手段）（1文目でこの語のつながりを言う） -->
 
-Below, the same sentence, "The capital of Australia is", is cut into boxes. Each box is one token. Short, common words often get a box of their own, and longer or rarer words can be split into pieces. The 27 characters of this sentence became 5 tokens. At the bottom, a rare place name, Dubbo, is cut into two pieces. The split shown here is just an example, because each model has its own way of cutting text.
+So, start with something you use every day. Type "See you", and your keyboard offers "soon", "later" or "tomorrow"; you tap one. It is not looking up your plans; it guesses which word usually comes next. Have you trusted a reply just because it sounded sure? Then today's question matters: what does generative AI actually compute? A guess to test: maybe a chatbot is a far bigger keyboard. The first step comes before any guessing: text is cut into tokens, and 100 tokens are about 75 words.
 
-So how long is a token? OpenAI gives a rule of thumb for English: one token is about 4 characters, or about three quarters of a word. In other words, 100 tokens is roughly 75 words.
-
-Here is where people slip. That ratio is for English. OpenAI notes that other languages have different ratios, so do not carry the 4-character rule over to every language.
-
-Tokens also set the length limit. What the model can read at once is counted in tokens, not in words or pages. For GPT-3 in 2020, that limit was 2,048 tokens.
-
-Next, how does the model learn which token should come next?
+※ Source: Apple "iPhone User Guide: Use predictive text on iPhone" https://support.apple.com/guide/iphone/use-predictive-text-iphd4ea90231/ios ; Apple Support "How to use Auto-Correction and predictive text" https://support.apple.com/104995
 
 ## 4
-The answer is training.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（詳しく）（1文目でこの語のつながりを言う） -->
 
-Follow the flow chart on the right from the top. Take some real text and hide the next token. The model guesses it. The guess is compared with the real token, and the numbers inside the model are nudged a little toward the right answer. Then it all repeats, again and again.
+Let's look closely at that first step. A model cuts text into tokens. In the figure, "Chatbots predict text." becomes boxes, one per token; the splits are only an illustration. OpenAI says a token can be a word, part of a word, or a punctuation mark. In English one token is about four characters, or three quarters of a word, so 100 tokens are about 75 words. Think of building blocks, except the blocks do not always match whole words. Next: each possible next token gets a probability.
 
-Those numbers are called parameters. They are values inside the model that training sets. GPT-3 has 175 billion of them. During training, GPT-3 read about 300 billion tokens drawn from web pages, books and Wikipedia.
-
-Be careful with that number. 300 billion is how many tokens it saw during training, not the size of the data itself.
-※ The mix of filtered Common Crawl, WebText2, Books and Wikipedia adds up to about 499 billion tokens. Training sampled from it with weights.
-
-Now look at what the loop actually checks: only whether the guess matched the real text. So what it learns is how text continues, not a list of facts. Hold on to that; we will need it later.
-
-So what happens when you actually chat with a model like this?
+※ Source: OpenAI Help Center "What are tokens and how to count them" (article 4936856) https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
+※ Source: OpenAI Help Center "What are tokens and how to count them" https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
 
 ## 5
-Look at the picture on the right. The whole chat is laid out as one long document: the instructions, then your message, its reply, your next message, and finally an empty slot where the reply's next token goes. Every time you send a message, all of this is sent to the model in full. OpenAI's documentation describes each request as independent and stateless. So the model's "memory" of the chat is really just this document, handed over again each turn, and the reply is its likely continuation.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（詳しく）（1文目でこの語のつながりを言う） ／ 手当て：[5] training の中身・確率の出どころ → 原稿に「Training: the model reads huge amounts of text, and its settings are adjusted until the token that actually came next gets a high probability.」（事実7の言い換え） -->
 
-But there is a catch. A model that only predicts how text continues will not necessarily continue in the form of an answer to your question. That is why tuning comes in. Plain GPT-3 just continues text. InstructGPT was tuned on example replies written by people, and on people's rankings of its own replies, so that preferred replies became more likely.
+After "The capital of France is", the model rates every token by how likely it is to come next. A longer bar means more likely: "Paris" long, "located" short. Where do the odds come from? Training: the model reads huge amounts of text, and its settings are adjusted until the token that actually came next gets a high probability. GPT-3, an earlier OpenAI model, was trained on 300 billion tokens. It is like a chance-of-rain forecast, but about which text usually follows, not about the world. Next: it picks one token, appends it, and repeats.
 
-The result is striking. People preferred answers from the 1.3 billion parameter InstructGPT over the 175 billion parameter GPT-3. That is about one hundredth of the parameters.
-
-But even a tuned model still draws its tokens, so let's see what that does.
+※ Source: Brown T. et al. "Language Models are Few-Shot Learners" arXiv:2005.14165 (2020), abstract; Table 2.1 caption ("All models were trained for a total of 300 billion tokens") https://arxiv.org/abs/2005.14165
+※ Source: Brown et al. 2020 abstract ("an autoregressive language model"); Kalai A.T. et al. "Why Language Models Hallucinate" arXiv:2509.04664 (2025) https://arxiv.org/abs/2509.04664
 
 ## 6
-But that does not mean the model always says the most likely thing. Each token is a draw.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（次へ）（1文目でこの語のつながりを言う） ／ 手当て：[6] pick の像（等しく引く） → 原稿に「Likely tokens are picked most often, unlikely ones now and then; it is not an even draw.」（事実8） ／ 手当て：[6] temperature の像（熱） → 原稿を「A setting called temperature, nothing to do with heat, controls how much chance there is: higher means more random, lower means more focused.」に（事実8） -->
 
-Look at the chart on the left. It shows the same capital candidates at three temperatures. Temperature is a dial applied just before the draw. At temperature 1 we have the original numbers: Canberra 62%, Sydney 25%, Melbourne 8%, and everything else 5%. Think of a lottery where 62 of 100 tickets say Canberra. At a low temperature, 0.5, the tall bar gets taller: Canberra 84%, Sydney 14%. At a high temperature, 2, the bars flatten out: Canberra 44%, Sydney 28%, Melbourne 16%.
-※ (Lecturer's calculation) The values at 0.5 and 2 are computed from the example probabilities, with "other" counted as one candidate.
+Follow the flow chart: text so far, probabilities for each next token, pick one with some chance, append it, and go again. Likely tokens are picked most often, unlikely ones now and then; it is not an even draw. A setting called temperature, nothing to do with heat, controls how much chance there is: higher means more random, lower means more focused. That is why the same question can get two different replies. But what about real facts, like references? In a 2023 study, GPT-3.5 invented 55 percent of its citations, GPT-4 18 percent.
 
-So why not just always pick the top token? Researchers found that doing that makes text bland and strangely repetitive, so models draw instead.
-
-A common mistake is to think you control this dial. ※ (Not from the source) In chat apps, you usually cannot change the temperature; the provider picks the value. That is why the same question in a new chat can get a different answer.
-
-But does what it draws match the facts? Let's look at the evidence.
+※ Source: OpenAI API reference wording, quoted in OpenAI Developer Community "Temperature docs for 1 max vs 2 max" (2023) https://community.openai.com/t/temperature-docs-for-1-max-vs-2-max/309112
 
 ## 7
-Before I show you the chart, make a guess. When an AI lists references for a paper, what share of them do you think do not exist? Well, the result was 55% for ChatGPT running GPT-3.5.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：しかし（意外）（1文目でこの語のつながりを言う） ／ 手当て：[7] literature review・GPT-3.5/GPT-4 の中身 → 原稿に「summaries of research with a reference list」と「two versions of the model behind ChatGPT」 -->
 
-Look first at the GPT-3.5 bar for made-up references: more than half. The newer GPT-4 did better, at 18%, but that is still about one in five. The same study also found that even among the real references, 43% from GPT-3.5 and 24% from GPT-4 had major errors, such as the wrong authors, year or pages. That part is not on the chart. The study checked 636 references from 84 short papers on 42 topics, in 2023. That is one study and one task. Newer models and tools with search may do better, but, as we will see when we open the source, not perfectly.
+But here is the surprise. In a 2023 study in Scientific Reports, researchers asked ChatGPT for short literature reviews, summaries of research with a reference list, and checked every citation. The bars show the share that did not exist: 55 percent for GPT-3.5 and 18 percent for GPT-4, two versions of the model behind ChatGPT. Newer was better, but not zero. A limit: two 2023 models on a hard task; today's tools may do better. You might think the AI searched and slipped. Let's test that: asked 3 times, a model gave 3 different wrong dates.
 
-At the start, you guessed it looked the answer up. It did not. Asking it to check itself does not help either. In Mata v. Avianca in 2023, a lawyer asked ChatGPT whether a case was real. It said yes. The case did not exist, and the lawyers were fined 5,000 dollars.
-
-This is called hallucination. The survey defines it as text that is nonsensical or unfaithful to the provided source. In this course we also use it for content that does not match the facts.
-
-So here is today's question. If it reads so fluently, why does it make things up so confidently?
+※ Source: Walters W.H. & Wilder E.I. "Fabrication and errors in the bibliographic citations generated by ChatGPT" Scientific Reports 13, 14045 (2023) https://www.nature.com/articles/s41598-023-41032-5
 
 ## 8
-Another surprise is that newer models are not free of this problem.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：しかし（疑い）（1文目でこの語のつながりを言う） ／ 手当て：[8] 検索なら同じ答えの理由・ループなら別の答えの理由（遠い：6枚目）・DeepSeek-V3 → 原稿に「since it reads the same stored record」「because each pick involves chance, as in step 3」「another company's chat model」 -->
 
-Look first at the made-up bars on the right. The older o1 made up answers to 16% of the questions. The newer o3 made up answers to 33%, about twice as many. And o4-mini reached 48%, about three times as many.
+Here a doubt comes up: is this a search that slipped? A failed lookup finds a real source, and since it reads the same stored record, it repeats the same answer. A likely continuation may name a source that never existed, with a new answer each try. In a 2025 paper, Adam Kalai's team asked DeepSeek-V3, another company's chat model, for Kalai's birthday, only if it knew. Three tries, three different wrong dates. A lookup would not do that; the loop would, because each pick involves chance, as in step 3. So why guess? Partly because tests reward a 1-in-365 guess over "I don't know".
 
-These numbers come from PersonQA, a test that asks about published facts on real people. Each rate is a share of all the PersonQA questions. OpenAI reported them in its system card in April 2025.
-
-Now, here is where it is easy to misread the chart. o3 is not simply worse. Its accuracy also went up, to 59% compared with 47% for o1. It makes more claims overall, so it gets more answers right and also more answers wrong. And this is one company's result on one test, so we should not stretch it further.
-
-Still, the lesson is clear enough. You cannot skip checking just because a model is newer.
-
-So is there a pattern in when models guess instead of holding back? The next result looks at exactly that.
+※ Source: Kalai A.T., Nachum O., Vempala S., Zhang E. "Why Language Models Hallucinate" arXiv:2509.04664 (2025-09-04) https://arxiv.org/abs/2509.04664
 
 ## 9
-Another pattern shows up in how often a model is willing to say "I don't know".
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（帰結）（1文目でこの語のつながりを言う） ／ 手当て：[9] 1度しか出ない事実に規則が無い理由・tests の中身 → 原稿に「Training learns from what repeats」と「the tests used to score models count only right answers」、結びを「So such tests reward guessing over admitting it does not know」に（事実10・11の言い換え） -->
 
-Look first at the right answers on the chart. They are almost the same: 22% for gpt-5-thinking-mini and 24% for o4-mini. Now look at the wrong answers. gpt-5-thinking-mini got 26% wrong, but o4-mini got 75% wrong, nearly three times as many.
+First, rare facts: Training learns from what repeats, and a birthday seen once in the training text has no pattern to learn from. Second, grading: the tests used to score models count only right answers, and 1 in 365 is the chance a guessed birthday is right. Small, but if "I don't know" scores zero, a guess still earns more on average, like an exam with no penalty for wrong answers. So such tests reward guessing over admitting it does not know, and the guessing shows most on rare facts. Then what does generative AI actually compute? It computes what is likely next, not what is true.
 
-The difference is in the first number. gpt-5-thinking-mini said "I don't know" to 52% of the questions. o4-mini said it to just 1%. Each figure is a share of all the SimpleQA questions, which are short fact questions. So guessing on almost everything added only a couple of right answers, but a huge number of wrong ones.
-
-A word of caution. This comes from OpenAI's own announcement in September 2025. It compares two models from the same company on one test, and the test only has short fact questions. So we should not read more into it than that.
-
-Here is the part to remember. A confident tone is not a sign that the answer is right. The model that sounded sure about everything was wrong most of the time.
-
-So why do models guess instead of saying "I don't know"? That is the next slide.
+※ Source: Kalai et al. 2025, arXiv:2509.04664 (same as row 9)
+※ Source: OpenAI "Why language models hallucinate" (2025-09) https://openai.com/index/why-language-models-hallucinate/
 
 ## 10
-So why does it make things up so confidently? The last three charts showed fake references, wrong answers, and a model that almost never said "I don't know." The answer to our question is this: nothing in it checks facts. It draws likely continuations of its training text, so rare facts, facts after its cutoff, and guesses that tests reward all come out fluent but wrong.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（問い）（1文目でこの語のつながりを言う） -->
 
-The first block on the slide is my own summary: no step checks facts. The next-token probability we started with comes from how text usually continues, not from a list of facts.
-
-First, rare facts. Now look at the chart on the right. I read two points off a figure in Kandpal and colleagues' 2023 paper, so the values are approximate. Each bar is the answers of BLOOM-176B to TriviaQA questions: blue is right, red is not right. On the left is a rare fact, with only about 10 pretraining documents about it. Accuracy is about 25%, so about three answers in four are not right. On the right is a common fact, with about 10,000 documents. Accuracy is over 55%. A fact the model has rarely seen never gets a high probability for the right continuation.
-
-Two more reasons are not on the slide. Second, every model has a cutoff, the date its training text ends. For GPT-4 in 2023, that was September 2021, so later events are simply not in the data.
-
-Third, tests usually rate a guess above "I don't know", and training follows the score.
-
-So how should we use it? On the next slide, we open the source ourselves.
+So, why do plausible mistakes appear? This is my summary. Generative AI computes how likely each next token is, picks one, appends it, and repeats. The figure shows the same loop, plus a crossed-out box, "Check: is it true?": a step the loop does not have. The analogy: your keyboard's guess, tapped to the end. It finishes sentences; it never checks them. Where it breaks: it learned from far more text, so it guesses better, but still guesses. So, check the names, numbers and sources you rely on.
 
 ## 11
-So we use one simple habit: open the source and find the sentence yourself. These three steps are my own recommendation.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（手段）（1文目でこの語のつながりを言う） ／ 手当て：[11] 名前・数はいつも珍しいわけではない（範囲） → 原稿を「Exact names, dates, numbers and sources are often rare facts, seen once in training text, where the model guesses.」に言い換え（事実11） -->
 
-First, ask the AI for the source. Second, open it yourself. Search by the title, the authors, and the DOI, which is the paper's ID. Third, find the actual sentence that supports the claim.
+So, here is how to use this. Follow the decision chart. Is the reply only wording or ideas, like rephrasing an email? Then use it as a draft. If not, will you rely on a name, a number or a source? Then check it in the original; otherwise, use it marked unchecked. Why these? Exact names, dates, numbers and sources are often rare facts, seen once in training text, where the model guesses. Wording has no single fact to get wrong. But checking that a source exists is not enough: only 7 percent of 115 references were real and accurate.
 
-Now follow the flow chart on the right, from the top. Is a source given? If not, go right and mark the claim "unverified". Can you open it? If not, the same. Does it actually say this claim? Only when all three answers are yes do you reach the bottom and use it. If you cannot find the sentence, write "unverified" and leave the claim out.
-
-Why go this far? Even legal research AIs that search a database first and then write made things up on 17 to 33% of test questions in a 2024 study. Some of these tools, such as Lexis+ AI, were advertised as hallucination-free. The writing step is still next-token prediction. Even real papers can come with wrong authors or years. And asking the AI "Is this real?" is not a check, as we saw with the Mata case.
-
-Another check is to re-ask, and we turn to that next.
+※ Source: Kalai et al. 2025, arXiv:2509.04664 (same as row 9)
 
 ## 12
-Here is the key idea: answers that disagree flag likely errors. Earlier we saw that each token is a new draw. Here we use that draw as a test.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（次へ）（1文目でこの語のつながりを言う） ／ 手当て：[12] 本物でも中身があるとは限らない・ChatGPT-3.5 の呼び名の揺れ → 本文の ⇒★ を「A real paper may not say it」、本文を「GPT-3.5 (ChatGPT)」に。原稿に「A real source may still not say what the reply claims.」と「the older model from slide 7」（事実12・データ2） -->
 
-Ask the same question again in a new chat. Do not use the same chat, because the whole chat, including the old answer, is sent again as one document, and the model tends to continue what it already wrote.
+The bar shows 115 references ChatGPT wrote with GPT-3.5, the older model from slide 7, for medical papers in 2023: 47 percent fabricated, 46 percent real but inaccurate, only 7 percent real and accurate. Look at "Real but inaccurate": almost half existed but had wrong details. A real source may still not say what the reply claims. So the steps go further: search the exact title, match authors, year and journal, then open it and find the claim. A limit: one older model, one field. Now, back to the lawyers: the fake cases were likely text, not failed searches.
 
-Now compare the two sides. On the left, two new chats both say Canberra. On the right, one says Canberra and the other says Sydney. The study behind this idea found that when a model knows a fact, sampled answers tend to agree. When it is guessing, they tend to diverge and contradict each other. So disagreement is a warning sign.
-
-But be careful: agreement is not proof. If a wrong token is the most likely one, it can win every draw, and you get the same wrong answer twice.
-
-For numbers, recompute the sums and percentages yourself, and find the original figure. You will try this in question 1-6.
-
-So, back to our question: why does it make things up so confidently? Nothing in it checks facts, so the checking is our job: open the source, re-ask, and recompute. Now let's review with some questions.
+※ Source: Centre College Library "Evaluating AI" https://library.centre.edu/AI/evaluate (accessed 2026-11)
+※ Source: Bhattacharyya M. et al. "High Rates of Fabricated and Inaccurate References in ChatGPT-Generated Medical Content" Cureus 15(5): e39238 (2023) doi:10.7759/cureus.39238 https://pmc.ncbi.nlm.nih.gov/articles/PMC10277170/
 
 ## 13
-Let's check what you have learned so far with three questions.
+<!-- 目安 400字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（帰結）（1文目でこの語のつながりを言う） -->
 
-Question 1-1 asks what a chat AI computes at each step of a reply, and what it does with the result. If you are not sure, look back at the next-token chart.
+So, back to the case we started with. The flow chart replays it. The lawyers asked for supporting cases. The model produced likely tokens, names, courts and years, shaped like a citation. The result was fluent, and in no court record. My summary: the model computed likely next tokens, and the missed step was opening the cases; none of the six existed. It was not a search that slipped; it was the loop at work. Fluent says nothing about true. In one line: likely next token, not the truth.
 
-Question 1-2 asks why two new chats can give two different answers to the same question. Answer it using how each token is chosen. The temperature chart will help.
-
-Question 1-3 is about a friend who thinks the AI must have looked up a paper, because it gave the authors and the journal. What is wrong with that reasoning? The fake-references chart will help.
-
-Take a few minutes and write your answers in your own words before moving on.
+※ Source: ABA Journal "Lawyers who 'doubled down' and defended ChatGPT's fake cases must pay $5K, judge says" (2023) https://abajournal.com/web/article/lawyers-who-doubled-down-and-defended-chatgpts-fake-cases-must-pay-5k-judge-says ; Bloomberg Law "Phony ChatGPT Brief Leads to $5,000 Fine for NY Lawyers" (2023) https://news.bloomberglaw.com/litigation/chatgpt-phony-legal-filing-case-gets-lawyers-a-5-000-fine
 
 ## 14
-Here are three more questions, this time about why errors happen and how to check them.
+<!-- まとめの枚 -->
 
-Question 1-4 asks which birth year a chat AI is more likely to get wrong: a world-famous scientist's, or a little-known local politician's. Explain your choice. The rare-facts chart will help.
-
-Question 1-5 gives you a claim backed by "Smith (2021), Journal of Learning". Before you put that claim in a report, what steps do you take? Look back at the open-the-source steps.
-
-Question 1-6 gives you a sentence about students who use the library. Check the number yourself, and name one more check you would do. The re-ask slide will help.
-
-Write down your answers before we go to the answer slides.
+Let's check the opening question: what does generative AI actually compute? Before, you might have said it looks answers up; now you can say it guesses the next token, again and again. You might have thought fluent means true; now you know fluent means likely. And you might have trusted a cited source; now you know to open it yourself. Next come six questions. Try each in your own words before looking at the answers.
 
 ## 15
-Let's go through the answers.
+Review questions. Think of your own answer first, then compare it with the answers on the next slide.
 
-Question 1-1. At each step, the model computes a probability for every possible next token, given all the text so far, which means the whole chat. It then draws one token, appends it, and repeats until the reply is done. A reply is built one token at a time in this loop.
+1-1. What is a token, and about how many English words do 100 tokens make?
 
-Question 1-2. Each token is a weighted random draw from those probabilities, not always the top token. So a less likely token, even a wrong one, is sometimes picked, and the rest of the reply follows from it. How much the answers vary depends on the temperature. Every draw is a new chance, so two chats can split early and end up far apart.
+1-2. You ask a chatbot the same question twice and get two different replies. Using the loop, explain why.
 
-Question 1-3. Authors and a journal name are just likely-looking text. Nothing in the model checks that the paper exists. In a 2023 study, 55% of the references from GPT-3.5 and 18% from GPT-4 did not exist. So open the paper yourself. A reference can look complete and still be made up, because the format is easy to predict.
+1-3. A friend says: "The chatbot cited a paper that does not exist, so its search must have failed." What is wrong?
 
 ## 16
-Here are the answers to the last three questions.
+Review questions. Think of your own answer first, then compare it with the answers on the next slide.
 
-Question 1-4. The local politician. A fact like that appears in few training documents, so the right year never gets a high probability, and a plausible wrong year is more likely to be drawn. Accuracy rises with the number of documents about a fact, from about 25% to over 55% in that graph.
+1-4. Compare the 2023 study's fake-citation rates for GPT-3.5 and GPT-4. What do they tell you about newer models?
 
-Question 1-5. Search for the paper by its title, authors and year, or its DOI, and open the original. Then find the sentence that supports the claim. If you cannot find it, or it says something else, mark the claim "unverified" and do not use it. Asking the AI "is it real?" does not count. Even search-based tools made things up, so only the original text settles it.
+1-5. A chatbot says "a 2021 study found 62% of students..." and you will quote it in a report. What do you check, and how?
 
-Question 1-6. Thirty percent of 1,200 is 0.30 times 1,200, which is 360, not 390. The two numbers do not match, since 390 would be 32.5%, so at least one of them is wrong. One more check is to find the original survey. Re-asking in a new chat is weaker, because agreement is not proof. Recomputing and finding the original figure come first.
+1-6. What does generative AI actually compute? Answer with the one-line answer and the analogy.
 
+## 17
+1-1. Recall what you saw on slide 4. The answer: A piece of text (word, part of a word, mark). 100 tokens ≈ 75 words, because 1 token ≈ 3/4 word.
+
+Your answer is correct if it includes “a piece of text” and “about 75 words”.
+
+1-2. Recall what you saw on slide 6. The answer: Each pick is drawn by chance from the probabilities, and because each pick changes what follows, replies differ.
+
+Your answer is correct if it includes “picks involve chance” and “each pick changes what follows”.
+
+1-3. Recall what you saw on slide 8. The answer: It wrote likely tokens, not a search, because asked one birthday 3 times, a model gave 3 different dates; a lookup would not.
+
+Your answer is correct if it includes “no lookup, a likely continuation” and “3 different dates”.
+
+## 18
+1-4. Recall what you saw on slide 7. The answer: 55% vs 18% fake: newer models invent fewer but not zero, so you still check, because fluency is no proof.
+
+Your answer is correct if it includes “55% vs 18%” and “fewer, not zero”.
+
+1-5. Recall what you saw on slide 12. The answer: The study, year and 62%, because names and numbers are where it guesses: search the title, open it, find the claim.
+
+Your answer is correct if it includes “name, number, source” and “open it and find the claim”.
+
+1-6. Recall what you saw on slide 10. The answer: Next-token odds: it picks one, appends, repeats, so it scores likely, not true. Like your keyboard's guess tapped to the end.
+
+Your answer is correct if it includes “next-token probabilities, pick and repeat” and “keyboard guess tapped to the end”.

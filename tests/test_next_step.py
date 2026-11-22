@@ -27,8 +27,12 @@ def test_course_folder_points_to_the_first_memo(tmp_path):
     assert "地図はユーザーに見せずに進む" in nxt and "地図に OK" not in nxt   # 全1回の講座は、地図を見せない
 
 
-def test_example_course_reports_each_step(built):
-    w = built / "examples" / "course" / "_work" / "AI活用講座_01"
+def test_example_course_reports_each_step(built, tmp_path):
+    import shutil
+    shutil.copytree(built / "examples" / "course", tmp_path / "course")
+    readme = tmp_path / "course" / "AI活用講座" / "00_README.md"   # 見本は軽さ「標準」。念入りの回の手順の一覧を見る
+    readme.write_text(readme.read_text(encoding="utf-8").replace("- 軽さ：標準", "- 軽さ：念入り"), encoding="utf-8")
+    w = tmp_path / "course" / "_work" / "AI活用講座_01"
     steps, nxt = next_step.steps_for(w)
     names = [s for _, s, _ in steps]
     assert any("設計メモの確認" in n for n in names) and any("スライド" in n for n in names)
@@ -75,7 +79,8 @@ def test_presentation_without_data_goes_back_only_before_build(tmp_path, root):
     for f in ("outline.md", "outline_review.md"):
         shutil.copy(root / "examples" / "zemi" / f, w / f)
     p = w / "outline.md"
-    p.write_text(re.sub(r"## 3b\. データ.*?(?=^## )", "", p.read_text(encoding="utf-8"), flags=re.S | re.M), encoding="utf-8")
+    p.write_text(re.sub(r"## 3b\. データ.*?(?=^## )", "", p.read_text(encoding="utf-8"), flags=re.S | re.M)
+                 .replace("| 軽さ | 標準 |", "| 軽さ | 念入り |"), encoding="utf-8")   # 念入りの流れ（標準は設計の担当に続けて頼む）
     _, nxt = next_step.steps_for(w)
     assert nxt.startswith("手順2") and "check_outline" in nxt
     (w / "build.py").write_text("", encoding="utf-8")

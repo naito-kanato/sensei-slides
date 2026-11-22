@@ -33,8 +33,8 @@ def test_course_example_renders_like_powerpoint(built, tmp_path, capsys):
                        capture_output=True, text=True, encoding="utf-8", timeout=300)
     assert r.returncode == 0, r.stderr
     data = json.loads((out / "shapes.json").read_text(encoding="utf-8"))
-    assert data["engine"] == "libreoffice" and data["slides"] == 15
-    assert len(list(out.glob("slide-*.png"))) == 15
+    assert data["engine"] == "libreoffice" and data["slides"] == 17
+    assert len(list(out.glob("slide-*.png"))) == 17
     assert check_layout.main(str(out / "shapes.json"), str(pptx)) == 0
     assert "0 errors" in capsys.readouterr().out
 
@@ -42,6 +42,6 @@ def test_course_example_renders_like_powerpoint(built, tmp_path, capsys):
 @need_lo
 def test_export_pdf(built, tmp_path):
     import pymupdf as fitz
-    pptx = built / "examples" / "zemi" / "重力波の初観測_スライド.pptx"
+    pptx = built / "examples" / "zemi" / "Abbott2016_PRL116_061102_スライド.pptx"
     pdf = lo.export_pdf(pptx, tmp_path / "slides.pdf")
-    assert fitz.open(pdf).page_count == 16
+    assert fitz.open(pdf).page_count == 17

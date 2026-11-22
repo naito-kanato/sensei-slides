@@ -6,7 +6,7 @@
 
 ![Sample slides from the English course and talk examples (animated)](docs/demo-en.gif)
 
-Version 0.9.0 (2026-11-22). **[Download the latest release](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)** (a ready-to-use work folder with the skill inside). Changes: [CHANGELOG.md](CHANGELOG.md) (in Japanese).
+Version 0.9.1 (2026-11-22). **[Download the latest release](https://github.com/naito-kanato/sensei-slides/releases/latest/download/sensei-slides.zip)** (a ready-to-use work folder with the skill inside). Changes: [CHANGELOG.md](CHANGELOG.md) (in Japanese).
 
 > **The instructions and check messages are in Japanese; the slides can be in another language.** Ask in English (or another language) and the slides, speaker notes, quiz and script page are made in the language of your request (you can also name a language), while the plans and the agents' instructions stay in Japanese. The checks count text by display width, so the same targets work for English. The samples on this page were made by asking in English ([examples/course_en](examples/course_en), [examples/zemi_en](examples/zemi_en)).
 
@@ -16,18 +16,18 @@ You ask an AI coding agent (Codex, Claude Code; Antigravity and GitHub Copilot c
 |---|---|
 | From a topic or a PDF, the AI plans an N-session course and builds one session at a time. It reads your quiz answers and comments, then adjusts the next session. | One deck from a paper, a textbook section, your own figures, or earlier slides: lab seminars, conference talks, or a "solo seminar" to understand a paper yourself. |
 | ![Course example: script page](docs/en-course-notes.jpg) | ![Talk example: script page](docs/en-zemi-notes.jpg) |
-| Sample: AI literacy course, lecture 1, "What a Chat AI Computes" (16 slides) | Sample: paper review, "The First Observation of Gravitational Waves" (Abbott et al., PRL 2016, CC BY 3.0; 17 slides) |
+| Sample: AI literacy course, lecture 1, "What Generative AI Actually Computes" (18 slides) | Sample: paper review, "Observation of Gravitational Waves from a Binary Black Hole Merger" (Abbott et al., PRL 2016, CC BY 3.0; 18 slides) |
 
-The samples were not picked for quality: we chose a topic, asked once in English, and show what the skill made (we then fixed only what later checks catch: in the talk, one paper figure too small to read, three "my estimate" notes on slides and one step not in the same form as the others; in the lecture, one list item not in the same form. After adding new slide types, we also used them where a check found six slides of the same type in a row, and added figures to the expected questions). The same topics made in Japanese are in [examples/course](examples/course) and [examples/zemi](examples/zemi).
+The samples were not picked for quality: we chose a topic, asked once in English, and show what the current version made with the default lightness ("standard"). We only changed where the scripts look for the skill and where they write the deck, so that they build inside this repository. The same topics made in Japanese are in [examples/course](examples/course) and [examples/zemi](examples/zemi).
 
 **Course sample** (slides 1–4)
 
 ![Course sample, slides 1-4](docs/en-course-slides-1.jpg)
 
 <details>
-<summary><b>All remaining slides (5–16)</b></summary>
+<summary><b>All remaining slides (5–18)</b></summary>
 
-![Course sample, slides 5-16: body, quiz and answers](docs/en-course-slides-2.jpg)
+![Course sample, slides 5-18: body, summary, quiz and answers](docs/en-course-slides-2.jpg)
 </details>
 
 **Talk sample** (slides 1–4)
@@ -35,9 +35,9 @@ The samples were not picked for quality: we chose a topic, asked once in English
 ![Talk sample, slides 1-4](docs/en-zemi-slides-1.jpg)
 
 <details>
-<summary><b>All remaining slides (5–17)</b></summary>
+<summary><b>All remaining slides (5–18)</b></summary>
 
-![Talk sample, slides 5-17](docs/en-zemi-slides-2.jpg)
+![Talk sample, slides 5-18](docs/en-zemi-slides-2.jpg)
 </details>
 
 ## Design principles
@@ -66,4 +66,4 @@ Full instructions are in the Japanese README ([README.ja.md](README.ja.md)) and 
 
 ## License
 
-[MIT](LICENSE). The talk example uses figures from Abbott et al., *Phys. Rev. Lett.* **116**, 061102 (2016), CC BY 3.0, with attribution (`examples/zemi/paper_figs/ATTRIBUTION.md`).
+[MIT](LICENSE). The talk example uses figures from Abbott et al., *Phys. Rev. Lett.* **116**, 061102 (2016), CC BY 3.0, with attribution (`examples/zemi/src/ATTRIBUTION.md`, `examples/zemi_en/paper_figs/ATTRIBUTION.md`).

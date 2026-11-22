@@ -1,6 +1,7 @@
 # Sources of the figures in this folder
 
-The images in this folder are parts cut out of the figures of the following paper (apart from cropping, the only changes are those listed in the table below).
+The images in this folder are parts cut out of the figures of the following paper (apart from cropping, nothing was changed).
+`../figs.py` copies them to `figs/`, and the slides use them from there.
 
 - B. P. Abbott et al. (LIGO Scientific Collaboration and Virgo Collaboration),
   "Observation of Gravitational Waves from a Binary Black Hole Merger",
@@ -8,15 +9,15 @@ The images in this folder are parts cut out of the figures of the following pape
 - License: [Creative Commons Attribution 3.0 (CC BY 3.0)](https://creativecommons.org/licenses/by/3.0/).
   The paper states that it may be reused, in whole or in part, without permission, provided the authors, title, journal and DOI are cited.
 
-| File | Original figure | Changes |
-|---|---|---|
-| `fig3b_noise.png` | Fig. 3, panel (b) (strain noise of the H1 and L1 detectors) | Panel letter "(b)" painted white; shaded band for the signal's 35–250 Hz added |
-| `fig1_strain_axes.png` | Fig. 1, top row (strain observed at Hanford H1 and Livingston L1) | The axes the paper shares between rows, taken from the same figure and placed next to the top row: the vertical label "Strain (10⁻²¹)" and the time axis (tick labels and "Time (s)") of the bottom row |
-| `fig1_strain_L1_axes.png` | Fig. 1, top row, right panel (L1, with H1 shifted and inverted on top) | Same as above: the vertical label and tick labels of the left panel and the time axis of the bottom right panel placed next to it |
-| `fig1_timefreq_H1.png` | Fig. 1, bottom row, H1 panel (time–frequency map) with its color scale | A duplicated strip at the right edge painted white (the slide adds the label "color: signal power" on top) |
-| `fig1_timefreq_H1_marks.png` | Fig. 1, bottom row, H1 panel (time–frequency map) | A white dot (frequency *f*), a white line (its slope *ḟ*) and their labels added |
-| `fig4_search.png` | Fig. 4, right (result of the binary coalescence search and its noise background, with the vertical label "Number of events") | A red circle around GW150914 added |
+| File | Slide | Original figure | Notes |
+|---|---|---|---|
+| `s07.png` | 7 | p.4, Fig. 3(b) (strain noise of the H1 and L1 detectors) | Cropped only |
+| `s08.png` | 8 | p.2, Fig. 1, top row (strain observed at Hanford H1 and Livingston L1) | Cropped only (the vertical label is cut off, so the slide and the script say it) |
+| `s09.png` | 9 | p.2, Fig. 1, bottom row (time–frequency maps) | Cropped only |
+| `s10.png` | 10 | p.3, Fig. 2, top panel (estimated waveform and the horizon sketches) | Cropped only |
+| `s14.png` | 14 | p.6, Fig. 4, right (result of the binary coalescence search and its noise background) | Cropped only (the red ring around GW150914 is drawn on the slide) |
+| `s18.png` | 18 (expected question Q3) | p.2, Fig. 1, top row, right panel (L1, with H1 shifted and inverted on top) | Cropped only (the tick labels are in the left panel, so they are cut off) |
 
-The figures from the paper were cut from its PDF pages rendered at 400 dpi, keeping the axes, tick labels, axis labels and legends.
+The figures were cut from the PDF pages rendered at 200 dpi, keeping the axes, tick labels and legends where they fit.
 
-The figures drawn by `../figs.py` (stretching of space by a gravitational wave, the binary pulsar, the Michelson interferometer, the length scale, the light power in the arm cavities, the size of the binary, and time shifts) were drawn in this repository based on the paper.
+The other figures drawn by `../figs.py` (stretching of a ring of free masses, the Michelson interferometer, the size of the binary, time shifts, and the bar chart of the masses) were drawn in this repository based on the paper.

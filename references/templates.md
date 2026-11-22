@@ -4,7 +4,7 @@
 
 ## テンプレートで見本を組む（「〇〇のテンプレで見本を組んで」と言われたら）
 
-`examples/template` で `python build.py <名前>`（図はゼミの見本のものを使うので、先に `examples/zemi` で `python figs.py`）。
+`examples/template` で `python build.py <名前>`（図は型の見本のものを使うので、先に `examples/structures` で `python figs.py`）。
 描画確認（SKILL.md 手順5）をして、画像を見せる。できた pptx はユーザーのフォルダの `見本/` に写す。
 本文の形と図解の部品を1枚ずつ見せたいときは `examples/structures/` の `build.py`（`build.py テンプレート3`、色も `build.py テンプレート2 深緑`）。
 

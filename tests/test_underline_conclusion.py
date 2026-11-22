@@ -121,7 +121,7 @@ def test_roles_are_checked_against_the_built_deck(tmp_path):
 # ---- 見本
 def test_examples_follow_the_rules(built):
     ex = built / "examples"
-    for p, plan, kind in ((ex / "zemi" / "重力波の初観測_スライド.pptx", ex / "zemi" / "outline.md", "outline"),
+    for p, plan, kind in ((ex / "zemi" / "Abbott2016_PRL116_061102_スライド.pptx", ex / "zemi" / "outline.md", "outline"),
                           (next((ex / "course").glob("*/01_*_スライド.pptx")), ex / "course" / "_work" / "AI活用講座_01" / "memo.md", "memo"),
                           (ex / "structures" / "型の見本_スライド.pptx", None, None),
                           (ex / "template" / "テンプレートの見本_スライド.pptx", None, None)):

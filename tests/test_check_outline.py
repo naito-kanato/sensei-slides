@@ -30,8 +30,8 @@ def mark(p):
 
 def test_example_outline_is_ready(outline):
     body = co.body_rows(outline.read_text(encoding="utf-8"))
-    assert len(body) == 12                      # 表紙と論文の表紙（●見出しが「—」）は数えない
-    assert body[0] == "重力波"
+    assert len(body) == 13                      # 表紙（●見出しが「—」）と、役割が本文でない枚（まとめ・想定質問）は数えない
+    assert body[0] == "重力波とひずみ h"
     assert co.minutes(outline.read_text(encoding="utf-8")) == 20
     assert mark(outline) == "✔"
     assert co.main([str(outline)]) == 0
@@ -43,16 +43,16 @@ def test_bounds():
 
 
 def test_too_few_for_the_time_warns(outline, capsys):
-    set_minutes(outline, "40分")                # 40分で本文12枚は、下限 20枚を下回る
+    set_minutes(outline, "40分")                # 40分で本文13枚は、下限 20枚を下回る
     assert mark(outline) == "✘"   # 枚数の理由が無ければ ✘
     assert co.main([str(outline)]) == 1          # 枚数の理由が無いので ✘ で止まる
     assert "下限 20枚" in capsys.readouterr().out
 
 
 def test_upper_bound_is_loose(outline):
-    set_minutes(outline, "15分")                # 15分で12枚は目安（7〜10枚）を超えるが、ゆるめの上限 12枚の内
+    set_minutes(outline, "16分")                # 16分で13枚は目安（8〜10枚）を超えるが、ゆるめの上限 13枚の内
     assert mark(outline) == "✔"
-    set_minutes(outline, "10分")                # 10分で12枚は上限 8枚を超える
+    set_minutes(outline, "10分")                # 10分で13枚は上限 8枚を超える
     assert mark(outline) == "✘"   # 枚数の理由が無ければ ✘
 
 
@@ -78,11 +78,15 @@ def reviewed(outline, root):
 def test_example_reasoning_is_covered(reviewed):
     m = marks(reviewed, require_review=True)
     assert m["前提と丁寧さ"] == "✔" and m["推論距離の手当て"] == "✔"
-    hs = co.holes(reviewed.with_name("outline_review.md").read_text(encoding="utf-8"))
-    assert any(kind == "用語" and need == "語" for _, kind, need in hs[10])
-    assert any(need == "深" for hl in hs.values() for _, _, need in hl)          # 深の行もあるが数えない
-    assert co.need_care(hs, 1) == [2, 3, 6, 7, 8, 10, 11, 13, 14]
-    assert 12 in co.need_care(hs, 0) and 12 not in co.need_care(hs, 1)           # 要3 が1つだけの枚は、丁寧さ 0 でだけ手当て
+    rv = reviewed.with_name("outline_review.md").read_text(encoding="utf-8")
+    hs = co.holes(rv)
+    assert any(kind == "用語" and need == "語" for _, kind, need in hs[11])
+    assert co.need_care(hs, 1) == [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15]
+    # 見本には深の行・あと1つだけの枚が無いので、穴の無い12枚目に1行足して見る
+    deep = co.holes(rv + "\n[12] 「X ⇒ Y」｜論拠｜深｜補う前提：前提｜使う所：なし｜架け方：x\n")
+    assert 12 in deep and 12 not in co.need_care(deep, 0)                          # 深の行はあるが数えない
+    later = co.holes(rv + "\n[12] 「X ⇒ Y」｜論拠｜あと｜補う前提：前提｜使う所：13｜架け方：x\n")
+    assert 12 in co.need_care(later, 0) and 12 not in co.need_care(later, 1)       # 要3 が1つだけの枚は、丁寧さ 0 でだけ手当て
 
 
 def test_need_tiers():
@@ -128,11 +132,11 @@ def test_hole_form_checks():
 
 def test_unsure_rows_are_listed(reviewed):
     rv = reviewed.with_name("outline_review.md")
-    rv.write_text(rv.read_text(encoding="utf-8") + "\n[15] 「X ⇒ Y」｜論拠｜要3・深｜補う前提：前提｜使う所：15｜架け方：x\n", encoding="utf-8")
+    rv.write_text(rv.read_text(encoding="utf-8") + "\n[12] 「X ⇒ Y」｜論拠｜要3・深｜補う前提：前提｜使う所：12｜架け方：x\n", encoding="utf-8")   # 12枚目は穴も手当ても無い
     res = co.reasoning(reviewed, reviewed.read_text(encoding="utf-8"))
     m = {item: mark for mark, item, _ in res}
     assert m["推論距離の手当て"] == "✔" and m["推論距離の迷い"] == "・"
-    assert "[15]" in next(d for _, item, d in res if item == "推論距離の迷い")
+    assert "[12]" in next(d for _, item, d in res if item == "推論距離の迷い")
 
 
 def test_missing_prior_knowledge_blocks(reviewed):

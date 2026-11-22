@@ -1,236 +1,167 @@
-# 設計メモ：第1回 What a Chat AI Computes（AI_Literacy）
+# 設計メモ：第1回 What Generative AI Actually Computes（AI_Literacy）
 
 作業用（ユーザーは読まない）。スライドを作るときは、このメモを講義録の代わりに使う。2節の表は構成案（outline.md）を兼ねる。
-スライドは テンプレート2（結論タイトル）で組む。結論（青帯の列）は上の大きな一文に出るので、本文の最後に「⇒ 赤字の結論」を繰り返す帰結の形は使わず、根拠を見せる形（手順・ラベル・場合分け・問い・展開）にする。赤字は結論の言い換えではなく、根拠の要の語・数値に。
 
 ## 1. この回のゴールと前提
 
-- ねらい：仕組みが分かる
+- ねらい：仕組みが分かる（既定の型「素朴な見方を崩す」）
 - 言えるようになること（3つまで）：
-  1. The model computes, one token at a time, a probability for every possible next token and draws one; the chat itself is one document it keeps continuing, and the draw is why answers vary
-  2. Why fluent-but-wrong answers (made-up facts, sources, numbers) are natural rather than rare
-  3. How to check an answer: open the cited source, re-ask in a new chat, and recompute numbers yourself
-- 前提にする回と、その回の何を使うか：なし（チャットの AI を使ったことがある）
-- 予告する回：なし（全1回）
-- 聞き手の前提知識：知っている＝チャットの AI に質問して答えをもらうこと・スマホのキーボードの次の語の候補・割合（％）・検索エンジン／知らない＝言語モデル・トークン・確率の分布・パラメータ・学習と調整・サンプリング・温度・ハルシネーション・一次資料・知識の締め切り
+  1. 生成AIは答えを調べて返すのではなく、次のトークンの確率を計算し、1つ選んで付け足すことを繰り返している、と言える
+  2. 流暢さと正しさが別物で、存在しない出典・数値・人名が出る理由を説明できる
+  3. 使うときに確かめる所（人名・数値・出典）と確かめ方（原典を開いて主張を探す）を挙げられる
+- 道筋：Tokens → Token odds → Pick, repeat → What to check
+- 前提にする回と、その回の何を使うか：なし（全1回）
+- 予告する回：なし
+- 聞き手の前提知識：知っている＝チャットAIを使ったこと、スマホの予測変換／知らない＝トークン、確率の計算、学習、temperature
 - 聞き手のテーマへの詳しさ：初学者
 - 丁寧さ：0
-
-- 言語：英語（README の「学習者とゴール」から。表のタイトル・●見出し・青帯・本文の要点の列と6節の問題・解答は英語）
+- 言語：英語（表のタイトル・●見出し・青帯・本文の要点の列と6節の問題・解答は英語）
 - 答えの位置：後
-- テンプレート：テンプレート2
 
-話の筋（references/story.md。素朴な見方は2枚目で立て、7枚目の意外で崩して問いを立て、10枚目で答える）
+話の筋
 
 | 筋 | 型 | 一文 | 枚 |
 |---|---|---|---|
-| 状況 | — | You type a question into a chat AI and it replies in fluent sentences, as if it had looked the answer up | 2 |
-| 複雑化 | 意外 | But 55% of the references GPT-3.5 gave did not exist, and 18% of GPT-4's (2023) | 7 |
-| 問い | なぜ | If it reads so fluently, why does it make things up so confidently? | 7 |
-| 答え | — | Nothing in it checks facts: it draws likely continuations of its training text, so facts rare in that text, facts after its cutoff, and guesses that tests reward come out fluent but wrong | 10 |
-| 語り手 | — | 学習者自身の疑問：すらすら答えるのに、なぜときどき堂々と間違うのか | — |
+| 状況 | — | You ask a chatbot and get a fluent answer, often with sources, in seconds | 2 |
+| 複雑化 | 意外 | In 2023, lawyers cited six court cases that ChatGPT had made up | 2 |
+| 問い | 何が | What does generative AI actually compute, if it can write a source that does not exist? | 3 |
+| 答え | — | It computes how likely each next token is, picks one, appends it and repeats, so it scores what is likely, not what is true | 10 |
+| たとえ | — | It is your phone's next-word suggestion tapped over and over to the end of a reply: it finishes sentences, it never checks them | 10 |
+| 対立 | — | Is a fake source a search that slipped, or a likely continuation that never searched? | 8 |
+| それで | — | One fact got three different dates and fake papers exist nowhere to find, so the slipped-search view goes: fluency is no sign of truth, and you check names, numbers and sources | 13 |
 
 話の型：素朴な見方を崩す
 
-## 2. 話の順番（構成案を兼ねる。表紙＋本文11＋問題2＋解答2＝16枚）
+## 2. 話の順番（構成案を兼ねる。表紙＋本文13＋問題2＋解答2＝18枚）
 
 | # | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 本文の要点 | ノートへ・橋渡し | 本文の形 | 役割 |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 表紙 | — | — | — | Lecture 1: What a Chat AI Computes／— Fluent is not the same as true | この回のゴール3つ | — | 表紙 |
-| 2 | Predicting the next token | — | It gives every possible next token a probability, then draws one | 比べる：棒グラフ：next-token candidates after "The capital of Australia is" (Canberra, Sydney, Melbourne, other; probabilities are an example)〔事実16〕 | 1. Read all the text so far 2. Give every token in its vocabulary a probability (a token is a word or a piece of one, next slide, and GPT-2 has ★50,257 of them) 3. Draw one, weighted by its probability, append it, repeat〔事実1・事実3〕 / Your guess：it looked the answer up. Did it? | 橋渡し：スマホのキーボードの次の語の候補〔事実17〕を大きくして、返事を丸ごと書かせたもの。素朴な見方「調べて・知っていて答える」を本文の最後の行で聞き手に立てさせる（7枚目で崩す）。Sydney は最大の都市で首都ではない〔事実18〕 | 手順・ラベル | 本文 |
-| 3 | Tokens, not words | そして（詳しく） | One English token is about 4 characters of text | 仕組み：模式図："The capital of Australia is" split into token boxes, and below it a rare word (Dubbo) split into two pieces (the split is an example; it differs by model。横長の図なので上に文・下に図：2つのラベルを横に並べ、図を下に横いっぱいに) | Token：a word or a piece of one; rare words are split into pieces〔事実3〕 / Rule of thumb：1 token ≈ ★4 characters ≈ ¾ of an English word〔事実4〕 | 2枚目の「次の候補」の単位はトークンだと指す。Length limit（counted in tokens, GPT-3 (2020): 2,048〔事実1〕）は原稿で（文の塊は2つまで）。各モデルで分け方が違う | ラベル | 本文 |
-| 4 | Learning by guessing | そして（次へ） | Training tunes GPT-3's 175 billion numbers to predict text | 流れ：流れ図：text with the next token hidden → model guesses → compare with the real token → adjust the numbers → repeat (PowerPoint shapes) | Scale：175 billion numbers (parameters); it read about ★300 billion tokens drawn from web pages, books and Wikipedia〔事実1・事実2〕 / What it learns：how text continues, not a list of facts〔事実1〕（当てて・比べて・数を直す手順は流れ図が見せる） | パラメータ＝学習で値を決める、モデルの中の数（175 billion は青帯）。300B は学習で読んだトークン数で、データの量そのものではない（※：Common Crawl・WebText2・Books・Wikipedia の合計 約 499B から重みづけして抜き出し〔事実2〕）。10枚目の答えの前提として「事実の一覧ではない」を本文に | ラベル | 本文 |
-| 5 | A chat is one document | そして（次へ） | The whole chat is resent each turn; the reply continues it | 仕組み：模式図：the chat as one long document — [instructions][You: …][AI: …][You: …][AI: ▢ next token] | Each turn：instructions + your messages + its replies, ★sent in full〔事実6〕 / Tuning：plain GPT-3 just continues text, but after tuning with human example replies and human rankings of its replies, the 1.3B InstructGPT was preferred over the 175B GPT-3〔事実5〕 | 4枚目の次に調整が来る理由：文の続きを当てるだけのモデルは、質問に答える形で続けるとは限らない。調整＝人が返事に付けた順位を使い、好まれる返事が出やすいよう数を直す（RLHF の略語はスライドに出さない）。会話の記憶は、毎回まるごと渡し直す文書 | ラベル | 本文 |
-| 6 | Why answers vary | しかし（限り） | Each token is a weighted draw, so replies can vary | 比べる：棒グラフ：the capital candidates at temperature 0.5, 1 and 2 (computed from the example probabilities, with "other" counted as one candidate; note: like a lottery, 62 of 100 tickets say Canberra。図が主役：左に大きく、右の列に読み方)〔事実16〕 | Temperature：a dial applied before the draw, where low sharpens the probabilities and high flattens them〔事実8〕 / Low (0.5)：Canberra 84%, Sydney 14%〔事実16〕〔講師の概算〕 / High (2)：Canberra 44%, ★Sydney 28%〔事実16〕〔講師の概算〕（Melbourne 16% と、Always the top token：text turns dull and repetitive, so models draw instead〔事実7〕は原稿へ） | 計算：T=0.5 で 84/14/1/0.5%、T=1 は元の 62/25/8/5%、T=2 で 44/28/16/12%。チャットのアプリでは利用者は温度を変えられず、提供側が決めた値で引いている（原稿の1文）。同じ質問でも新しいチャットで違う答え。12枚目の「聞き直し」の伏線 | ラベル・場合分け | 本文 |
-| 7 | Plausible is not true | しかし（意外） | 55% of the references ChatGPT (GPT-3.5) gave did not exist (2023) | 比べる：棒グラフ：データ2 | Did it look them up?⇒ Made up: GPT-3.5 ★55%, GPT-4 18% of all references each gave (636 in all, 2023)〔データ2〕 / Hallucination：generated text that is nonsensical or unfaithful to the source〔事実9〕 ⇒ Fluent and sure, yet wrong: why? | 予想を先に：「AI が挙げた文献のうち、実在しないのは何割だと思いますか」。2枚目の「調べて答えた？」をここで崩し、最後の行で今日の問いを立てる。Mata v. Avianca（"is this case real?" に yes、$5,000 の制裁金〔事実10〕）は原稿で（文の塊は2つまで）。2023年の版で、今のモデルや検索つきでは下がる（限りは原稿で）。Hallucination の出典の定義は「与えた資料に忠実でない」で、この講座は事実に合わない内容にも広げて使う、と原稿で断る | 問い・ラベル | 本文 |
-| 8 | Newer is not error-free | そして（並べる） | o3 made up answers to 33% of PersonQA questions (o1: 16%) | 比べる：棒グラフ：データ3 | Older o1 (made up 16%, right 47%) → newer o3 (made up ★33%, right 59%)〔データ3〕 / PersonQA (Apr 2025)：questions about real people; o4-mini made up 48%; one company, one test〔データ3〕 | 1社・1つの試験の結果。新しいから確かめなくてよい、とは言えない | 展開・ラベル | 本文 |
-| 9 | Guessing beats "I don't know" | そして（並べる） | o4-mini rarely said "I don't know" (1%) and got 75% wrong | 比べる：棒グラフ：データ1 | Says "I don't know" 52% (gpt-5-thinking-mini) → right 22%, wrong 26%, out of all SimpleQA questions (short fact questions, Sep 2025)〔データ1〕 / Says "I don't know" 1% (o4-mini) → right 24%, ★wrong 75%, same questions〔データ1〕 / ⇒ Guessing adds few right answers but many wrong ones | 2025年9月の OpenAI の発表で、同じ会社の2モデル・答えの短い問いだけ（限り）。正解はほぼ同じ（22 と 24）なのに間違いは約3倍。自信のある言い方は確かさの印ではない。理由は次の10枚目で | 箇条 | 本文 |
-| 10 | Why it goes wrong | だから（問い） | Nothing checks facts, so rare facts come out fluent but wrong | 比べる：積み上げ棒：BLOOM-176B on TriviaQA, a rare fact (about 10 relevant pretraining documents: right ≈25%, not right ≈75%) vs a common fact (about 10,000: right >55%) (read from Kandpal Figure 1。2点だけで、外れの割合は 100 から引いた値)〔事実11・事実19〕 | No step checks facts：probabilities come from how text usually continues, not from a fact list〔講師のまとめ〕 / Rare facts：few training documents → ★low accuracy (≈10 documents: ≈25% right; ≈10,000: >55% right) ⇒ the right continuation never gets a high probability〔事実11・事実19〕 | 原稿の1文目で7枚目の問い「なぜ堂々と間違うのか」に戻る（7〜9枚目の3つをまとめて）。1行目は講師のまとめ（出典の印なし。原稿で「ここからは講師のまとめ」と断る）。Cutoff（every model has one; GPT-4 (2023): September 2021〔事実12〕）と Test scores（tests rate a guess above "I don't know"〔事実13〕）は主題（まれな事実）からずれるので原稿で（文の塊は2つまで）。見たことの少ない事実は、正しい続きの確率が高くならない | ラベル | 本文 |
-| 11 | Open the source | だから（手段） | Open the source and find the sentence yourself | 判定：判定の流れ図：Is a source given? → Can you open it? → Does it say this claim? → use it / mark "unverified" | 1. Ask for the source 2. Open it yourself (title, authors, DOI: the paper's ID) 3. Find the sentence that supports the claim〔講師のまとめ〕 / Why：even search-based legal AIs (they search a database first, then write) made things up on ★17–33% of all test questions (2024)〔事実14〕; real references: major errors in 24–43%〔データ2〕（If not found：mark it "unverified" and do not use it は判定の流れ図の unverified が見せる） | 講師のおすすめの手順（手順に出典の印は付けない）。検索つきでも書く段は次のトークンの予測。実在する文献でも著者・年などに大きな誤り（GPT-3.5 43%・GPT-4 24%〔データ2〕）があるので、開いて文を探すまでやる。AI に「本物か」と聞くのは確認にならない（7枚目、Mata〔事実10〕）。Lexis+ AI など「作り話なし」と宣伝された道具 | 手順・ラベル | 本文 |
-| 12 | Re-ask and recompute | そして（並べる） | Re-asked answers that disagree flag likely errors | 違い：比較：two new-chat re-asks that agree (Canberra, Canberra) vs disagree (Canberra, Sydney)、各列3行（出た答え・言えること・どうするか） | Agree：Canberra, Canberra / a known fact wins most draws〔事実15〕 / not proof: a likely wrong token can win every draw / Disagree：Canberra, Sydney / a guess changes from draw to draw〔事実15〕 / ★warning sign: open the source / How：re-ask in a new chat (no old answer resent); recompute numbers, and find the original figure | 6枚目の「毎回の引き」を、確かめに使う。同じチャットで聞き直すと前の答えも文書に入って送られる（5枚目）ので、その続きを書いてしまう。数値は自分で計算（確認問題1-6） | ラベル | 本文 |
-| 13 | Quiz (1-1 to 1-3) | — | — | — | 1-1〜1-3 | 解答は15枚目 | — | 確認問題 |
-| 14 | Quiz (1-4 to 1-6) | — | — | — | 1-4〜1-6 | 解答は16枚目 | — | 確認問題 |
-| 15 | Answers (1-1 to 1-3) | — | — | — | 要素を削らない | 全文 | — | 解答 |
-| 16 | Answers (1-4 to 1-6) | — | — | — | 要素を削らない | 全文 | — | 解答 |
+| 1 | 表紙 | — | — | — | Lecture 1: What Generative AI Actually Computes／——From next-word guesses to plausible mistakes／For chat AI users | — | — | 表紙 |
+| 2 | Six cases that never existed | — | In 2023, lawyers cited six cases ChatGPT made up | 違い：比較：What the lawyers assumed（looked up by ChatGPT、real court rulings、safe to cite）と What actually happened（text written by ChatGPT、six cases that never existed、a $5,000 fine） | Case：Mata v. Avianca, New York, 2023〔事実1〕 / Case：six fake cases, a $5,000 fine〔事実1〕 / Belief：a lawyer thought it "could not" fabricate〔事実2〕 ⇒ ★Fluent, yet invented | — | ラベル | 本文 |
+| 3 | Today's question | だから（手段） | Your phone keyboard already predicts your next word | 流れ：流れ図：You type "See you" → The keyboard offers soon, later, tomorrow → You tap one | You tap its next-word guesses daily〔事実3〕 / Have you trusted a sure-sounding reply? / ⇒ ★What does generative AI actually compute? | — | 帰結 | 本文 |
+| 4 | Step 1: tokens | そして（詳しく） | Text is cut into tokens: 100 tokens ≈ 75 words | 仕組み：模式図：the sentence "Chatbots predict text." cut into four boxes Chatbots / predict / text / . ；読み方：1 box = 1 token (splits shown are an illustration) | Token：a word, part of a word, or a mark〔事実4〕 / Size：about 4 letters of English text〔事実5〕 / Size：other languages split differently〔事実5〕 | — | ラベル | 本文 |
+| 5 | Step 2: probabilities | そして（詳しく） | Each possible next token gets a probability | 仕組み：模式図：after "The capital of France is", candidate next tokens Paris, a, the, located with bars of different lengths and no numbers；読み方：longer bar = rated more likely to come next | Trained on 300 billion tokens〔事実6〕 / Tuned to predict the next token〔事実7〕 / ⇒ ★A table of likely next tokens | — | 帰結 | 本文 |
+| 6 | Step 3: pick and repeat | そして（次へ） | It picks one token, appends it, and repeats | 流れ：流れ図：Text so far → Probabilities for each next token → Pick one, with some chance → Append it and go again | Each pick involves chance〔事実8〕 / Higher temperature = more random〔事実8〕 / ⇒ ★Same question, a different reply | — | 帰結 | 本文 |
+| 7 | Plausible but fake | しかし（意外） | GPT-3.5 invented 55% of citations, GPT-4 18% | 比べる：棒グラフ：データ1 | Short literature reviews, 2023〔データ1〕 / Newer model: fewer, not zero〔データ1〕 / ⇒ ★Fluent reference ≠ real reference | — | 帰結 | 本文 |
+| 8 | A search that slipped? | しかし（疑い） | Asked 3 times, a model gave 3 different wrong dates | 違い：比較：A failed lookup（finds a real source、same answer each time、wrong in places）と A likely continuation（may name a source that never existed、a new answer each try、fluent either way） | Test：Kalai's birthday, to DeepSeek-V3〔事実9〕 / Test：told to answer only if known〔事実9〕 / Reading：a lookup gives 1 answer〔講師のまとめ〕 ⇒ ★Not a search that slipped | — | ラベル | 本文 |
+| 9 | Why it guesses | だから（帰結） | Tests reward a 1-in-365 guess over "I don't know" | 印象：大きな数字：1/365（chance that a guessed birthday is right） | Rare facts：seen once in training text〔事実11〕 / Rare facts：no pattern to learn from〔事実11〕 / Grading："I don't know" scores zero〔事実10〕 ⇒ ★So guessing pays | — | ラベル | 本文 |
+| 10 | The answer | だから（問い） | It computes what is likely next, not what is true | 仕組み：模式図：the pick-and-repeat loop (text so far → probabilities → pick → append) with a dashed, crossed-out box "Check: is it true?" that the loop never passes through；読み方：dashed box = a step the loop does not have | Answer：next-token odds, pick, repeat〔講師のまとめ〕 / Answer：no step checks the world〔講師のまとめ〕 / Like：your keyboard, tapped to the end〔講師のまとめ〕 ⇒ ★Likely ≠ true | — | ラベル | 本文 |
+| 11 | Where to check | だから（手段） | Check the names, numbers and sources you rely on | 判定：判定の流れ図：Only wording or ideas?→ はい：Use it as a draft／いいえ：Will you rely on a name, number or source?→ はい：Check it in the original／いいえ：Use it, marked unchecked | Risky：names, dates, numbers, sources〔事実11〕 / Risky：facts you will repeat〔講師のまとめ〕 / Safer：wording, structure, ideas〔講師のまとめ〕 | — | ラベル | 本文 |
+| 12 | How to check | そして（次へ） | Only 7% of 115 references were real and accurate | 内訳：帯グラフ：データ2 | 1. Search the exact title 2. Match authors, year, journal 3. Find the claim inside〔事実12〕 / GPT-3.5 (ChatGPT), medical papers, 2023〔データ2〕 / ⇒ ★A real paper may not say it | — | 手順・帰結 | 本文 |
+| 13 | Back to the lawyers | だから（帰結） | The fake cases were likely text, not failed searches | 流れ：流れ図：Ask for supporting cases → Likely tokens: names, courts, years → A fluent citation → Not in any court record | Computed：likely next tokens〔講師のまとめ〕 / Missed step：opening the cases〔事実1〕 / Missed step：none of the six existed〔事実1〕 ⇒ ★Fluent says nothing about true | — | ラベル | 本文 |
+| 14 | Summary | — | Likely next token, not the truth | — | Looks it up → Guesses tokens / Fluent = true → Fluent = likely / Cited = real → Open the source | — | — | まとめ |
+| 15 | Check questions (1-1 to 1-3) | — | — | — | 1-1〜1-3 | 解答は17枚目 | — | 確認問題 |
+| 16 | Check questions (1-4 to 1-6) | — | — | — | 1-4〜1-6 | 解答は18枚目 | — | 確認問題 |
+| 17 | Answers (1-1 to 1-3) | — | — | — | 要素を削らない | 全文 | — | 解答 |
+| 18 | Answers (1-4 to 1-6) | — | — | — | 要素を削らない | 全文 | — | 解答 |
 
-青帯だけを上から読む：It gives every possible next token a probability, then draws one →（そして（詳しく））One English token is about 4 characters of text →（そして（次へ））Training tunes GPT-3's 175 billion numbers to predict text →（そして（次へ））The whole chat is resent each turn; the reply continues it →（しかし（限り））Each token is a weighted draw, so replies can vary →（しかし（意外））55% of the references ChatGPT (GPT-3.5) gave did not exist (2023) →（そして（並べる））o3 made up answers to 33% of PersonQA questions (o1: 16%) →（そして（並べる））o4-mini rarely said "I don't know" (1%) and got 75% wrong →（だから（問い））Nothing checks facts, so rare facts come out fluent but wrong →（だから（手段））Open the source and find the sentence yourself →（そして（並べる））Re-asked answers that disagree flag likely errors
+青帯だけを上から読む：In 2023, lawyers cited six cases ChatGPT made up → Your phone keyboard already predicts your next word → Text is cut into tokens: 100 tokens ≈ 75 words → Each possible next token gets a probability → It picks one token, appends it, and repeats → GPT-3.5 invented 55% of citations, GPT-4 18% → Asked 3 times, a model gave 3 different wrong dates → Tests reward a 1-in-365 guess over "I don't know" → It computes what is likely next, not what is true → Check the names, numbers and sources you rely on → Only 7% of 115 references were real and accurate → The fake cases were likely text, not failed searches → Likely next token, not the truth
 
 ## 3. 事実と出典
 
-確認：○＝出典で確かめた、△＝出典どうしで値が違う・諸説あり、×＝未確認（載せるなら ※（要確認））、一般＝教科書に必ず載る定性的な事実で、数値・年・制度を含まない（裏取りに回さない。数値などを含めば facts.py が回す）。
-時とともに変わる値（制度の版・統計・法令・料金・数）は、最新の版を探してから書き、出典に版か年を入れる。
-
 | 主張 | 値・式 | 出典（書名・URL） | 確認 |
 |---|---|---|---|
-| GPT-3 is an autoregressive language model trained to predict the next token; its parameter count and context length | 175 billion parameters; 2,048 tokens | T. Brown et al., "Language Models are Few-Shot Learners", NeurIPS 2020 (arXiv:2005.14165, https://arxiv.org/abs/2005.14165)：Abstract "an autoregressive language model with 175 billion parameters"／Section 2.1 "n_ctx = 2048 tokens"（全サイズ共通） | ○ |
-| GPT-3's training data size and sources | trained on 300 billion tokens (seen in training); drawn from a mix of filtered Common Crawl 410B, WebText2 19B, Books1 12B, Books2 55B, Wikipedia 3B tokens (mix ≈ 499B tokens) | T. Brown et al. (2020), arXiv:2005.14165：300B は Table 2.1 の注（"trained for a total of 300 billion tokens"、Section 2.1）、データの内訳は Table 2.2（Section 2.2） | ○ |
-| GPT-2's vocabulary size (byte-level BPE) | 50,257 tokens | A. Radford et al., "Language Models are Unsupervised Multitask Learners", OpenAI (2019), https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf, p.4 Section 2.3 "The vocabulary is expanded to 50,257."（byte-level BPE は Section 2.2） | ○ |
-| Rule of thumb for English text: 1 token is about 4 characters, about 3/4 of a word | 1 token ≈ 4 characters ≈ 0.75 words | OpenAI Help Center, "What are tokens and how to count them?", https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them（2026-11-12 閲覧、更新日は版により異なる）："1 token ≈ 4 chars in English"、"1 token ≈ ¾ words"、"100 tokens ≈ 75 words"。英語以外は比が違うと注記あり | ○ |
-| InstructGPT was tuned with human demonstrations and human rankings (RLHF); outputs of the 1.3B InstructGPT were preferred over the 175B GPT-3 | 1.3B vs 175B | L. Ouyang et al., "Training language models to follow instructions with human feedback", NeurIPS 2022 (arXiv:2203.02155, https://arxiv.org/abs/2203.02155)：Abstract — labeler demonstrations で教師ありの微調整→出力の順位づけで RLHF。"outputs from the 1.3B parameter InstructGPT model are preferred to outputs from the 175B GPT-3"（100分の1のパラメータ、OpenAI の API のプロンプトでの人の評価） | ○ |
-| A chat model receives the whole conversation (instructions and all earlier messages) as input on each request; it keeps no memory between requests | — | OpenAI API documentation, "Conversation state" guide, https://developers.openai.com/api/docs/guides/conversation-state（2026-11-12 閲覧、更新日の記載なし）："each text generation request is independent and stateless"、続きの会話は前のメッセージを入力に足して送る。Responses API／Conversations API は会話をサーバー側に保存できる（既定 30 日） | ○ |
-| Always choosing the most likely token (greedy/beam search) gives bland, repetitive text; sampling from the distribution is used instead | — （要旨："using likelihood as a decoding objective leads to text that is bland and strangely repetitive"。対策として Nucleus (top-p) Sampling を提案） | A. Holtzman, J. Buys, L. Du, M. Forbes, Y. Choi, "The Curious Case of Neural Text Degeneration", ICLR 2020, Abstract. https://arxiv.org/abs/1904.09751 ・ https://openreview.net/forum?id=rygGQyrFvH | ○ |
-| Temperature reshapes the next-token probabilities: lower makes the top token dominate, higher spreads the choice to less likely tokens | — | 一般（教科書の定義） | 一般 |
-| Definition of hallucination: generated content that is nonsensical or unfaithful to the provided source content | — （原文："the generated content that is nonsensical or unfaithful to the provided source content ... is the most inclusive and standard"） | Z. Ji et al., "Survey of Hallucination in Natural Language Generation", ACM Computing Surveys 55(12), Article 248, 2023, doi:10.1145/3571730. 文言は arXiv:2202.03629v6 の Sec. 2 "Definitions"（p.4）で確認 https://arxiv.org/abs/2202.03629 | ○ |
-| AI に「本物か」と聞いても確認にならない：Mata v. Avianca で弁護士が ChatGPT に存在しない判例が本物かを尋ねると、本物で有名な法律データベースで見つかると答えた。弁護士はそのまま裁判所に出し、制裁金 5,000 ドルを科された（2023年の ChatGPT・検索なしでの1件） | $5,000 | Mata v. Avianca, Inc., No. 22-cv-1461 (PKC), Opinion and Order on Sanctions, U.S. District Court S.D.N.Y., 2023年6月22日（判決文の全文：https://reason.com/volokh/2023/06/22/sanctions-issued-in-case-where-lawyers-cited-chatgpt-hallucinated-precedents/printer/ ） | ○ |
-| Models answer questions about a fact less accurately when fewer pretraining documents are relevant to it (long-tail knowledge) | — （例：BLOOM-176B の TriviaQA 正答率は、関連文書が約10件→約1万件で約25%→55%超。関連文書を除いて再学習すると正答率が大きく下がる） | N. Kandpal, H. Deng, A. Roberts, E. Wallace, C. Raffel, "Large Language Models Struggle to Learn Long-Tail Knowledge", ICML 2023, PMLR 202:15696–15707. https://proceedings.mlr.press/v202/kandpal23a.html （arXiv:2211.08411） | ○ |
-| GPT-4 generally lacks knowledge of events after the vast majority of its pretraining data cut off | September 2021 （原文："lacks knowledge of events that have occurred after the vast majority of its pre-training data cuts off in September 2021"。初代 GPT-4 の値。GPT-4 Turbo などの後の版は別の日付） | OpenAI, "GPT-4 Technical Report", arXiv:2303.08774v6 (4 Mar 2024), Sec. 5 "Limitations". https://arxiv.org/abs/2303.08774 | ○ |
-| Hallucinations persist partly because training and evaluation reward guessing over acknowledging uncertainty (accuracy-only scoring) | — （要旨："training and evaluation procedures reward guessing over acknowledging uncertainty"。0-1 採点では棄権が0点なので推測が得。対策は既存ベンチマークの採点の変更） | A. T. Kalai, O. Nachum, S. S. Vempala, E. Zhang, "Why Language Models Hallucinate", arXiv:2509.04664 (submitted 4 Sep 2025), Abstract. https://arxiv.org/abs/2509.04664 | ○ |
-| 「調べてから答える」専門の AI でも作り話は残る：作り話が無いと宣伝された法律調査の AI（Lexis+ AI、Westlaw AI-Assisted Research、Ask Practical Law AI）も、問いの 17〜33％ で作り話をした（法律の問いに限った1つの研究。GPT-4 よりは少ない） | 17–33% | Magesh, V. ほか「Hallucination-Free? Assessing the Reliability of Leading AI Legal Research Tools」arXiv:2405.20362 (2024) https://arxiv.org/abs/2405.20362 （Abstract。のちに Journal of Empirical Legal Studies 2025） | ○ |
-| Sampling several answers to the same prompt and checking whether they agree detects hallucinations: facts the model knows tend to come out consistent, made-up ones diverge | — （原文："if an LLM has knowledge of a given concept, sampled responses are likely to be similar and contain consistent facts. However, for hallucinated facts, stochastically sampled responses are likely to diverge and contradict one another."） | P. Manakul, A. Liusie, M. J. F. Gales, "SelfCheckGPT: Zero-Resource Black-Box Hallucination Detection for Generative Large Language Models", EMNLP 2023, Abstract. https://aclanthology.org/2023.emnlp-main.557/ （arXiv:2303.08896） | ○ |
-| Next-token candidates after "The capital of Australia is" and their probabilities; the temperature bars are recomputed from these | Canberra 0.62, Sydney 0.25, Melbourne 0.08, other 0.05 | 説明のための例（実在のモデルの値ではない） | 図に（probabilities are an example）と書く |
-| A phone keyboard's predictive text suggests the next word from what you have typed | — | 一般 | 一般 |
-| Canberra is the capital of Australia; Sydney is its largest city | — | 一般 | 一般 |
-| 10枚目「学習データに少ない事実ほど答えを誤る」の裏づけ（行1は次のトークンの予測を言うだけで、この主張は支えない）：事実の問いの正答率は、その問いの実体を含む事前学習の文書の数とともに上がる（相関と因果の両方、最大 176B のモデル） | 正答率 ∝ 関連する事前学習文書の数（定性的。数値はグラフのみ） | N. Kandpal et al., "Large Language Models Struggle to Learn Long-Tail Knowledge", ICML 2023, PMLR 202:15696–15707（arXiv:2211.08411, https://arxiv.org/abs/2211.08411）、Figure 1（BLOOM・TriviaQA） | ○ |
+| 1. Mata v. Avianca: lawyers filed a brief citing six court cases that ChatGPT made up; the court (Judge P. Kevin Castel, S.D.N.Y.) fined them | six fictitious cases; $5,000 sanction, June 2023; the court found the lawyers ignored signs the citations were fake (why it happened: they did not open the cases) | ABA Journal "Lawyers who 'doubled down' and defended ChatGPT's fake cases must pay $5K, judge says" (2023) https://abajournal.com/web/article/lawyers-who-doubled-down-and-defended-chatgpts-fake-cases-must-pay-5k-judge-says ; Bloomberg Law "Phony ChatGPT Brief Leads to $5,000 Fine for NY Lawyers" (2023) https://news.bloomberglaw.com/litigation/chatgpt-phony-legal-filing-case-gets-lawyers-a-5-000-fine | ○ |
+| 2. A lawyer's belief about ChatGPT | testified he was "operating under the false perception that [ChatGPT] could not possibly be fabricating cases on its own" | ABA Journal (2023), same article as row 1 | ○ |
+| 3. A phone keyboard's predictive text suggests next words from what you typed | iPhone: "As you type text on the iPhone keyboard, Siri predicts your next word"; tap a suggested word to accept it | Apple "iPhone User Guide: Use predictive text on iPhone" https://support.apple.com/guide/iphone/use-predictive-text-iphd4ea90231/ios ; Apple Support "How to use Auto-Correction and predictive text" https://support.apple.com/104995 | ○ |
+| 4. What a token is | a character, part of a word, a whole word, or punctuation; spaces affect how text is split | OpenAI Help Center "What are tokens and how to count them" (article 4936856) https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them | ○ |
+| 5. Token size in English (rule of thumb, not exact; other languages differ) | 1 token ≈ 4 characters ≈ 3/4 word; 100 tokens ≈ 75 words | OpenAI Help Center "What are tokens and how to count them" https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them | ○（言い換え：3/4 word per token × 100 tokens = 75 words。出典も両方を書いている） |
+| 6. GPT-3 size and training data | 175 billion parameters; trained on a total of 300 billion tokens | Brown T. et al. "Language Models are Few-Shot Learners" arXiv:2005.14165 (2020), abstract; Table 2.1 caption ("All models were trained for a total of 300 billion tokens") https://arxiv.org/abs/2005.14165 | ○ |
+| 7. A model like GPT-3 is autoregressive: it predicts each next token from the tokens before it, and a reply is built by repeating that | why: training adjusts the parameters so that the actual next token in the training text gets a high probability (pretraining = next-word prediction) | Brown et al. 2020 abstract ("an autoregressive language model"); Kalai A.T. et al. "Why Language Models Hallucinate" arXiv:2509.04664 (2025) https://arxiv.org/abs/2509.04664 | ○ |
+| 8. Temperature setting | higher values (e.g. 0.8) make output more random; lower values (e.g. 0.2) more focused and deterministic. why: each token is drawn by chance from the probabilities, so picks differ between runs | OpenAI API reference wording, quoted in OpenAI Developer Community "Temperature docs for 1 max vs 2 max" (2023) https://community.openai.com/t/temperature-docs-for-1-max-vs-2-max/309112 | ○（公式の API リファレンスの頁そのものは開いていない。範囲 0〜2 か 0〜1 かは出典で違うので数値の範囲は載せない） |
+| 9. Birthday test in Kalai et al. 2025 | asked DeepSeek-V3 for Kalai's birthday ("answer only if known"); 3 attempts gave 3 different wrong dates | Kalai A.T., Nachum O., Vempala S., Zhang E. "Why Language Models Hallucinate" arXiv:2509.04664 (2025-09-04) https://arxiv.org/abs/2509.04664 | ○ |
+| 10. Grading rewards guessing | a guessed birthday has a 1-in-365 chance of being right; "I don't know" earns zero points, so accuracy-only tests reward guessing over admitting uncertainty | OpenAI "Why language models hallucinate" (2025-09) https://openai.com/index/why-language-models-hallucinate/ | ○（言い換え：1/365 ≈ 0.27% > 0 → 当て推量の期待点は「わからない」の0点より高い） |
+| 11. Rare, arbitrary facts have no learnable pattern | facts like birthdays that appear once in training data: if 20% of birthday facts appear exactly once, base models are expected to hallucinate on at least 20% of birthday facts. why: next-token prediction learns patterns, and a fact seen once has no pattern to generalize from | Kalai et al. 2025, arXiv:2509.04664 (same as row 9) | ○ |
+| 12. How to verify an AI-given citation | search the title in a library catalog, a database or Google Scholar; verify title, author, journal, volume, dates, DOI; verify the content the AI claimed is actually in the source | Centre College Library "Evaluating AI" https://library.centre.edu/AI/evaluate (2026-11 閲覧) | ○ |
 
 ## 3b. データ（data.py merge が data_N.md から入れる。図の案から「データN」で指す。値・単位・注記はこのとおりに描く。驚きの事実は、使うなら3節の事実の行に写す）
 
-### データ1：正解率の高いモデルほど、間違いも多い（SimpleQA）
-- 驚き：正解率はほぼ同じ（22 と 24）なのに、「分からない」と言わない古いモデルは間違いが3倍近い。当てずっぽうで答えると正解率は上がるが、作り話も増える
-- 問いの候補：なぜ AI は「分かりません」と言わずに、もっともらしく答えてしまうのか？
+### データ1：Share of ChatGPT-generated citations that do not exist (GPT-3.5 vs GPT-4)
+- 驚き：AI が付けた参考文献は「調べて持ってきた本物」だと思われがちだが、GPT-3.5 では半分以上、GPT-4 でも約5件に1件が存在しない文献だった
+- 問いの候補：なぜ AI は、存在しない文献をもっともらしく書けるのか？
 - 単位：％
-- 分母：SimpleQA の問題の数（1モデルあたり全問）
-- 時点：2025年9月公表
-- 出典：「Why language models hallucinate」OpenAI 2025年9月5日 https://openai.com/index/why-language-models-hallucinate/ （SimpleQA の表。元の論文は Kalai ほか「Why Language Models Hallucinate」arXiv:2509.04664、表の値は GPT-5 System Card から）
+- 分母：各モデルが短い文献レビュー（42の学術テーマ）に付けた参考文献
+- 時点：2023年3〜4月に生成、2023年9月発表
+- 出典：Walters W.H. & Wilder E.I. "Fabrication and errors in the bibliographic citations generated by ChatGPT" Scientific Reports 13, 14045 (2023) https://www.nature.com/articles/s41598-023-41032-5
 - 確認：○
-- 別の読み方：同じ会社の2モデルを1つの試験で比べただけ。SimpleQA は答えの短い事実の問いに限る。新しいモデルを持ち上げる会社自身の発表
-| 区分 | 答えない | 正解 | 間違い |
-|---|---|---|---|
-| gpt-5-thinking-mini | 52 | 22 | 26 |
-| o4-mini（古いモデル） | 1 | 24 | 75 |
+- 別の読み方：2023年の2モデル・学術文献という特に難しい依頼での値で、今のモデルやWeb検索つきの使い方では低いかもしれない（新しいモデルで下がっても0ではない、が読める範囲）
+| 区分 | 値 |
+|---|---|
+| GPT-3.5 | 55 |
+| GPT-4 | 18 |
 
-### データ2：AI が書いた参考文献のうち、存在しない文献の割合
-- 驚き：GPT-3.5 が挙げた参考文献の半分以上は存在しない。新しい GPT-4 でも約5件に1件。実在の文献でも、著者・年・頁などに大きな誤りがある割合が高い
-- 問いの候補：本当に AI は文献を「調べて」挙げているのか？
+### データ2：What 115 ChatGPT-3.5 references in medical papers turned out to be
+- 驚き：本物に見える参考文献のうち、存在して中身も正しいものは7%だけだった
+- 問いの候補：もっともらしい文献のうち、どれだけが本当に正しいか？
 - 単位：％
-- 分母：各モデルが挙げた参考文献（作り話の割合）、そのうち実在した文献（誤りの割合）
-- 時点：2023年（論文の公表は2023年9月）
-- 出典：Walters, W. H. & Wilder, E. I.「Fabrication and errors in the bibliographic citations generated by ChatGPT」Scientific Reports 13, 14045 (2023) https://www.nature.com/articles/s41598-023-41032-5 （42の題で短い論文84本・参考文献636件を検証）
+- 分母：ChatGPT-3.5 が作った30本の短い医学論文の参考文献115件
+- 時点：2023年4月12日に生成、2023年5月発表
+- 出典：Bhattacharyya M. et al. "High Rates of Fabricated and Inaccurate References in ChatGPT-Generated Medical Content" Cureus 15(5): e39238 (2023) doi:10.7759/cureus.39238 https://pmc.ncbi.nlm.nih.gov/articles/PMC10277170/
 - 確認：○
-- 別の読み方：2023年のモデルで、いまのモデルや検索つきの使い方では下がっている。1つの研究・1つの課題（短い論文に文献をつけさせる）だけ
-| 区分 | 存在しない文献 | 実在の文献のうち大きな誤りあり |
-|---|---|---|
-| GPT-3.5 | 55 | 43 |
-| GPT-4 | 18 | 24 |
-
-### データ3：新しく賢いモデルの方が、人物の問いで作り話が多い（PersonQA）
-- 驚き：新しいモデルほど作り話が減ると思いがちだが、o3 の作り話の率は前の o1 の約2倍、o4-mini は約3倍
-- 問いの候補：新しいモデルなら、もう間違いを気にしなくてよいのか？
-- 単位：割合（0〜1）
-- 分母：PersonQA の問い（公開された人物の事実を尋ねる問い）
-- 時点：2025年4月
-- 出典：「OpenAI o3 and o4-mini System Card」OpenAI 2025年4月16日 https://cdn.openai.com/pdf/2221c875-02dc-4789-800b-e7758f3722c1/o3-and-o4-mini-system-card.pdf Table 4（Hallucination evaluations）
-- 確認：○
-- 別の読み方：o3 は主張の数そのものが多く、正解も増えている（正解率 0.59 は o1 より高い）。1社の1つの試験だけ
-| 区分 | 正解率 | 作り話の率 |
-|---|---|---|
-| o1 | 0.47 | 0.16 |
-| o3 | 0.59 | 0.33 |
-| o4-mini | 0.36 | 0.48 |
-
-### 驚きの事実1：AI に「本物か」と聞いても、確認にはならない
-- 驚き：AI に「この判例は本物？」と聞き返せば確かめられると思われがちだが、実際の裁判（Mata v. Avianca）で弁護士が ChatGPT に存在しない判例が本物かを尋ねると、ChatGPT は本物で、有名な法律データベースで見つかると答えた。弁護士はそのまま裁判所に出し、制裁金 5,000 ドルを科された
-- 問いの候補：AI 自身に聞き直せば、答えを確かめたことになるのか？
-- 出典：Mata v. Avianca, Inc., No. 22-cv-1461 (PKC), Opinion and Order on Sanctions, U.S. District Court S.D.N.Y., 2023年6月22日（判決文の全文：https://reason.com/volokh/2023/06/22/sanctions-issued-in-case-where-lawyers-cited-chatgpt-hallucinated-precedents/printer/ ）
-- 確認：○
-- 別の読み方：2023年の ChatGPT（検索なし）での1件。いまは検索つきのものもある（ただし次の事実のとおり、検索つきでも作り話は残る）
-
-### 驚きの事実2：「調べてから答える」専門の AI でも作り話は残る
-- 驚き：データベースを検索してから答える AI なら作り話はしないと思われがちだが、作り話が無いと宣伝された法律調査の AI（Lexis+ AI、Westlaw AI-Assisted Research、Ask Practical Law AI）も、問いの 17〜33％ で作り話をした
-- 問いの候補：本当に「調べて」答える AI なら、確かめなくてよいのか？
-- 出典：Magesh, V. ほか「Hallucination-Free? Assessing the Reliability of Leading AI Legal Research Tools」arXiv:2405.20362 (2024) https://arxiv.org/abs/2405.20362 （Abstract。のちに Journal of Empirical Legal Studies 2025）
-- 確認：○
-- 別の読み方：法律の問い（わざと誤った前提を含む問いも入る）に限った1つの研究。汎用のチャット AI（GPT-4）よりは少ない
+- 別の読み方：1つのモデル（GPT-3.5）・医学の題・115件だけの小さな調べで、今のモデルには当てはまらないかもしれない
+| 区分 | 値 |
+|---|---|
+| Fabricated | 47 |
+| Real but inaccurate | 46 |
+| Real and accurate | 7 |
 
 ## 4. 用語・記号の決め事（README の決め事に足すもの）
 
-- token, next-token probability, parameter, training (pretraining) and tuning, context, sampling, temperature, hallucination, source (original source), knowledge cutoff。初出で一度だけ平易に説明する
-- 数は英語の書き方で：175 billion・1.3B（モデルの大きさは本文で "billion"、図の中は "B" でもよい）、％は "55%"
-- 2枚目の例「The capital of Australia is」を 3・6・12枚目でも使い回す（Canberra＝正しい続き、Sydney＝もっともらしい誤り）。色は Canberra を青、Sydney を赤
-- モデル名は出典の書き方のまま（GPT-3.5、GPT-4、o1、o3、o4-mini、gpt-5-thinking-mini）
+- token（トークン）、next-token probability、temperature の呼び方をこの3つにそろえる。色：モデルの通常の流れは青、存在しない・作られたもの（fake）は赤
+- 手当てで足した語の一言：training（学習：読ませた文で実際に次に来たトークンに高い確率が付くよう設定を直すこと）、temperature（熱とは無関係。引くときの偶然の大きさの設定）、literature review（研究のまとめに参考文献の一覧を付けた文）、tests（AI モデルを正答の数で採点する試験）。ChatGPT-3.5 と書かず GPT-3.5 (ChatGPT) にそろえる
+- 固有の名前の一言：Mata v. Avianca（2023年の米国ニューヨークの裁判）、ChatGPT・GPT-3.5・GPT-4・GPT-3（OpenAI の言語モデル。GPT-3.5・GPT-4 は ChatGPT の中で動く版）、DeepSeek-V3（DeepSeek 社の言語モデル）、Kalai（2025年の論文の筆頭著者）、Google Scholar（論文を探す検索サービス）
 
-## 5. 図の案
+## 5. 図の案（任意）
 
-| スライド | テーマか難所か | 何をどう描くか | 値の出どころ |
-|---|---|---|---|
-| 2 | テーマ | 次のトークンの候補4つと確率の横棒（Canberra を主役） | 説明のための例 |
-| 3 | 仕組み | 文をトークンの箱に分ける＋まれな語が2つに割れる例（横長。上に文・下に図） | 説明のための例 |
-| 4 | 仕組み | 当てて・比べて・数を直す、のくり返しの流れ図 | Brown et al. (2020) |
-| 5 | 仕組み | チャット全体を1枚の文書として描き、最後に次のトークンの空き | OpenAI API docs、Ouyang et al. (2022) |
-| 6 | 難所 | 温度 0.5・1・2 ごとの候補の確率の棒（3色。図が主役の型で左に大きく） | 2枚目の例から計算 |
-| 7 | テーマ | 実在しない文献の割合の棒（GPT-3.5・GPT-4） | データ2（Walters & Wilder 2023） |
-| 8 | テーマ | PersonQA の作り話の率の棒（o1・o3・o4-mini） | データ3（OpenAI 2025） |
-| 9 | テーマ | SimpleQA の答えない・正解・間違いの棒（2モデル） | データ1（OpenAI 2025） |
-| 10 | 難所 | まれな事実と多い事実の答えの「正解・正解でない」の積み上げ棒（Figure 1 から読んだ2点） | Kandpal et al. (2023) |
-| 11 | 位置づけ | 判定：判定の流れ図：出典を確かめる3つの問い（No なら unverified、全部 Yes なら use it） | — |
-| 12 | 位置づけ | 聞き直しで一致する場合と割れる場合の比較 | 説明のための例 |
+なし
 
-## 6. 確認問題と模範解答（6問ちょうど。スライドは1枚に3問ずつ、確認問題2枚・解答2枚）
+## 6. 確認問題と模範解答
 
 ### 問題
-1-1. When a chat AI writes a reply, what does it compute at each step, and what does it do with the result? 〔ゴール1・2枚目〕〔型：仕組み〕
-1-2. You ask the same question in two new chats and get two different answers. Explain why, using how each token is chosen. 〔ゴール1・6枚目〕〔型：仕組み〕
-1-3. A friend says: "The AI gave the authors and the journal of a paper, so it must have looked it up." What is wrong with this reasoning? 〔ゴール2・7枚目〕〔型：誤り指摘〕
-1-4. Which question is a chat AI more likely to get wrong: the birth year of a world-famous scientist, or the birth year of a little-known local politician? Explain why. 〔ゴール2・10枚目〕〔型：比べる〕
-1-5. An AI answer supports a claim with "Smith (2021), Journal of Learning". You want to use the claim in a report. Write the steps you take before using it. 〔ゴール3・11枚目〕〔型：当てはめ〕
-1-6. An AI says: "30% of the 1,200 students, that is 390 students, use the library." Check the number yourself, and name one more check you would do. 〔ゴール3・12枚目〕〔型：計算〕
+1-1. What is a token, and about how many English words do 100 tokens make? 〔ゴール1・4枚目〕〔型：定義〕
+1-2. You ask a chatbot the same question twice and get two different replies. Using the loop, explain why. 〔ゴール1・6枚目〕〔型：仕組み〕
+1-3. A friend says: "The chatbot cited a paper that does not exist, so its search must have failed." What is wrong? 〔ゴール2・8枚目〕〔型：誤り指摘〕
+1-4. Compare the 2023 study's fake-citation rates for GPT-3.5 and GPT-4. What do they tell you about newer models? 〔ゴール2・7枚目〕〔型：比べる〕
+1-5. A chatbot says "a 2021 study found 62% of students..." and you will quote it in a report. What do you check, and how? 〔ゴール3・12枚目〕〔型：当てはめ〕
+1-6. What does generative AI actually compute? Answer with the one-line answer and the analogy. 〔題の問い〕〔ゴール1・10枚目〕〔型：仕組み〕
 
 ### 解答
-1-1. It computes a probability for every possible next token, given all the text so far (the whole chat). It draws one token, appends it, and repeats until the reply is done. 〔要素：a probability for every possible next token／given all the text so far／draws one, appends it and repeats〕
-1-2. Each token is a weighted random draw from the probabilities, not always the top token, so a less likely token (even a wrong one) is sometimes picked, and the rest of the reply follows from it. How much answers vary depends on the temperature. 〔要素：a weighted random draw, not always the top token／a less likely token is sometimes picked／depends on the temperature〕
-1-3. Authors and a journal are just likely-looking text; nothing in the model checks that the paper exists. In a 2023 study, 55% of the references from GPT-3.5 and 18% from GPT-4 did not exist. Open the paper yourself. 〔要素：likely-looking text, not checked／fake references are common (e.g. 18% for GPT-4)／open the paper yourself〕
-1-4. The local politician. Facts that appear in few training documents get a low probability for the right continuation, so a plausible wrong year is more likely to be drawn. 〔要素：the local politician／few training documents about the fact／a low probability for the right answer, so a wrong year can be drawn〕
-1-5. Search for the paper by title, authors and year (or DOI); open the original; find the sentence that supports the claim. If you cannot find it or it says something else, mark the claim "unverified" and do not use it. Asking the AI "is it real?" does not count. 〔要素：search by title, authors, DOI and open the original／find the supporting sentence／if not found, mark unverified and do not use〕
-1-6. 30% of 1,200 is 0.30 × 1,200 = 360, not 390: the two numbers do not match (390 would be 32.5%), so at least one is wrong. One more check: find the original survey for the figures. (Re-asking in a new chat is weaker: agreement is not proof.) 〔要素：0.30 × 1,200 = 360, not 390, so the numbers do not match／find the original survey〕
+1-1. A piece of text (word, part of a word, mark). 100 tokens ≈ 75 words, because 1 token ≈ 3/4 word. 〔要素：a piece of text／about 75 words〕
+1-2. Each pick is drawn by chance from the probabilities, and because each pick changes what follows, replies differ. 〔要素：picks involve chance／each pick changes what follows〕
+1-3. It wrote likely tokens, not a search, because asked one birthday 3 times, a model gave 3 different dates; a lookup would not. 〔要素：no lookup, a likely continuation／3 different dates〕
+1-4. 55% vs 18% fake: newer models invent fewer but not zero, so you still check, because fluency is no proof. 〔要素：55% vs 18%／fewer, not zero〕
+1-5. The study, year and 62%, because names and numbers are where it guesses: search the title, open it, find the claim. 〔要素：name, number, source／open it and find the claim〕
+1-6. Next-token odds: it picks one, appends, repeats, so it scores likely, not true. Like your keyboard's guess tapped to the end. 〔要素：next-token probabilities, pick and repeat／keyboard guess tapped to the end〕
 
 ## 7. 前の回から反映すること
 
-- 前の回の質問回答デッキ・README のつまずき一覧から：第1回なのでなし
-- 冒頭に「前回のつまずき」を置くか：置かない
+なし
 
 ## 8. 迷った所とレビューの反映
 
-- 迷った所（設計の担当が書く。直しの担当が読む）：
-  - データは3組とも使った（7枚目＝データ2を複雑化の しかし（意外）に、8枚目＝データ3、10枚目＝データ1）。驚きが一番素直なのは文献の作り話なので、それを筋の しかし に据えた。データ1（SimpleQA）は3つ目の驚き（9枚目）として だから（問い）（10枚目）の前に置いたが、2モデルの比べなので青帯は事実の言い方に留めた（「当てずっぽうで間違いが3倍」とは言わない）
-  - 驚きの事実は2つとも使った（7枚目の Mata v. Avianca、11枚目の法律 AI の 17〜33%）。3節に写した
-  - 地図の「chat as a continued document」は5枚目にまとめ、青帯は調整（InstructGPT）の比べにした。青帯をチャット＝文書にするか、調整の比べにするかで迷った
-  - 6枚目（温度）の青帯に数が入らない。図の値は説明のための例なので、青帯に例の数を載せなかった
-  - 12枚目の SelfCheckGPT は数を青帯に出していない（論文の数値を覚えていない）。裏取りで数が拾えれば青帯に入れてよい
-  - 本文は11枚（そして が 3・4・5枚目で3つ続く）。表紙＋本文11＋問題2＋解答2＝16枚
-- レビューの反映（直しの担当が書く。事実の確認を含む）：
-  - 必ず直す点1〜6 は全部採った：筋の問いを7枚目の本文へ（型を「なぜ」、2枚目には素朴な見方の問い）、10枚目の青帯を答えに、5枚目の青帯をチャット＝文書に（迷った所の3はこれで決着）、6枚目を例の確率から計算した値に（greedy の dull は別の行）、11枚目の青帯を手順に（17–33% は本文の Why）、1-6 の解答を「食い違い」までに
-  - 直すとよい点は 1・2・4〜11 を採った。3（実際のトークナイザーで3枚目を分ける）は、この環境にトークナイザー（tiktoken など）が無く確かめられないので採らず、図は「the split is an example」のまま
-  - 事実の確認：facts_diff の事実2（300B＝学習で読んだトークン数）を4枚目の本文・原稿に、事実19 を10枚目の Rare facts の出典に。3節の行は足していない
-  - 資料から抜けていた内容：データ2 の「実在の文献のうち大きな誤り」は11枚目の原稿に、事実2 の内訳は4枚目の ※ に
-  - 12枚目の SelfCheckGPT は数値の行が無いので、青帯は数なしのまま
-  - check_memo の △「問いの枚 7 が前のほうに無い」は残した：レビューの必ず直す点1（問いは7枚目の意外から出す、答えの位置：後）に従ったため。2枚目は素朴な見方（Your guess）で予想を立てさせる
-  - 6枚目・10枚目・11枚目の講師の計算・まとめの行は〔講師の概算〕〔講師のまとめ〕にした（出典の行は付けない）
-- 外から見た採点（83点）の反映：1枚の文の塊を2つまでに（7・10枚目は4つ→2つ、3・4・8・11枚目は3つ→2つ。外した塊（Length limit・Mata・Cutoff・Test scores・If not found）は原稿か図へ）、10枚目の図を2点を結んだ線から「正解・正解でない」の積み上げ棒に、本文の「(slide N)」の参照を言葉に言い換え（原稿も）、3枚目にまれな語が2トークンに割れる例、赤の棒・面を落ち着いた赤に、確認問題・解答は見出しを本文の枚の結論と同じ見た目にし、1問ずつ横いっぱいの箱に（答えは句読点のある文に）
-- 第N回に回す点：
+- 迷った所：
+  - 3枚目のつなぎを「だから（手段）」にした（冒頭の事件から「確かめるために身近な予測変換から入る」の意）。問いの一文はこの枚の赤字の要点に載せた
+  - 4・5枚目の模式図のトークンの切れ目と候補の並びは説明のための例（実際のトークナイザーの出力ではない）。図の中に "illustration" と断る
+  - 8枚目の比較の表の中身（failed lookup／likely continuation の3項目ずつ）は講師のまとめ。根拠は事実9（同じ問いに3つの違う日付）
+  - 事実8（temperature）は公式の API リファレンスの頁そのものではなく、その文言を引いたフォーラムの頁で確かめた
+  - 数字の組は2つとも2023年の古いモデル（GPT-3.5・GPT-4）。今のモデル・Web検索つきでは低い可能性を、7・12枚目の原稿で限りとして言う
+- レビューの反映：
+- 第N回に回す点：なし
 
-## 9. 引っかかりへの手当て（レビューの推論距離から。各行は [スライド番号] で始める）
+## 9. 引っかかりへの手当て
 
-レビューの結果は、そのまま memo_review.md に残す。「要」の穴のあるスライドを全部載せる（採らないものも理由つきで）。「深」は載せなくてよい（原稿の ※ に入れるなら書く）。
+- [2] 本文の Belief の主がない → 本文を「a lawyer thought it "could not" fabricate」にし、原稿に「One lawyer testified he thought ChatGPT could not possibly make up cases.」（事実2）。経験の問いは3枚目にあるので、2枚目の原稿の同じ問いは外した
+- [5] training の中身・確率の出どころ → 原稿に「Training: the model reads huge amounts of text, and its settings are adjusted until the token that actually came next gets a high probability.」（事実7の言い換え）
+- [6] pick の像（等しく引く） → 原稿に「Likely tokens are picked most often, unlikely ones now and then; it is not an even draw.」（事実8）
+- [6] temperature の像（熱） → 原稿を「A setting called temperature, nothing to do with heat, controls how much chance there is: higher means more random, lower means more focused.」に（事実8）
+- [7] literature review・GPT-3.5/GPT-4 の中身 → 原稿に「summaries of research with a reference list」と「two versions of the model behind ChatGPT」
+- [8] 検索なら同じ答えの理由・ループなら別の答えの理由（遠い：6枚目）・DeepSeek-V3 → 原稿に「since it reads the same stored record」「because each pick involves chance, as in step 3」「another company's chat model」
+- [9] 1度しか出ない事実に規則が無い理由・tests の中身 → 原稿に「Training learns from what repeats」と「the tests used to score models count only right answers」、結びを「So such tests reward guessing over admitting it does not know」に（事実10・11の言い換え）
+- [11] 名前・数はいつも珍しいわけではない（範囲） → 原稿を「Exact names, dates, numbers and sources are often rare facts, seen once in training text, where the model guesses.」に言い換え（事実11）
+- [12] 本物でも中身があるとは限らない・ChatGPT-3.5 の呼び名の揺れ → 本文の ⇒★ を「A real paper may not say it」、本文を「GPT-3.5 (ChatGPT)」に。原稿に「A real source may still not say what the reply claims.」と「the older model from slide 7」（事実12・データ2）
+- 採らなかったもの：なし（深の行は書いていない）
 
-- [2] token の語（初出が2枚目）：手順2に括弧で「a token is a word or a piece of one, next slide」（定義は3枚目）
-- [2] pick の像（最も確率の高いものを選ぶ）：手順3を「Draw one, weighted by its probability (slide 6)」に。くじ引きの中身は6枚目の図の注
-- [2] scores／odds／probability の揺れ：2枚目の青帯・本文、10枚目、1-4 の解答を probability にそろえた（10枚目の採点は「Test scores」）
-- [3] 長さの上限＝context の上限（深）：初学者なので採らない
-- [4] learning の像（事実を覚え込む）：本文に「What it learns: how text continues, not a list of facts」をノートから上げた（10枚目の答えの前提）
-- [5] 調整がなぜここに来るか：Tuning の行の頭に「plain GPT-3 just continues text」、原稿で「will not necessarily continue in the form of an answer」
-- [5] RLHF：略語を外して「human rankings of its replies」に。人の順位で好まれる返事が出やすいよう数を直す、はノートに
-- [6] temperature：本文の1行目に「Temperature: a dial applied before the draw; low sharpens…, high flattens…」
-- [6] weighted draw：図の注に「like a lottery, 62 of 100 tickets say Canberra」
-- [6] 利用者は温度を変えられない（深）：レビューの直すとよい点10 に合わせ、原稿の1文の候補としてノートに
-- [7] 素朴な見方が遠い：2枚目の本文の最後に「It sounds like it looked the answer up. Did it?」を載せ、7枚目の1行目「Did it look them up?⇒」で崩す
-- [7] GPT-3.5 の呼び名：青帯を「ChatGPT (GPT-3.5)」にし、Mata の ChatGPT とそろえた
-- [8] PersonQA：本文に括弧で「questions about real people」
-- [9] SimpleQA・abstain：括弧で「short fact questions」、abstain は青帯・本文とも「says "I don't know"」に言い換え
-- [9] 22 vs 24・26 vs 75 の読み：本文の最後に「⇒ Guessing adds few right answers but many wrong ones」
-- [10] Step 2 が遠い：ラベルを「No step checks facts」にし、枚の番号の参照をやめた（原稿で「the next-token probability we started with」）
-- [10] 少ない文書→低い正答率の理由：Rare facts の行に「⇒ the right continuation never gets a high probability」
-- [10] knowledge cutoff：「Cutoff (the date its training text ends)」。それより後の出来事は学習データに無い、はノートに
-- [10] score の揺れ：2枚目を probability にし、10枚目は「Test scores」
-- [11] search-based：括弧で「they search a database first, then write」。書く段は次のトークンの予測、はノートに
-- [11] DOI：括弧で「DOI: the paper's ID」
-- [12] 一致・不一致の理由が遠い：Re-ask の行に「a known fact wins most draws, a guess changes from draw to draw」
-- [12] new chat の理由：括弧で「no old answer resent」。同じチャットだと前の答えの続きを書く（5枚目）、はノートに
+- 残す△：原稿の字数（5〜9・11・12枚目が400字を少し超える。推論距離の手当て（training・temperature・検索とループの違いの理由など）を原稿に入れたためで、英語の原稿は1分あたりの語数で見ると収まる見込み）
+- 残す△：冒頭の問い（冒頭の謎は学習者に近い実際の事件（事実1）で立て、データ1は7枚目のしかしで1回だけ見せる）
+- 残す△：入口の経験（3枚目の要点に学習者の経験の問い「Have you trusted a sure-sounding reply?」と予測変換を置いた。英語の文のため検査が拾えていない）
+- 残す△：説明の無い英字の名前（英語のデッキのため、普通の英単語まで拾われる。固有の名前は4節に足した）

@@ -27,11 +27,11 @@ def test_course_skeleton_builds_with_roles(tmp_path):
     w = _make(tmp_path, memo, "AI活用講座_01")
     deck = tmp_path / "AI活用講座" / "01_生成AIは何をしているか_スライド.pptx"
     prs = Presentation(str(deck))
-    assert len(prs.slides) == 15
+    assert len(prs.slides) == 17
     roles = structures.plan_roles(memo.read_text(encoding="utf-8"), "memo")
     assert structures.role_mismatches(prs, roles) == []           # 本文には結論、確認問題・解答には無い
     notes = (w / "notes.md").read_text(encoding="utf-8")
-    assert notes.count("\n## ") + notes.startswith("## ") == 15 and "手当て：[2]" in notes
+    assert notes.count("\n## ") + notes.startswith("## ") == 17 and "手当て：[3]" in notes
 
 
 def test_zemi_skeleton_builds(tmp_path):
@@ -55,3 +55,22 @@ def test_existing_files_are_kept(tmp_path, capsys):
     (w / "build.py").write_text("# 書きかけ\n", encoding="utf-8")
     scaffold.main([str(w)])
     assert (w / "build.py").read_text(encoding="utf-8") == "# 書きかけ\n"
+
+
+def test_stock_lines_follow_the_language(tmp_path):
+    """原稿の決まり文句（出典の行・確認問題の前置き・解答の行）は、英語の回では英語（英語のデッキに日本語の行が残っていた）。"""
+    memo = ROOT / "examples" / "course_en" / "_work" / "AI_Literacy_01" / "memo.md"
+    text = memo.read_text(encoding="utf-8")
+    assert scaffold.note_phrases(text) == scaffold.NOTE_PHRASES["en"]
+    assert scaffold.note_phrases("") == scaffold.NOTE_PHRASES["ja"]                 # 言語が無ければ日本語
+    ja = (ROOT / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
+    assert scaffold.note_phrases(ja) == scaffold.NOTE_PHRASES["ja"]
+    (tmp_path / "AI_Literacy").mkdir()
+    w = tmp_path / "_work" / "AI_Literacy_01"
+    w.mkdir(parents=True)
+    shutil.copy(memo, w)
+    assert scaffold.main([str(w)]) == 0
+    notes = (w / "notes.md").read_text(encoding="utf-8")
+    assert "Review questions." in notes and "Recall what you saw on slide" in notes and "Your answer is correct if it includes" in notes
+    assert "※ Source:" in notes
+    assert not any(s in notes for s in ("確認問題です", "思い出してください", "が入っていれば正解です", "※ 出典："))

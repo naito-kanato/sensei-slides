@@ -55,8 +55,8 @@ def test_light_memo_stops_on_unchecked_facts(tmp_path):
     """軽量の回は裏取りの担当がいないので、確認がまだの事実を check_memo が ✘ にする（標準の回は裏取りの段で見る）。"""
     import check_memo
     src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
-    m = src.replace("| 1750億、2048 トークン | T. Brown et al., \"Language Models are Few-Shot Learners\", NeurIPS 2020（GPT-3） | ○ |",
-                    "| 1750億、2048 トークン |  | 未確認 |")
+    m = src.replace("| 175 billion、2020年 | Brown, T. et al.（2020）arXiv:2005.14165 Abstract | ○（計算：175 billion＝175×10⁹＝1750億） |",
+                    "| 175 billion、2020年 |  | 未確認 |")
     assert m != src
     (tmp_path / "l").mkdir()
     lw = _course(tmp_path / "l")
@@ -109,7 +109,9 @@ def test_light_presentation_shows_the_outline_first(tmp_path):
         if (root / "examples" / "zemi" / f).exists():
             shutil.copy(root / "examples" / "zemi" / f, w / f)
     p = w / "outline.md"
-    p.write_text(p.read_text(encoding="utf-8").replace("| 軽さ | 念入り |", "| 軽さ | 標準 |"), encoding="utf-8")
+    t = p.read_text(encoding="utf-8")
+    assert "| 軽さ | 標準 |" in t and "| 構成案の確認 | 任せる |\n" in t   # 見本は標準・任せる
+    p.write_text(t.replace("| 構成案の確認 | 任せる |\n", ""), encoding="utf-8")   # 確認の行を外す（既定は見せる）
     assert budget.light(w)
     assert not [r for r in check_outline.check(p) if r[0] == "✘"]
     _, nxt = next_step.steps_for(w)
@@ -267,9 +269,10 @@ def test_light_flow_runs_the_inference_audit(tmp_path):
     for f in ("outline.md", "data_1.md"):
         shutil.copy(root / "examples" / "zemi" / f, w / f)
     p = w / "outline.md"
-    p.write_text(p.read_text(encoding="utf-8").replace("| 軽さ | 念入り |", "| 軽さ | 標準 |"), encoding="utf-8")
+    assert "| 軽さ | 標準 |" in p.read_text(encoding="utf-8")   # 見本は標準
     assert next_step.steps_for(w)[1].startswith("推論距離の担当1人を起動")
-    (w / "outline_review.md").write_text("## 推論距離\n\n- [4] 「A ⇒ B」｜用語｜語｜補う前提：x｜使う所：4｜架け方：括弧\n", encoding="utf-8")
+    # 見本の手当ての節に無い枚（12）の穴
+    (w / "outline_review.md").write_text("## 推論距離\n\n- [12] 「A ⇒ B」｜用語｜語｜補う前提：x｜使う所：12｜架け方：括弧\n", encoding="utf-8")
     nxt = next_step.steps_for(w)[1]
     assert nxt.startswith("軽量：設計の担当に続けて頼む")   # 推論距離の担当をまだ起動していない（記録が無い）なら設計の担当へ
     d = brief.build("推論距離の担当", str(w), count=True)   # 起動を記録する
@@ -315,7 +318,7 @@ def test_script_file_fills_the_notes(tmp_path, monkeypatch):
     w = _course(tmp_path)
     (w / "memo.md").write_text(src, encoding="utf-8")
     assert {i: m for m, i, _ in check_memo.check(w / "memo.md")}.get("原稿") == "△"   # script.md が無い
-    body = "".join(f"## {n}\n" + "あ" * 200 + "\n\n" for n in range(1, 12))
+    body = "".join(f"## {n}\n" + "あ" * 200 + "\n\n" for n in range(1, 14))
     (w / "script.md").write_text(body, encoding="utf-8")
     assert "原稿" not in {i for _, i, _ in check_memo.check(w / "memo.md")}
     assert scaffold.main([str(w)]) == 0

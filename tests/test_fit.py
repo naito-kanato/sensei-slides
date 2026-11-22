@@ -182,7 +182,7 @@ def test_memo_fit_estimate_warns_before_building(memo):
     """設計メモの時点で、骨組みと同じ部品・幅で組んで、本文の場所に入らない枚を △（✘ にはしない）で出す。"""
     assert dict((i, m) for m, i, _ in cm.check(memo))["入りの見込み"] == "✔"   # 見本は入る
     text = memo.read_text(encoding="utf-8")
-    rows = [l for l in text.splitlines() if re.match(r"\|\s*3\s*\|", l)]
+    rows = [l for l in text.splitlines() if re.match(r"\|\s*4\s*\|", l)]
     assert rows
     cells = rows[0].split("|")
     head = [c.strip() for c in next(l for l in text.splitlines() if "本文の要点" in l and l.startswith("|")).split("|")]
@@ -190,6 +190,6 @@ def test_memo_fit_estimate_warns_before_building(memo):
     cells[k] = " " + "／".join(f"見出し{j}：とても長い説明の要点がここに入るので、骨組みは何行にも折り返して縦に入らなくなる{j}" for j in range(4)) + " "
     memo.write_text(text.replace(rows[0], "|".join(cells)), encoding="utf-8")
     est = scaffold.fit_estimate(memo.parent)
-    assert est and est[0][0] == 3 and est[0][1] > 0.3 and "3枚目：要点が" in est[0][2] and "入らない見込み" in est[0][2]
+    assert est and est[0][0] == 4 and est[0][1] > 0.3 and "4枚目：要点が" in est[0][2] and "入らない見込み" in est[0][2]
     res = {i: (m, msg) for m, i, msg in cm.check(memo)}
-    assert res["入りの見込み"][0] == "△" and "3枚目" in res["入りの見込み"][1]
+    assert res["入りの見込み"][0] == "△" and "4枚目" in res["入りの見込み"][1]

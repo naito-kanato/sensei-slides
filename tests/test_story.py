@@ -25,12 +25,12 @@ def test_missing_story_blocks(outline):
 
 
 def test_question_must_be_a_question(outline):
-    text = outline.replace("とらえられるか？", "とらえられるか")
+    text = outline.replace("ないと言えるか？", "ないと言えるか")
     assert marks(text)["話の筋"] == "△"
 
 
 def test_answer_must_come_late(outline):
-    text = outline.replace("20万年に1回未満と示した | 13 |", "20万年に1回未満と示した | 5 |")
+    text = outline.replace("BH連星の合体 | 13 |", "BH連星の合体 | 5 |")
     assert marks(text)["話の筋"] == "△"
 
 
@@ -102,7 +102,7 @@ def test_figs_table_shows_pitfalls():
 
 def test_many_tables_without_decision_warn(outline):
     """判定の拍がある型で、表が3枚以上あって判定の流れ図が無ければ △。"""
-    text = re.sub(r"\| (仕組み|比べる|実物|違い|推移)：[^|]*\|", "| 観点：表：要件の一覧 |", outline)
+    text = re.sub(r"\| (仕組み|比べる|実物|違い|推移|判定)：[^|]*\|", "| 観点：表：要件の一覧 |", outline)   # 見本の判定の流れ図（9枚目）も表に
     body = story.body_numbers(text, "outline")
     res = story.fig_check(text, "outline", body)
     assert not any("判定の流れ図が無い" in d for _, _, d in res)        # 論文紹介（方法から）には判定の拍が無い

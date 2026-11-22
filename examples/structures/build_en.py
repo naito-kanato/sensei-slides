@@ -4,9 +4,8 @@
     python figs.py         # 説明のための図（en_shift_before・en_shift_after）を figs/ に
     python build_en.py     # Structures_slides.pptx（テンプレート1。全部の型）
 
-図は英語の論文紹介の見本（examples/zemi_en/figs・paper_figs）と、このフォルダの figs/ の en_ の図を使う
-（論文紹介の図のうち、置き方が違って縮むもの＝輪の図 s02 は、figs/en_strain に描き直してある）。
-日本語の文字が入った図（examples/zemi/figs・figs/shift_*）は使わない。en_shift_before・en_shift_after は説明のための例（実在の測定ではない）。
+図はこのフォルダの figs/ の en_ の図（figs.py が描く）と paper_figs/（論文の図の切り出し）を使う。
+日本語の文字が入った図（figs/ の en_ の付かない図）は使わない。en_shift_before・en_shift_after は説明のための例（実在の測定ではない）。
 """
 import sys
 from pathlib import Path
@@ -17,9 +16,7 @@ sys.path.insert(0, str(SKILL / "scripts"))
 from slide_profile import deck_options, load_profile  # noqa: E402
 from zemi import Deck  # noqa: E402
 
-ZFIG = HERE.parent / "zemi_en" / "figs"          # 英語の論文紹介の見本の図（s02 = strain、s05 = michelson など）
-ZPAPER = HERE.parent / "zemi_en" / "paper_figs"  # 論文の図（解像度の印つき）
-PAPER = HERE.parent / "zemi" / "paper_figs"      # 論文の図（build.py と同じもの）
+PAPER = HERE / "paper_figs"   # 論文の図の切り出し（build.py と同じもの。出典は paper_figs/ATTRIBUTION.md）
 FIG = HERE / "figs"
 OUT = HERE / "Structures_slides.pptx"
 T = "Structure Samples: The First Gravitational-Wave Detection"
@@ -51,7 +48,7 @@ s.heading("Premise ⇒ result (s.lead)")
 s.at(1.0, 1.95)
 s.lead(["Predicted by Einstein in 1916", "spacetime strain at light speed"], "No direct observation")
 s.lead(["Orbital decay of a binary pulsar", "rate as predicted (Nobel Prize 1993)"], "Confirmed only indirectly")
-b = zfig(s, FIG / "en_strain.png", y=2.3)   # 論文紹介の s02 は下に横長に置く幅（8.4 in）で、右に置くと縮んで文字が 14pt を下回る
+b = zfig(s, FIG / "en_strain.png", y=2.3)   # 本文の右に置く幅で描いた図
 s.caption(b, "(schematic)")
 
 s = deck.slide(T, summary="Label + explanation: name as a subheading, details indented")
@@ -61,7 +58,7 @@ s.block("Michelson interferometer:", ["arm-length difference (4 km arms)", "lase
                                      "strain changes down to 10^{-21}"])
 s.block("Two sites at once:", ["Hanford and Livingston", "two detectors ~3000 km apart", "arrival gap about 7 ms"],
         then="told apart from noise")
-zfig(s, ZFIG / "s05.png", y=1.9)
+zfig(s, FIG / "en_michelson.png", y=1.9)
 
 s = deck.slide(T, summary="Horizontal arrow: condition on the left, result on the right")
 s.heading("Horizontal arrow (s.develop)")
@@ -69,7 +66,7 @@ s.at(1.0, 2.0)
 s.develop(("Strain:", ["1.0 × 10^{-21}"]), "4 km arm changes by\n{r:about 4 × 10^{-18} m}")
 s.develop("Same waveform\nat two detectors", "{r:not explained}\n{r:by detector noise}")
 s.develop("Frequency 35 Hz", "up to 250 Hz\nin about 0.2 s")
-b = zfig(s, FIG / "en_same_wave.png", y=2.0)   # 置く幅で描いた図（論文紹介の s06 は横長で、右に置くと縮んで文字が 14pt を下回る）
+b = zfig(s, FIG / "en_same_wave.png", y=2.0)   # 置く幅で描いた図
 s.caption(b, "(illustrative example)")
 
 s = deck.slide(T, summary="Cases: conditions in bold, details indented in a gray box")
@@ -77,7 +74,7 @@ s.heading("Cases (s.cases)")
 s.cases([("Before merger (inspiral)", "frequency from 35 Hz to 250 Hz\n8 cycles in about 0.2 s"),
          ("Merger", "peak amplitude (strain 1.0 × 10^{-21})"),
          ("After merger (ringdown)", "damped ringing of one black hole\n(62 solar masses)")], x=1.0, y=1.95)
-b = zfig(s, ZPAPER / "fig1_timefreq_H1.png", y=2.1)
+b = zfig(s, PAPER / "fig1_timefreq_H1.png", y=2.1)
 s.caption(b, f"Fig. 1 bottom row (H1), {SRC}")
 
 s = deck.slide(T, summary="Question → answer: check other explanations one by one")
@@ -86,14 +83,14 @@ s.at(1.0, 1.95)
 s.ask("Just detector noise?", "same waveform at both sites,\n~7 ms apart")
 s.ask("Chance coincidence?", "{r:significance above 5.1σ}\nfalse alarm < once\nin 200,000 years")
 s.ask("Strong enough signal?", "SNR 24\n(two detectors combined)")
-b = zfig(s, ZPAPER / "fig4_search.png", y=1.9)
+b = zfig(s, PAPER / "fig4_search.png", y=1.9)
 s.caption(b, f"Fig. 4 right, {SRC}; red circle added")
 
 s = deck.slide(T, summary="Numbered steps: the order of an analysis or a measurement")
 s.heading("Numbered steps (s.numbered)")
 s.numbered(["Divide by the noise\n(whitening, both sites)", "Compare with model waveforms\n(matched filter, SNR 24)",
             "Shift one site in time\nto estimate chance matches"], x=1.0, y=1.95)
-zfig(s, ZFIG / "s07.png", y=1.85)   # s13（時刻ずらし）は縦に長く、縮んで文字が 14pt を下回る
+zfig(s, FIG / "en_cavities.png", y=1.85)
 
 s = deck.slide(T, summary="First direct detection confirms binary black holes exist")
 s.heading("Vertical arrow to a conclusion (s.lead_down)")
@@ -150,7 +147,7 @@ s.heading("Callout on a figure (s.callout)")
 s.at(1.0, 1.95)
 s.lead(["Output normally dark", "(the two beams cancel)", "arm lengths change:", "brightness changes"],
        "Light level gives\nthe length difference")
-b = zfig(s, ZFIG / "s05.png", y=1.85)
+b = zfig(s, FIG / "en_michelson.png", y=1.85)
 k = b.w / 6.12   # 光検出器の位置は、幅 6.12 in（描いた幅）の図で測った値を幅に比例させる
 s.callout((b.x + 1.7 * k, b.y + 4.15 * k), (b.x - 3.0, b.y + 3.9 * k), "brightness read here")
 

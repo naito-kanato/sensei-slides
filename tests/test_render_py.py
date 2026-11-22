@@ -182,7 +182,7 @@ def test_images_and_slide_number(tmp_path):
 
 def test_examples_render_like_powerpoint(built, tmp_path, capsys):
     """講座の見本を新しい描画で描くと、PowerPoint と同じく ERROR 0（作者の手元で PowerPoint と突き合わせたときの結果）。"""
-    for pptx, n in ((built / "examples" / "course" / "AI活用講座" / "01_生成AIは何をしているか_スライド.pptx", 15),):
+    for pptx, n in ((built / "examples" / "course" / "AI活用講座" / "01_生成AIは何をしているか_スライド.pptx", 17),):
         out = tmp_path / pptx.stem
         r = subprocess.run([sys.executable, "-X", "utf8", str(rp.__file__), "-Pptx", str(pptx), "-OutDir", str(out)],
                            capture_output=True, text=True, encoding="utf-8", timeout=300)
@@ -223,8 +223,8 @@ def test_make_deck_compares_layout_items(tmp_path):
 def test_notes_html_images_without_powerpoint(built):
     """PowerPoint も LibreOffice も無い PC では、原稿のページの画像を新しい描画で作る。"""
     import notes_html
-    imgs = notes_html.python_images(built / "examples" / "zemi" / "重力波の初観測_スライド.pptx", width=400)
-    assert len(imgs) == 16 and all(len(x) > 1000 for x in imgs)
+    imgs = notes_html.python_images(built / "examples" / "zemi" / "Abbott2016_PRL116_061102_スライド.pptx", width=400)
+    assert len(imgs) == 17 and all(len(x) > 1000 for x in imgs)
 
 
 def test_math_box_in_alternate_content_is_kept(tmp_path):

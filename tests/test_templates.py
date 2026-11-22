@@ -36,7 +36,7 @@ def test_template_example_builds(built):
     prs = Presentation(built / "examples" / "template" / "テンプレートの見本_スライド.pptx")
     items = nh.slide_texts(prs)
     assert len(items) == 4
-    assert items[1][1] == "重力波" and items[1][2] == "重力波は予言から100年、直接の観測がなかった"   # ゼミの見本と同じ中身
+    assert items[1][1] == "重力波" and items[1][2] == "重力波は予言から100年、直接の観測がなかった"   # 重力波の初観測の4枚
     assert prs.slides[1].slide_layout.name == "本文"                         # テンプレートだけが違う
 
 

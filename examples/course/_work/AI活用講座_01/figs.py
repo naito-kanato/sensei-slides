@@ -1,179 +1,182 @@
-"""講座の見本 第1回「生成AIは何をしているか」の図（すべて自分で描く。値の出どころは memo.md の3節）。
-
-    python figs.py            # 全部の図を figs/ に書き出す
-    python figs.py temperature  # 一部だけ描き直す（関数名の f_ を除いた名前）
-
-図は右の本文の場所（幅 5.4〜6 in・高さ 3〜4.3 in）を埋める大きさで描き、描いた幅のまま置く
-（以前は幅 4.2〜4.6 in で描いていて、本文と図の間が 2 in 以上空いていた）。図の文字は 14pt のまま。
-"""
+"""図。python figs.py [名前 ...]（名前は f_ を除いた部分）。データの棒グラフは scaffold.py が設計メモの3b節から描いた。TODO の図を描く"""
 import sys
 from pathlib import Path
 
-import numpy as np
-from matplotlib.patches import Rectangle
-
-SKILL = Path(__file__).resolve().parents[4]
+HERE = Path(__file__).resolve().parent
+SKILL = HERE.parents[3]   # 見本はリポジトリの scripts/ を使う
 sys.path.insert(0, str(SKILL / "scripts"))
-from figkit import COL, arrow, blank, box, fig, save  # noqa: E402
+from figkit import COL, LW, arrow, blank, box, fig, noticks, save  # noqa: E402,F401
+import figlib  # noqa: E402,F401
+import figschema  # noqa: E402,F401
 
-OUT = Path(__file__).parent / "figs"
-FS = 14
-WORDS = ["晴れ", "雨", "曇り", "雪"]
-PROBS = [0.42, 0.25, 0.18, 0.06]          # 説明のための例（実在のモデルの値ではない）
-
-
-def f_next_token():
-    """「明日の天気は」の次のトークンの候補と確率（説明のための例）"""
-    f, ax = fig(5.8, 4.3)
-    words, probs = WORDS[::-1], PROBS[::-1]
-    colors = [COL.gray, COL.gray, COL.gray, COL.blue]
-    ax.barh(words, probs, color=colors, height=0.6)
-    for w, p in zip(words, probs):
-        ax.text(p + 0.01, w, f"{p:.2f}", va="center", fontsize=FS)
-    ax.set_xlim(0, 0.55)
-    ax.set_xlabel("次に来る確率", fontsize=FS)
-    ax.set_title("「明日の天気は」の次", fontsize=FS)
-    ax.tick_params(labelsize=FS)
-    save(f, OUT / "next_token.png")
+OUT = HERE / "figs"
+OUT.mkdir(exist_ok=True)
 
 
-def f_tokens():
-    """「明日の天気は晴れ」と「ハルシネーション」をトークンに分けた例（分け方は例。実際はモデルで違う）。
-    上の段は語ごとに1つ、下の段は1語が語の一部（3つ）に分かれる様子"""
-    W, H = 6.0, 4.7
-    f, ax = blank(W, H)
-
-    def row(y, text, toks, ws, label):
-        ax.text(W / 2, y + 1.3, text, ha="center", va="center", fontsize=20)
-        arrow(ax, (W / 2, y + 1.0), (W / 2, y + 0.78))
-        gap = 0.14
-        x = (W - sum(ws) - gap * (len(ws) - 1)) / 2
-        for t, w in zip(toks, ws):
-            box(ax, x, y, w, 0.62, t, fs=18)
-            x += w + gap
-        ax.text(W / 2, y - 0.32, label, ha="center", va="center", fontsize=16, color=COL.blue)
-
-    row(2.75, "明日の天気は晴れ", ["明日", "の", "天気", "は", "晴れ"], [1.0, 0.65, 1.0, 0.65, 1.0], "5 トークン（語ごと）")
-    row(0.45, "ハルシネーション", ["ハル", "シネー", "ション"], [1.1, 1.35, 1.35], "1語が 3 トークン（語の一部）")
-    save(f, OUT / "tokens.png")
-
-
-def f_scaling():
-    """大きさと予測の誤差（概略）：両方の軸を対数目盛りにすると、べき乗則は右下がりの直線になる。
-    大きさ10倍ごとに誤差が決まった割合で下がり、傾向は7桁以上の範囲で続いた（Kaplan et al., 2020）。
-    誤差の値・傾きは説明のための形（実際の値ではない）。横軸は一番小さいモデルを1とした倍率"""
-    f, ax = fig(6.6, 4.6)
-    x = np.logspace(0, 7, 50)
-    y = 4.0 * x ** (-0.11)
-    ax.plot(x, y, color=COL.blue, lw=2.5)
-    for x0, lab in ((1e1, "決まった割合で減少"), (1e5, "同じ割合で減少")):   # 10倍ごとの段（同じ形が2か所）
-        x1, y0, y1 = x0 * 10, 4.0 * x0 ** (-0.11), 4.0 * (x0 * 10) ** (-0.11)
-        ax.plot([x0, x1], [y0, y0], color=COL.gray, lw=1.2, ls="--")
-        ax.plot([x1, x1], [y0, y1], color=COL.red, lw=2.0)
-        ax.text(10 ** (np.log10(x0) + 0.5), y0 * 1.04, "10倍", ha="center", va="bottom", fontsize=14, color=COL.text)
-        ax.text(x1 * 1.4, (y0 * y1) ** 0.5, lab, ha="left", va="center", fontsize=14, color=COL.red)
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlim(0.6, 2e7)
-    ax.set_ylim(0.6, 4.8)
-    ax.set_xticks([1, 1e2, 1e4, 1e6], ["1", "100", "1万", "100万"])
-    ax.set_yticks([])
-    ax.minorticks_off()
-    ax.set_xlabel("モデルの大きさ（最小を1とした倍率・対数目盛り）", fontsize=14)
-    ax.set_ylabel("予測の誤差（対数目盛り）", fontsize=14)
-    ax.tick_params(labelsize=14)
-    save(f, OUT / "scaling.png")
+def f_s02():
+    """2枚目：素朴な見方（質問 → AIの中の答えの棚 → 正しい答えを取り出して返す）
+    実物：AIの箱の中に横板の棚、棚にカード（覚えた答え）が並ぶ。1枚を取り出して外へ返す
+    気づく：正しい答えが先に棚にあり、AIは運ぶだけ、という見方
+    配置：左から 質問 → AI（棚）→ 答え
+    ラベル：質問・答えの棚・答え（＋読み方の1行）"""
+    from matplotlib.patches import Rectangle, FancyBboxPatch
+    f, ax = blank(5.6, 4.0)
+    box(ax, 0.1, 2.55, 1.1, 0.6, text="質問", fc=COL.light, lw=LW.thin)
+    # AI の箱
+    ax.add_patch(FancyBboxPatch((1.75, 0.95), 2.3, 2.75, boxstyle="round,pad=0,rounding_size=0.12",
+                                fc="white", ec=COL.blue, lw=LW.shape))
+    ax.text(2.9, 3.45, "AI", ha="center", va="center", fontsize=16, color=COL.blue, weight="bold")
+    # 棚（3段）とカード
+    for k, y in enumerate([1.25, 1.9, 2.55]):
+        ax.add_patch(Rectangle((2.0, y), 1.8, 0.06, fc=COL.sand, ec="none"))
+        for j in range(5):
+            x = 2.08 + j * 0.34
+            red = (k == 2 and j == 3)
+            ax.add_patch(Rectangle((x, y + 0.06), 0.24, 0.42, fc=COL.red if red else COL.lblue,
+                                   ec="none", alpha=1.0 if red else 0.55))
+    ax.text(2.9, 0.72, "答えの棚", ha="center", va="center", fontsize=14, color=COL.ink)
+    arrow(ax, (1.25, 2.85), (1.95, 2.85), color=COL.ink, lw=LW.thin)
+    box(ax, 4.45, 2.55, 1.05, 0.6, text="答え", fc=COL.pale, lw=LW.thin)
+    arrow(ax, (3.32, 3.1), (4.4, 2.85), color=COL.red, lw=LW.arrow)
+    ax.text(2.8, 0.22, "読み方：棚＝覚えた答え、矢印＝取り出す向き", ha="center", va="center",
+            fontsize=14, color=COL.text)
+    save(f, OUT / "s02.png")
 
 
-def f_params():
-    """パラメータの数：GPT-2（Radford et al., 2019）と GPT-3（Brown et al., 2020）"""
-    f, ax = fig(4.4, 3.2)
-    names, vals = ["GPT-2\n（2019）", "GPT-3\n（2020）"], [15, 1750]
-    ax.bar(names, vals, color=[COL.gray, COL.blue], width=0.55)
-    for x, v in zip([0, 1], ["15億", "1750億"]):
-        ax.text(x, vals[x] + 50, v, ha="center", fontsize=FS)
-    ax.set_ylim(0, 2050)
-    ax.set_ylabel("パラメータの数（億）", fontsize=FS)
-    ax.tick_params(labelsize=FS)
-    save(f, OUT / "params.png")
+def f_s03():
+    """3枚目：比べる：棒グラフ：データ1（Walters & Wilder 2023、Sci. Rep. 13, 14045）
+    気づく：流暢な文献レビューを書けるなら、挙げた文献も実在すると思われがちだが、GPT-3.5 では半数以上が実在しなかった
+    強調：GPT-3.5 の「実在しない」55% を赤。ほかの「実在しない」は青、「誤りあり」は灰
+    （「誤りあり」の分母は実在した文献。原稿の ※ 行で断る）"""
+    f, ax = fig(5.6, 4.0)
+    rows = [("GPT-3.5", 55, 43, True), ("GPT-4", 18, 24, False)]
+    h = 0.36
+    yt = []
+    for i, (name, fab, err, hl) in enumerate(rows):
+        y0 = 1.0 - i * 1.15
+        ax.barh(y0 + 0.21, fab, height=h, color=COL.dred if hl else COL.blue, ec="none")
+        ax.barh(y0 - 0.21, err, height=h, color=COL.gray, ec="none")
+        ax.text(fab + 1.5, y0 + 0.21, f"{fab}%　実在しない", va="center", fontsize=15,
+                color=COL.dred if hl else COL.ink)
+        ax.text(err + 1.5, y0 - 0.21, f"{err}%　誤りあり", va="center", fontsize=15, color=COL.text)
+        yt.append(y0)
+    ax.set_yticks(yt)
+    ax.set_yticklabels([r[0] for r in rows], fontsize=16)
+    ax.set_xticks([])
+    ax.set_xlim(0, 112)
+    ax.set_ylim(-0.75, 1.55)
+    ax.spines["bottom"].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    save(f, OUT / "s03.png")
 
 
-def f_temperature():
-    """温度を変えると、選ばれる確率がどう変わるか（2枚目の例の確率を4候補で規格化し、p^(1/T) から計算）"""
-    p = np.array(PROBS) / sum(PROBS)
-    f, ax = fig(6.4, 4.6)   # 図が主役の型（s.figure_main）で左に大きく置く幅
-    x = np.arange(len(WORDS))
-    temps = [(0.5, COL.blue), (1.0, COL.gray), (2.0, COL.orange)]   # 赤は本文の結論の色なので使わない
-    w = 0.26
-    for k, (T, c) in enumerate(temps):
-        q = p ** (1 / T)
-        q /= q.sum()
-        ax.bar(x + (k - 1) * w, q, width=w, color=c)
-        ax.text(0 + (k - 1) * w, q[0] + 0.015, f"{T:g}", ha="center", va="bottom", fontsize=FS, color=c)   # 凡例の代わりに、晴れの棒の上に温度
-    ax.text(0.95, 0.66, "棒の上の数：温度", ha="left", va="center", fontsize=FS)
-    ax.set_xticks(x, WORDS)
-    ax.set_ylim(0, 0.75)
-    ax.set_ylabel("選ばれる確率", fontsize=FS)
-    ax.tick_params(labelsize=FS)
-    save(f, OUT / "temperature.png")
+def f_s04():
+    """4枚目：仕組み：模式図：文脈「日本の首都は」→ 次の候補（東京・京都・大阪）と確からしさの横棒
+    実物：文脈の箱から3つの候補へ矢印、候補ごとに横棒
+    気づく：答えは1つに決まっているのでなく、候補ごとに確からしさがあり、東京が長い
+    配置：左に文脈、右に候補と棒
+    ラベル：日本の首都は・確からしさ（＋読み方の1行）。棒の長さは講師の例（数値なし）"""
+    f, ax = blank(5.6, 4.0)
+    box(ax, 0.1, 1.75, 1.75, 0.7, text="日本の首都は", fc=COL.light, lw=LW.thin, fs=15)
+    cands = [("東京", 3.0, 2.3, COL.blue), ("京都", 2.1, 0.7, COL.gray), ("大阪", 1.2, 0.45, COL.gray)]
+    for name, y, L, c in cands:
+        arrow(ax, (1.9, 2.1), (2.45, y), color=COL.ink, lw=LW.thin)
+        ax.text(2.55, y, name, ha="left", va="center", fontsize=16, color=COL.ink)
+        ax.barh(y, L, left=3.25, height=0.42, color=c, ec="none")
+    ax.text(3.25, 3.6, "確からしさ", ha="left", va="center", fontsize=15, color=COL.text)
+    ax.text(2.8, 0.35, "読み方：棒の長さ＝確からしさ（例）", ha="center", va="center",
+            fontsize=14, color=COL.text)
+    save(f, OUT / "s04.png")
 
 
-def f_fabricated():
-    """ChatGPT が挙げた文献のうち実在しないものの割合（Walters & Wilder, Sci. Rep. 13, 14045 (2023)）"""
-    f, ax = fig(5.4, 4.3)
-    ax.bar(["GPT-3.5", "GPT-4"], [55, 18], color=[COL.dred, COL.blue], width=0.55)   # 赤の棒は落ち着いた赤（原色の赤の面は浮く）
-    for x, v in zip([0, 1], [55, 18]):
-        ax.text(x, v + 2, f"{v}%", ha="center", fontsize=FS)
-    ax.set_ylim(0, 70)
-    ax.set_ylabel("実在しない文献の割合（%）", fontsize=FS)
-    ax.tick_params(labelsize=FS)
-    save(f, OUT / "fabricated.png")
+def f_s06():
+    """6枚目：仕組み：模式図：文章の先を隠す → 次の語を当てる → 数を少し直す、を回る輪
+    実物：3つの段を矢印の輪でつなぎ、輪の中にモデルのつまみ（パラメータ）を3つ
+    気づく：人が正解を付けず、文章そのものを使って何度も回す練習であること
+    配置：輪（上・右下・左下）
+    ラベル：文章の先を隠す・次の語を当てる・数を少し直す（＋読み方の1行）"""
+    from matplotlib.patches import FancyArrowPatch, Circle
+    f, ax = blank(5.6, 4.0)
+    bw, bh = 1.95, 0.55
+    nodes = {"top": (2.8, 3.35), "right": (4.05, 1.45), "left": (1.55, 1.45)}
+    texts = {"top": "文章の先を隠す", "right": "次の語を当てる", "left": "数を少し直す"}
+    for k, (cx, cy) in nodes.items():
+        box(ax, cx - bw / 2, cy - bh / 2, bw, bh, text=texts[k], fc=COL.pale, lw=LW.thin, fs=15)
+
+    def arc(p0, p1, rad):
+        ax.add_patch(FancyArrowPatch(p0, p1, connectionstyle=f"arc3,rad={rad}", arrowstyle="-|>",
+                                     mutation_scale=16, color=COL.blue, lw=LW.arrow))
+    arc((3.8, 3.3), (4.45, 1.78), -0.35)
+    arc((3.3, 1.12), (2.3, 1.12), -0.45)
+    arc((1.15, 1.78), (1.8, 3.3), -0.35)
+    # つまみ（パラメータ）
+    import math
+    for j, (x, ang) in enumerate([(2.35, 60), (2.8, 120), (3.25, 20)]):
+        ax.add_patch(Circle((x, 2.3), 0.17, fc=COL.lblue, ec="none"))
+        a = math.radians(ang)
+        ax.plot([x, x + 0.15 * math.cos(a)], [2.3, 2.3 + 0.15 * math.sin(a)], color="white", lw=2)
+    ax.text(2.8, 0.3, "読み方：輪1周＝1回の練習、つまみ＝パラメータ", ha="center", va="center",
+            fontsize=14, color=COL.text)
+    save(f, OUT / "s06.png")
 
 
-def f_cutoff():
-    """学習データの範囲と締め切り、その後の時間軸（GPT-4 は 2021年9月：OpenAI, 2023）。図が主役の型で左に大きく置く"""
-    W, H = 6.4, 4.6   # 置く幅（右の列に場合分けを置いた残り）で描く。縮めて置くと文字が 14pt を切った
-    f, ax = blank(W, H)
-    xc = 3.9   # 締め切りの位置
-    ax.add_patch(Rectangle((0.15, 1.45), xc - 0.15, 1.95, fc=COL.pale, ec=COL.ink, lw=1.5))
-    ax.text((0.15 + xc) / 2, 2.42, "学習データ（文章）", ha="center", va="center", fontsize=20)
-    ax.add_patch(Rectangle((xc, 1.45), W - 0.15 - xc, 1.95, fc="white", ec=COL.gray, lw=1.2, ls=(0, (4, 3))))
-    ax.text((xc + W - 0.15) / 2, 2.75, "締め切りの後の\n出来事", ha="center", va="center", fontsize=16, color=COL.text)
-    ax.text((xc + W - 0.15) / 2, 1.95, "→ 知らない", ha="center", va="center", fontsize=18, color=COL.text)
-    ax.plot([xc, xc], [1.15, 3.7], color=COL.red, lw=2.5)
-    ax.text(xc, 4.35, "締め切り", ha="center", va="center", fontsize=20, color=COL.red)
-    ax.text(xc, 3.95, "（GPT-4 は 2021年9月）", ha="center", va="center", fontsize=16, color=COL.ink)
-    arrow(ax, (0.15, 0.8), (W - 0.05, 0.8))
-    ax.text(0.15, 0.4, "時間", ha="left", va="center", fontsize=16)
-    ax.text(W - 0.25, 0.4, "今", ha="center", va="center", fontsize=16)
-    save(f, OUT / "cutoff.png")
+def f_s09():
+    """比べる：棒グラフ：データ2（データ2：検索付きの AI に記事の抜粋を見せ、元の記事を答えさせたときの誤答の割合。scaffold.py が3b節の表から描いた。強調する棒は highlight：誤答の多い Grok 3（94%）。8種全体の「60%超」は原稿で言う）"""
+    f, ax = fig(5.6, 0.7 + 0.55 * 2)
+    figlib.bars(ax, ["Perplexity", "Grok 3"], [37, 94], highlight=1, unit="%", xmax=110)
+    save(f, OUT / "s09.png")
 
 
-def f_cot():
-    """算数の文章題（GSM8K）の正答率：答えだけの例を見せる 17.9%、途中の考えを書いた例を見せる 56.9%（Wei et al., NeurIPS 2022, Table 2, PaLM 540B）"""
-    f, ax = fig(5.4, 4.3)
-    names, vals = ["答えだけの例", "途中の考えを\n書いた例"], [17.9, 56.9]
-    ax.bar(names, vals, color=[COL.gray, COL.blue], width=0.55)
-    for x, v in zip([0, 1], vals):
-        ax.text(x, v + 2, f"{v}%", ha="center", fontsize=FS)
-    ax.set_ylim(0, 70)
-    ax.set_ylabel("正答率（%）", fontsize=FS)
-    ax.set_title("算数の文章題", fontsize=FS)
-    ax.tick_params(labelsize=FS)
-    save(f, OUT / "cot.png")
+def f_s10():
+    """10枚目：仕組み：模式図：実線の枠の中＝計算に入るもの → 次のトークンの確からしさ。点線の外＝計算に入らないもの〔事実5・8・9〕
+    実物：実線の枠（入るもの3つ）から出力の箱へ矢印。下の点線の枠（実在・事実）からの矢印は途中で途切れる（×）
+    気づく：実在するか・事実と合うかは、確からしさの計算に入っていない
+    配置：左に枠2つ（上＝実線、下＝点線）、右に出力
+    ラベル：入るもの（1つの囲み）・次のトークンの確からしさ・入らないもの（1つの囲み）（＋読み方の1行）
+    （figschema.black_box は「中は見えない」型で案と合わないので、figkit の箱で描いた）"""
+    from matplotlib.patches import FancyBboxPatch
+    f, ax = blank(6.6, 4.3)
+    ax.add_patch(FancyBboxPatch((0.2, 1.75), 3.3, 2.3, boxstyle="round,pad=0,rounding_size=0.12",
+                                fc="white", ec=COL.blue, lw=LW.shape))
+    ax.text(1.85, 2.9, "いまの文脈\n学んだ言葉のつながり\n人の評価の好み", ha="center", va="center",
+            fontsize=16, color=COL.ink, linespacing=1.7)
+    arrow(ax, (3.55, 2.9), (4.35, 2.9), color=COL.blue, lw=LW.arrow)
+    box(ax, 4.4, 2.4, 2.05, 1.0, text="次のトークンの\n確からしさ", fc=COL.pale, lw=LW.thin, fs=16)
+    ax.add_patch(FancyBboxPatch((0.2, 0.7), 3.3, 0.7, boxstyle="round,pad=0,rounding_size=0.12",
+                                fc="white", ec=COL.gray, lw=LW.shape, ls="--"))
+    ax.text(1.85, 1.05, "実在するか・事実と合うか", ha="center", va="center", fontsize=15, color=COL.text)
+    arrow(ax, (3.55, 1.05), (4.05, 1.6), color=COL.gray, lw=LW.thin, ls="--")
+    ax.text(4.4, 1.95, "×", ha="center", va="center", fontsize=22, color=COL.red, weight="bold")
+    ax.text(3.3, 0.25, "読み方：実線の中＝計算に使う、点線＝使わない", ha="center", va="center",
+            fontsize=14, color=COL.text)
+    save(f, OUT / "s10.png")
 
 
-def f_dont_input():
-    """入れる前に止まる3つ（個人情報保護委員会「生成AIサービスの利用に関する注意喚起等」2023 をもとに）"""
-    s = 1.15   # 以前の 4.2×3.6 in の座標を 1.15 倍に
-    f, ax = blank(4.2 * s, 3.6 * s)
-    ax.text(2.1 * s, 3.3 * s, "入れる前に確認", ha="center", va="center", fontsize=18, color=COL.red)
-    for k, t in enumerate(["個人情報", "社外秘の資料", "未発表のデータ"]):
-        box(ax, 0.5 * s, (2.25 - k * 0.95) * s, 3.2 * s, 0.7 * s, t, fc="white", ec=COL.ink, fs=18)
-    save(f, OUT / "dont_input.png")
+def f_s11():
+    """11枚目：傾向：概略グラフ：横軸＝同じ形が出る多さ（まれ → よく出る）、縦軸＝誤りやすさ〔事実9・12〕
+    気づく：まれな事実（左上）は誤りが残り、型のある所（右下）は誤りが消えやすい
+    強調：左上のまれな事実の点を赤、右下の点は青。線は右下がり（数値なし、形は指数の減り方で描いた概略）"""
+    import numpy as np
+    f, ax = fig(6.6, 4.3)
+    x = np.linspace(0.3, 9.7, 200)
+    g = lambda t: 0.9 + 8.0 * np.exp(-0.33 * (t - 0.3))
+    ax.plot(x, g(x), color=COL.blue, lw=LW.curve)
+    ax.plot([1.2], [g(1.2)], "o", ms=11, color=COL.red, mec="none")
+    ax.plot([8.6], [g(8.6)], "o", ms=11, color=COL.blue, mec="none")
+    ax.text(1.65, g(1.2) + 0.35, "まれな事実\n（ペットの誕生日、文献、判例）", ha="left", va="bottom",
+            fontsize=14, color=COL.ink)
+    ax.text(8.6, g(8.6) + 0.9, "型のある所\n（つづり、括弧）", ha="center", va="bottom",
+            fontsize=14, color=COL.ink)
+    ax.text(9.7, 5.6, "読み方：右ほど型から\n当てやすい", ha="right", va="center", fontsize=14, color=COL.text)
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 11.5)
+    ax.set_xlabel("同じ形が出る多さ（まれ → よく出る）")
+    ax.set_ylabel("誤りやすさ")
+    noticks(ax)
+    save(f, OUT / "s11.png")
 
 
 if __name__ == "__main__":
-    names = sys.argv[1:] or [k[2:] for k in list(globals()) if k.startswith("f_")]
-    for nm in names:
-        globals()["f_" + nm]()
+    names = sys.argv[1:] or [n[2:] for n in list(globals()) if n.startswith("f_")]
+    for n in names:
+        globals()["f_" + n]()

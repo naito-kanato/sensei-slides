@@ -25,11 +25,12 @@ def test_quiz_links_and_cards(root, tmp_path):
         shutil.copy2(src / f, w / f)
     text = (w / "memo.md").read_text(encoding="utf-8")
     assert dict((i, m) for m, i, _ in structures.quiz_links(text))["確認問題のひもづけ"] == "✔"
-    bad = text.replace("〔要素：題名・著者・DOI で検索／原文を開いて中身を確かめる／見つからなければ要確認〕", "")
+    bad = text.replace("〔要素：誤りが出やすい所と見分ける／出典を開いて確かめる〕", "")
+    assert bad != text
     assert dict((i, m) for m, i, _ in structures.quiz_links(bad))["確認問題のひもづけ"] == "△"
     assert scaffold.main([str(w)]) == 0
-    c = (w / "cards" / "14.md").read_text(encoding="utf-8")
-    assert "削ってはいけない要素" in c and "2枚目で見たとおり" in c
+    c = (w / "cards" / "16.md").read_text(encoding="utf-8")   # 解答（1-1〜1-3）の枚
+    assert "削ってはいけない要素" in c and "5枚目で見たとおり" in c
 
 
 def test_answer_cards_and_inline_limit(zemi):

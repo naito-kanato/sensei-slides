@@ -8,24 +8,24 @@ def f_next():
     """気づく：上位1つの候補が大半"""
     f, ax = fig()
     ax.barh([0, 1], [0.6, 0.1])
-    save(f, OUT / "s02.png")
+    save(f, OUT / "s03.png")
 
 
 def f_tokens():
     """実物：トークンの箱の列
-    気づく：1文が5個に分かれる
+    気づく：候補ごとに確からしさが違う
     配置：左から右へ
     ラベル：トークン"""
     f, ax = blank()
     box(ax, 0, 0, 1, 1, "明日")
-    save(f, OUT / "s03.png")
+    save(f, OUT / "s04.png")
 
 
 def f_temp():
     """温度ごとの確率"""
     f, ax = fig()
     ax.bar([0, 1], [1, 2])
-    save(f, OUT / "s06.png")
+    save(f, OUT / "s09.png")
 '''
 
 
@@ -40,9 +40,9 @@ def test_template_per_drawn_figure(tmp_path, root, capsys):
     w = _work(tmp_path, root)
     assert figdraft.main([str(w)]) == 0
     out = capsys.readouterr().out
-    assert "### 3枚目" in out and "実物：" in out and "配置：" in out      # 模式図は4行
-    assert "### 2枚目" in out and "気づく：" in out                        # グラフは「気づく」
-    assert "### 4枚目" not in out                                         # 流れ図（PowerPoint の部品）は描かないので出さない
+    assert "### 4枚目" in out and "実物：" in out and "配置：" in out      # 模式図は4行
+    assert "### 3枚目" in out and "気づく：" in out                        # グラフは「気づく」
+    assert "### 5枚目" not in out                                         # 流れ図（PowerPoint の部品）は描かないので出さない
 
 
 def test_graph_draft_takes_the_data_surprise():
@@ -58,24 +58,27 @@ def test_check_drafts_and_box_only_schematics(tmp_path, root):
     (w / "figs.py").write_text(FIGS, encoding="utf-8")
     res = figdraft.check(w)
     msgs = {m: [x for mm, _, x in res if mm == m] for m in ("✘", "△", "✔")}
-    assert any("6枚目" in x and "気づく" in x for x in msgs["✘"])          # グラフに「気づく」が無い
-    assert any("7枚目" in x for x in msgs["△"])                           # 描く関数が無い
-    assert "2枚目" in msgs["✔"][0] and "3枚目" in msgs["✔"][0]            # トークンの箱は箱そのものが実物
+    assert any("9枚目" in x and "気づく" in x for x in msgs["✘"])          # グラフに「気づく」が無い
+    assert any("10枚目" in x for x in msgs["△"])                          # 描く関数が無い
+    assert "3枚目" in msgs["✔"][0] and "4枚目" in msgs["✔"][0]            # トークンの箱は箱そのものが実物
     (w / "figs.py").write_text(FIGS.replace("実物：トークンの箱の列", "実物：原子の並び"), encoding="utf-8")
-    assert any("3枚目" in x and "箱と矢印" in x for _, _, x in figdraft.check(w))
+    assert any("4枚目" in x and "箱と矢印" in x for _, _, x in figdraft.check(w))
 
 
 def test_check_reads_f_string_names_and_unnumbered_functions(tmp_path, root):
     w = _work(tmp_path, root)
-    (w / "figs.py").write_text('def f_a():\n    """気づく：差"""\n    save(f, OUT / f"s{2:02d}.png")\n\n'
+    (w / "figs.py").write_text('def f_a():\n    """気づく：差"""\n    save(f, OUT / f"s{3:02d}.png")\n\n'
                                'def f_b():\n    """温度"""\n    for n in (6, 7):\n        save(f, OUT / f"s{n:02d}.png")\n', encoding="utf-8")
     res = figdraft.check(w)
-    assert any(m == "✔" and "2枚目" in x for m, _, x in res)               # f"s{2:02d}.png" も 2枚目と読む
+    assert any(m == "✔" and "3枚目" in x for m, _, x in res)               # f"s{3:02d}.png" も 3枚目と読む
     assert any(m == "✘" and "f_b" in x for m, _, x in res)                  # 番号の読めない関数も「気づく」は見る
 
 
 def test_fig_cells_reads_both_tables(root):
     import figplan
     text = (root / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
-    text = text.replace("実在しない文献の割合の棒（2本）", "実在しない文献の割合の棒（2本、データ1）")
+    assert not any("データ1" in c for c in figplan.fig_cells(text, "memo")[7])
+    table = ("| スライド | テーマか難所か | 何をどう描くか | 値の出どころ |\n|---|---|---|---|\n"
+             "| 7 | 難所 | 頼みたいことと次の語の予測の違い（データ1の割合を添える） | Ouyang et al. (2022) |\n")
+    text = text.replace("## 5. 図の案（任意）\n", "## 5. 図の案（任意）\n\n" + table, 1)   # 見本の5節は空なので表を足す
     assert any("データ1" in c for c in figplan.fig_cells(text, "memo")[7])   # 図の案の表に書いた指し先も拾う

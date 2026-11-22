@@ -27,7 +27,7 @@ def test_example_outline_has_four_questions(outline):
 
 def test_missing_or_short_section_is_flagged(outline):
     no_sec = re.sub(r"^## 想定質問.*?(?=^## )", "", outline, flags=re.S | re.M)
-    no_sec = re.sub(r"^\| 1[56] .*\n", "", no_sec, flags=re.M)
+    no_sec = re.sub(r"^\| 1[67] .*\n", "", no_sec, flags=re.M)
     res = structures.check_expected_qa(no_sec)
     assert marks(res)["想定質問"] == "△" and "表が無い" in res[0][2]
     three = re.sub(r"^\| Q4 .*\n", "", outline, flags=re.M)
@@ -41,10 +41,10 @@ def test_scaffold_fills_pairs_and_cards(root, tmp_path):
         shutil.copy2(root / "examples" / "zemi" / f, tmp_path / f)
     assert scaffold.main([str(tmp_path)]) == 0
     b = (tmp_path / "build.py").read_text(encoding="utf-8")
-    assert b.count("s.qa_pairs([") == 2 and '("Q1", "雑音が偶然そろっただけではないのか"' in b and '("Q4",' in b
+    assert b.count("s.qa_pairs([") == 2 and '("Q1", "遠くの地震や雷が、2台に同時に入ったのでは？"' in b and '("Q4",' in b
     compile(b, "build.py", "exec")
-    c = (tmp_path / "cards" / "15.md").read_text(encoding="utf-8")
-    assert "戻る枚：13枚目（青帯「雑音で偶然起きる頻度は、20万年に1回未満」）" in c
+    c = (tmp_path / "cards" / "16.md").read_text(encoding="utf-8")
+    assert "戻る枚：13枚目（青帯「偶然でこの強さになるのは20万3千年に1回未満（5.1σ）」）" in c
     assert "戻る枚はスライドには書かない" in c
 
 

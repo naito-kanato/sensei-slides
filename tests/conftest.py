@@ -40,10 +40,10 @@ def built(tmp_path_factory):
     shutil.copytree(src / "scripts", dst / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copytree(src / "assets", dst / "assets")                     # テンプレートの pptx はここ
     shutil.copytree(src / "examples", dst / "examples", ignore=outputs)
-    for work in (dst / "examples" / "zemi", dst / "examples" / "course" / "_work" / "AI活用講座_01", dst / "examples" / "template",
-                 dst / "examples" / "structures", dst / "examples" / "zemi_en", dst / "examples" / "course_en" / "_work" / "AI_Literacy_01"):
+    for work in (dst / "examples" / "zemi", dst / "examples" / "course" / "_work" / "AI活用講座_01", dst / "examples" / "structures",
+                 dst / "examples" / "template", dst / "examples" / "zemi_en", dst / "examples" / "course_en" / "_work" / "AI_Literacy_01"):
         for script in ("figs.py", "build.py"):
-            if not (work / script).exists():                            # テンプレートの見本は図をゼミの見本から借りる
+            if not (work / script).exists():                            # テンプレートの見本は図を型の見本から借りる
                 continue
             r = subprocess.run([sys.executable, "-X", "utf8", script], cwd=work, capture_output=True, text=True, encoding="utf-8")
             assert r.returncode == 0, f"{work.name}/{script} が失敗:\n{r.stdout}\n{r.stderr}"

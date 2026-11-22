@@ -1,159 +1,262 @@
-"""ゼミの見本（論文紹介：重力波の初観測）の、自分で描く図。論文の図は paper_figs/ にある（切り出したもの、出典は ATTRIBUTION.md）。
+"""図。python figs.py [名前 ...]（名前は f_ を除いた部分）。データの棒グラフは scaffold.py が設計メモの3b節から描いた。TODO の図を描く
 
-    python figs.py            # 全部の図を figs/ に書き出す
-    python figs.py michelson  # 一部だけ描き直す（関数名の f_ を除いた名前）
-
-図は右の本文の場所（幅 5.6〜6 in・高さ 3.5〜4.5 in）を埋める大きさで描き、描いた幅のまま置く
-（以前は幅 4.8〜5 in で描いていて、本文と図の間が 2〜3 in 空いていた）。図の文字は 14pt のまま。
-"""
+論文の頁の画像は src/（論文は CC BY 3.0。出典と、どの枚にどの図を使ったかは src/ATTRIBUTION.md）。"""
 import sys
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib.patches import Rectangle
-
-SKILL = Path(__file__).resolve().parents[2]
+HERE = Path(__file__).resolve().parent
+SKILL = HERE.parents[1]   # 見本はリポジトリの scripts/ を使う
 sys.path.insert(0, str(SKILL / "scripts"))
-from figkit import COL, arrow, blank, box, save  # noqa: E402
+from figkit import COL, LW, arrow, blank, box, callout, fig, noticks, particles, save  # noqa: E402,F401
+import numpy as np  # noqa: E402
+import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.patches import Circle, Ellipse, Rectangle  # noqa: E402
+import figlib  # noqa: E402,F401
+import figschema  # noqa: E402,F401
 
-OUT = Path(__file__).parent / "figs"
-FS = 14  # 図中ラベル
-
-
-def f_strain():
-    """重力波が通ると、輪に並んだ粒子が縦横交互に伸び縮みする（+ 偏光の模式図）。伸びる向きを細い両矢印で。
-    置く幅（2枚目の本文の右、約 5.7 in）で描き、描いた幅のまま置く（以前は 6 in で描いて 5.85 in に縮め、文字が 13.4pt になった）"""
-    f, ax = blank(5.6, 3.2)
-    th = np.linspace(0, 2 * np.pi, 13)[:-1]
-    ring = np.linspace(0, 2 * np.pi, 100)
-    r, cy = 0.7, 1.9
-    for k, (sx, sy, name) in enumerate([(1, 1, "波の前"), (1.25, 0.8, "1/4 周期後"), (0.8, 1.25, "3/4 周期後")]):
-        cx = 0.95 + k * 1.85
-        ax.plot(cx + r * np.cos(ring), cy + r * np.sin(ring), color=COL.gray, lw=1.0, ls="--")
-        ax.scatter(cx + r * sx * np.cos(th), cy + r * sy * np.sin(th), s=55, color=COL.blue, zorder=3)
-        ax.text(cx, 0.3, name, ha="center", fontsize=FS)
-        if sx > 1:      # 横に伸びる
-            arrow(ax, (cx - 0.55, cy), (cx + 0.55, cy), color=COL.gray, style="<|-|>", lw=1.0, ms=12)
-        elif sy > 1:    # 縦に伸びる
-            arrow(ax, (cx, cy - 0.55), (cx, cy + 0.55), color=COL.gray, style="<|-|>", lw=1.0, ms=12)
-    ax.set_xlim(0, 5.6); ax.set_ylim(0, 3.2)
-    save(f, OUT / "strain.png")
+OUT = HERE / "figs"
+OUT.mkdir(exist_ok=True)
 
 
-def f_michelson():
-    """マイケルソン干渉計の模式図（論文 Fig. 3 をもとに作図。腕の共振器・リサイクリングの鏡は省く）"""
-    s = 1.2   # 以前の 4.8×3.8 in の座標を 1.2 倍に
-    f, ax = blank(4.8 * s, 3.8 * s)
-    bx, by = 1.5 * s, 1.2 * s
-    ax.plot([0.55 * s, 4.3 * s], [by, by], color=COL.red, lw=2.4)              # レーザー → x の腕
-    ax.plot([bx, bx], [by, 3.4 * s], color=COL.red, lw=2.4)                    # y の腕
-    ax.plot([bx, bx], [0.35 * s, by], color=COL.red, lw=1.6, ls="--")          # 検出器へ
-    ax.plot([bx - 0.26, bx + 0.26], [by - 0.26, by + 0.26], color=COL.ink, lw=3)   # ビームスプリッタ
-    ax.add_patch(Rectangle((4.3 * s, by - 0.36), 0.19, 0.72, fc=COL.pale, ec=COL.ink, lw=1.4))   # x の鏡
-    ax.add_patch(Rectangle((bx - 0.36, 3.4 * s), 0.72, 0.19, fc=COL.pale, ec=COL.ink, lw=1.4))   # y の鏡
-    ax.add_patch(Rectangle((0.0, by - 0.26), 0.66, 0.52, fc=COL.ink, ec=COL.ink))
-    ax.text(0.33, by - 0.48, "レーザー", ha="center", va="top", fontsize=FS)
-    ax.text(bx + 0.14, 0.33, "光検出器", ha="left", va="center", fontsize=FS)
-    ax.text(4.3 * s + 0.1, by + 0.5, "鏡", ha="center", fontsize=FS)
-    arrow(ax, (2.0 * s, 0.75 * s), (4.25 * s, 0.75 * s), color=COL.ink, style="<|-|>")
-    ax.text(3.1 * s, 0.42 * s, r"$L_x = 4$ km", ha="center", fontsize=FS)
-    arrow(ax, (2.0 * s, 1.65 * s), (2.0 * s, 3.35 * s), color=COL.ink, style="<|-|>")
-    ax.text(2.15 * s, 2.5 * s, r"$L_y = 4$ km", ha="left", va="center", fontsize=FS)
-    ax.set_xlim(-0.1, 4.8 * s); ax.set_ylim(0.0, 3.8 * s)
-    save(f, OUT / "michelson.png")
-
-
-def f_pulsar():
-    """連星パルサーの概略：軌道が縮む（エネルギーを重力波で失う）。大きさは概略"""
+def f_s02():
+    """実物：輪に並べた12個の粒子（平らな円）と、波が来る前の輪（点線の円）・来たときの輪（実線の楕円）
+    気づく：半周期ごとに縦に伸びて横に縮み、次の半周期で逆になる（同じ図に前・半周期後・次の半周期を並べて比べる）
+    配置：左右に3コマ（前 → 半周期後 → 次の半周期）
+    ラベル：波が来る前・半周期後・次の半周期
+    読み方：点線＝波が来る前、実線＝波が来たとき（伸び縮みの割合＝ひずみ h。誇張はスライドの注記で断る）"""
     f, ax = blank(5.6, 4.0)
-    cx, cy = 2.8, 1.85
-    ring = np.linspace(0, 2 * np.pi, 200)
-    ax.plot(cx + 1.4 * np.cos(ring), cy + 1.4 * np.sin(ring), color=COL.gray, lw=1.0, ls="--")
-    ax.plot(cx + 0.85 * np.cos(ring), cy + 0.85 * np.sin(ring), color=COL.lblue, lw=1.6)
-    ax.add_patch(plt.Circle((cx + 0.85, cy), 0.18, fc=COL.red, ec="none"))
-    ax.add_patch(plt.Circle((cx - 0.85, cy), 0.13, fc=COL.blue, ec="none"))
-    ax.text(cx + 1.55, cy, "パルサー", ha="left", va="center", fontsize=FS)
-    ax.text(cx - 1.55, cy, "伴星", ha="right", va="center", fontsize=FS)
-    th = 0.9
-    arrow(ax, (cx + 1.4 * np.cos(th), cy + 1.4 * np.sin(th)), (cx + 0.85 * np.cos(th) + 0.02, cy + 0.85 * np.sin(th) + 0.02),
-          color=COL.red, lw=1.6)
-    ax.text(cx + 1.5, cy + 1.55, "軌道の縮小", ha="center", va="bottom", fontsize=FS)
-    ax.set_xlim(0, 5.6); ax.set_ylim(0, 4.0)
-    save(f, OUT / "pulsar.png")
+    R, e, cy = 0.72, 0.25, 2.35
+    th = np.linspace(0, 2 * np.pi, 240)
+    ang = np.linspace(0, 2 * np.pi, 12, endpoint=False)
+    for cx, (sx, sy), name in [(0.95, (1, 1), "波が来る前"), (2.8, (1 - e / 2, 1 + e / 2), "半周期後"),
+                               (4.65, (1 + e / 2, 1 - e / 2), "次の半周期")]:
+        ax.plot(cx + R * np.cos(th), cy + R * np.sin(th), color=COL.gray, ls="--", lw=1.2)
+        if sx != 1:
+            ax.plot(cx + R * sx * np.cos(th), cy + R * sy * np.sin(th), color=COL.blue, lw=1.5)
+        particles(ax, [(cx + R * sx * np.cos(a), cy + R * sy * np.sin(a)) for a in ang], r=0.07)
+        ax.text(cx, 1.2, name, ha="center", va="center")
+    arrow(ax, (1.74, cy), (1.96, cy), lw=1.0)
+    arrow(ax, (3.62, cy), (3.82, cy), lw=1.0)
+    ax.text(2.8, 0.62, "読み方：点線＝波が来る前、実線＝波が来たとき", ha="center", va="center")
+    ax.text(2.8, 0.2, r"ひずみ $h = \Delta L\,/\,L$", ha="center", va="center")
+    save(f, OUT / "s02.png")
 
 
-def f_power():
-    """検出器の中の光のパワー（論文 Sec. III の値）：レーザー 20 W → ビームスプリッタ 700 W → 各腕 100 kW"""
-    f, ax = blank(5.6, 4.5)
-    box(ax, 0.1, 3.5, 2.9, 0.85, "レーザー 20 W", fc=COL.light)
-    box(ax, 0.1, 1.9, 2.9, 0.85, "ビームスプリッタ 700 W", fc=COL.pale)
-    box(ax, 0.1, 0.3, 2.9, 0.85, "各腕 100 kW", fc=COL.pale)
-    arrow(ax, (1.55, 3.45), (1.55, 2.8), color=COL.lblue)   # 赤は本文の結論の色なので、矢印は水色
-    arrow(ax, (1.55, 1.85), (1.55, 1.2), color=COL.lblue)
-    ax.text(1.85, 3.12, "パワーリサイクリング", ha="left", va="center", fontsize=FS)
-    ax.text(1.85, 1.52, "腕の共振器", ha="left", va="center", fontsize=FS)
-    ax.set_xlim(0, 5.6); ax.set_ylim(0, 4.5)
-    save(f, OUT / "power.png")
+SRC = HERE / "src"
+K = 1700 / 1545   # 頁の画像（1700 px 幅）÷ 座標を読んだ縮小表示（1545 px 幅）
+FIG3 = (150, 130, 1215, 870)                                   # p.4 Fig. 3 本体（左の余白を足した）
+FIG3_WHITE = [(150, 232, 512, 458), (735, 112, 1215, 600)]     # 挿入図 (a)・(b) を白で消す
 
 
-def f_scale():
-    """連星の大きさと間隔（縮尺どおり、等質量の例）：半径 105 km の円2つ（半径の和 210 km ＝ 1つの直径）、中心の間隔 350 km。
-    公転の向き（軌道の上下の弧）を添え、円は小さめに（大きな無地の円2つだけでは、言うことが少なく見えた）"""
-    from matplotlib.patches import FancyArrowPatch
-    k = 0.0075  # in/km
-    f, ax = blank(5.8, 3.9)
-    mx, y0 = 2.9, 1.85
-    d, R = 350 * k, 105 * k
-    x0 = mx - d / 2
-    for a0, a1 in ((65, 115), (245, 295)):            # 公転の向き（2つが回る軌道の上下に、反時計回りの弧）
-        t0, t1 = np.radians(a0), np.radians(a1)
-        ax.add_patch(FancyArrowPatch((mx + d / 2 * np.cos(t0), y0 + d / 2 * np.sin(t0)),
-                                     (mx + d / 2 * np.cos(t1), y0 + d / 2 * np.sin(t1)),
-                                     connectionstyle="arc3,rad=0.12", arrowstyle="-|>", mutation_scale=16,
-                                     color=COL.lblue, lw=2.0))
-    ax.text(mx, y0 + d / 2 + 0.14, "公転 75 Hz", ha="center", va="bottom", fontsize=FS)
-    for x in (x0, x0 + d):
-        ax.add_patch(plt.Circle((x, y0), R, fc=COL.blue, ec="none"))
-    arrow(ax, (x0 - R, y0 + R + 0.14), (x0 + R, y0 + R + 0.14), color=COL.ink, style="<|-|>", lw=1.0, ms=12)
-    ax.text(x0, y0 + R + 0.24, "直径 ≳210 km", ha="center", va="bottom", fontsize=FS)
-    yb = y0 - d / 2 - 0.1
-    ax.plot([x0, x0], [yb - 0.08, y0 - R - 0.06], color=COL.gray, lw=0.8, ls=":")
-    ax.plot([x0 + d, x0 + d], [yb - 0.08, y0 - R - 0.06], color=COL.gray, lw=0.8, ls=":")
-    arrow(ax, (x0, yb), (x0 + d, yb), color=COL.red, style="<|-|>", lw=1.4, ms=12)
-    ax.text(mx, yb - 0.12, "中心の間隔 ≃350 km", ha="center", va="top", fontsize=FS)
-    ax.set_xlim(0, 5.8); ax.set_ylim(0, 3.9)
-    save(f, OUT / "scale.png")
+def _paper(ax, page, box, x, y, w, white=()):
+    """資料の頁の画像（src/pNN.png）から box（縮小表示の座標）を切り出し、ax の (x, y) を左下に幅 w インチで置く。
+    white の四角は白で消す。縮小表示の座標 → ax の座標の関数を返す。"""
+    x0, y0, x1, y1 = box
+    im = plt.imread(str(SRC / f"p{page:02d}.png"))
+    a = im[int(y0 * K):int(y1 * K), int(x0 * K):int(x1 * K)].copy()
+    if a.ndim == 2:
+        a = np.stack([a] * 3, -1)
+    wv = 1.0 if a.dtype.kind == "f" else 255
+    for wx0, wy0, wx1, wy1 in white:
+        a[max(0, int((wy0 - y0) * K)):max(0, int((wy1 - y0) * K)), max(0, int((wx0 - x0) * K)):max(0, int((wx1 - x0) * K)), :3] = wv
+    h = w * (y1 - y0) / (x1 - x0)
+    xl, yl = ax.get_xlim(), ax.get_ylim()
+    ax.imshow(a, extent=(x, x + w, y, y + h), aspect="auto", interpolation="lanczos", zorder=0)
+    ax.set_xlim(*xl)
+    ax.set_ylim(*yl)
+    return lambda px, py: (x + (px - x0) / (x1 - x0) * w, y + h - (py - y0) / (y1 - y0) * h)
 
 
-def f_timeshift():
-    """時刻ずらしの模式図：H1 と L1 の雑音（乱数）に同じ形の信号。L1 をずらすと信号が揃わなくなる"""
-    rng = np.random.default_rng(7)
-    f, ax = blank(5.8, 4.6)
-    n = 300
-    x = np.linspace(0.9, 5.6, n)
+def f_s03():
+    """実物：LIGO の検出器（レーザー → ビームスプリッター → 4 km の腕2本 → 光検出器、腕の端の鏡）
+    気づく：腕の端の鏡（試験質量）の間の長さの差を、下の光検出器の明暗で読む
+    配置：上から見た配置（資料の Fig. 3 本体。挿入図 (a)(b) は白で消した）
+    ラベル：レーザー・光検出器・鏡＝試験質量
+    資料の図：Abbott ほか 2016 p.4 Fig. 3 本体を切り出し、日本語の名詞の注記を3つ足した"""
+    f, ax = blank(5.6, 4.0)
+    m = _paper(ax, 4, FIG3, 0.0, 0.05, 5.6, white=FIG3_WHITE)
+    ax.text(*m(330, 615), "レーザー", ha="center", va="center")
+    ax.text(*m(455, 848), "光検出器", ha="center", va="center")
+    callout(ax, "鏡＝試験質量", target=m(668, 168), at=m(985, 250))
+    save(f, OUT / "s03.png")
 
-    def noise():
-        v = rng.normal(0, 1, n)
-        return np.convolve(v, np.ones(4) / 4, mode="same") * 0.11
 
-    def burst(c):
-        u = (x - c) / 0.4
-        return 0.8 * np.exp(-u ** 2) * np.sin(13 * (x - c))
-    rows = [(3.9, "H1", 3.2), (2.4, "L1", 3.2), (0.9, "L1", 4.3)]
-    for yy, lab, c in rows:
-        ax.plot(x, yy + noise() + burst(c), color=COL.blue, lw=1.2)
-        ax.plot([0.9, 5.6], [yy - 0.55] * 2, color=COL.gray, lw=0.6)
-    ax.plot([3.2, 3.2], [-0.2, 4.6], color=COL.red, lw=1.0, ls="--")
-    ax.text(0.8, 3.9, "H1", ha="right", va="center", fontsize=FS)
-    ax.text(0.8, 2.4, "L1", ha="right", va="center", fontsize=FS)
-    ax.text(0.8, 0.9, "L1\nずらし", ha="right", va="center", fontsize=FS)
-    arrow(ax, (3.25, -0.12), (4.25, -0.12), color=COL.red, lw=1.6)
-    ax.set_xlim(0, 5.8); ax.set_ylim(-0.3, 4.6)
-    save(f, OUT / "timeshift.png")
+def f_s04():
+    """実物：H1・L1 の雑音のスペクトル（資料の Fig. 3(b)）
+    気づく：低い周波数は地面の揺れ、中ほどは熱、150 Hz 以上は光の粒の雑音が底を決める
+    配置：グラフ（軸・目盛り・凡例は資料のまま）
+    ラベル：地面の揺れ・熱・光の粒
+    資料の図：Abbott ほか 2016 p.4 Fig. 3(b) を切り出し、注記を3つ足した"""
+    f, ax = blank(5.6, 4.0)
+    m = _paper(ax, 4, (745, 112, 1340, 598), 0.4, 0.05, 3.9 * 595 / 486)
+    callout(ax, "地面の揺れ", target=m(870, 300), at=m(935, 225))
+    callout(ax, "熱", target=m(995, 470), at=m(1000, 395))
+    callout(ax, "光の粒", target=m(1255, 425), at=m(1190, 335))
+    save(f, OUT / "s04.png")
+
+
+def f_s05():
+    """実物：LIGO の検出器（資料の Fig. 3 本体の再掲）
+    気づく：腕の共振器・パワーリサイクリング鏡・吊った鏡の3か所が雑音を抑える工夫の場所
+    配置：上から見た配置（挿入図 (a)(b) は白で消し、その空きに注記）
+    ラベル：腕の共振器・パワーリサイクリング鏡・試験質量＝吊った鏡
+    資料の図：Abbott ほか 2016 p.4 Fig. 3 本体を切り出し、注記を3つ足した"""
+    f, ax = blank(5.6, 4.0)
+    m = _paper(ax, 4, FIG3, 0.0, 0.05, 5.6, white=FIG3_WHITE)
+    callout(ax, "試験質量＝吊った鏡", target=m(668, 168), at=m(985, 235))
+    callout(ax, "腕の共振器", target=m(960, 686), at=m(960, 520))
+    callout(ax, "パワー\nリサイクリング鏡", target=m(517, 695), at=m(330, 465))
+    save(f, OUT / "s05.png")
+
+
+def f_s07():
+    """実物：H1 と L1 のひずみの時系列（資料の Fig. 1 上段。左右の2パネルを上下に並べ替えた）
+    気づく：L1 の上に重ねた橙の線（H1 を 6.9 ms ずらして反転）が L1 とほぼ重なる
+    配置：上に H1、下に L1、いちばん下に時刻の目盛り（Fig. 1 最下段の目盛りを流用。列ごとに時刻の軸は共通）
+    ラベル：H1・L1・橙＝H1 を 6.9 ms ずらし反転
+    資料の図：Abbott ほか 2016 p.2 Fig. 1 上段"""
+    f, ax = blank(5.6, 3.85)
+    s, X0 = 0.0062, 0.45
+    _paper(ax, 2, (185, 1345, 778, 1422), X0, 0.0, 593 * s)                  # 時刻の目盛り
+    yL = 0.50
+    _paper(ax, 2, (779, 438, 1302, 694), X0 + 67 * s, yL, 523 * s)           # L1
+    _paper(ax, 2, (185, 438, 252, 694), X0, yL, 67 * s)                      # L1 の縦の目盛り（H1 と同じ）
+    yH = yL + 256 * s + 0.04
+    _paper(ax, 2, (185, 438, 776, 694), X0, yH, 591 * s)                     # H1
+    hp = 256 * s
+    ax.text(0.12, (yL + yH + hp) / 2, "ひずみ（$10^{-21}$）", rotation=90, ha="center", va="center")
+    ax.text(4.22, yH + hp / 2, "H1", ha="left", va="center", fontsize=18)
+    ax.text(4.22, yL + hp * 0.78, "L1", ha="left", va="center", fontsize=18)
+    ax.text(4.22, yL + hp * 0.55, "橙＝H1 を\n6.9 ms ずらし\n反転", ha="left", va="top")
+    save(f, OUT / "s07.png")
+
+
+def f_s08():
+    """実物：H1 の時間周波数の図（資料の Fig. 1 最下段の左）と色の目盛り
+    気づく：明るい帯が 0.2 s ほどで 35 Hz から 150 Hz へ上がる
+    配置：グラフ（軸・目盛りは資料のまま）＋上がる帯に沿った赤の矢印
+    ラベル：H1（ハンフォード）・35 Hz → 150 Hz
+    資料の図：Abbott ほか 2016 p.2 Fig. 1 最下段"""
+    f, ax = blank(6.6, 3.35)
+    s = 5.4 / 633
+    m = _paper(ax, 2, (145, 1088, 778, 1422), 0.0, 0.0, 5.4)
+    _paper(ax, 2, (1305, 1062, 1405, 1368), 5.5, (1422 - 1368) * s, 100 * s)
+    x_mid = m((253 + 773) / 2, 1088)[0]
+    ax.text(x_mid, 3.08, "H1（ハンフォード）", ha="center", va="center")
+    arrow(ax, m(430, 1278), m(655, 1168), color=COL.red, lw=2.5)
+    ax.text(*m(405, 1148), "35 Hz → 150 Hz", ha="center", va="center", color=COL.red,
+            bbox=dict(fc="white", ec="none", pad=2))
+    save(f, OUT / "s08.png")
+
+
+def f_s10():
+    """実物：同じ縮尺（1 in＝100 km）で、間隔 350 km の円軌道（点線）と、半径 約105 km のブラックホール2つ（塗りの円）
+    気づく：半径の和 210 km の2つが、350 km の間隔なら触れずに入る（すき間が残る）
+    配置：上から見た軌道面（2つを同じ質量とした概略）
+    ラベル：間隔 350 km・BH の半径 約105 km
+    読み方：同じ縮尺。点線＝軌道、塗りの円＝BH の大きさ
+    （figschema.hidden は「見える所と見えない所」の型で、長さの比べのこの図に合わないので使わなかった）"""
+    f, ax = blank(6.6, 4.3)
+    sc = 1 / 100
+    cx, cy = 2.9, 2.15
+    R, r = 175 * sc, 105 * sc
+    th = np.linspace(0, 2 * np.pi, 300)
+    ax.plot(cx + R * np.cos(th), cy + R * np.sin(th), color=COL.gray, ls="--", lw=1.2)
+    for x in (cx - R, cx + R):
+        ax.add_patch(Circle((x, cy), r, fc=COL.blue, ec="none"))
+    arrow(ax, (cx - R, cy), (cx + R, cy), color=COL.red, lw=1.5, style="<|-|>")
+    ax.text(cx, cy + 0.25, "間隔 350 km", ha="center", va="center", color=COL.red)
+    callout(ax, "BH の半径 約105 km", target=(cx + R + 0.15, cy - r + 0.03), at=(5.1, 0.55))
+    ax.text(3.3, 4.15, "読み方：同じ縮尺。点線＝軌道、塗りの円＝BH の大きさ", ha="center", va="center")
+    save(f, OUT / "s10.png")
+
+
+def f_s11():
+    """実物：2つの探索の候補の数と背景（資料の Fig. 4 左右）
+    気づく：どちらの探索でも GW150914 だけが右端に離れている
+    配置：グラフ2つを左右に（軸・目盛り・凡例は資料のまま）、上に日本語のパネル名、GW150914 に赤丸
+    ラベル：型を使わない探索・型を使う探索
+    資料の図：Abbott ほか 2016 p.6 Fig. 4"""
+    f, ax = blank(6.6, 3.0)
+    m = _paper(ax, 6, (150, 995, 1392, 1482), 0.05, 0.0, 6.5)
+    ax.text(m(497, 995)[0], 2.82, "型を使わない探索", ha="center", va="center")
+    ax.text(m(1121, 995)[0], 2.82, "型を使う探索", ha="center", va="center")
+    for p in ((670, 1153), (1333, 1153)):
+        ax.add_patch(Circle(m(*p), 0.12, fill=False, ec=COL.red, lw=2))
+    save(f, OUT / "s11.png")
+
+
+def f_s06():
+    """実物：H1 と L1 の2本の出力の線（模式図）
+    気づく：灰の山は片方だけ、赤の山は2本に 10 ms 以内でそろう
+    配置：上下に2台の出力、横軸＝時刻
+    ラベル：H1・L1・地元の雑音・重力波・10 ms 以内
+    読み方：横軸＝時刻、灰＝片方だけ、赤＝2台にそろう"""
+    f, ax = blank(6.6, 4.3)
+    rng = np.random.default_rng(3)
+    t = np.linspace(0.8, 6.3, 1100)
+
+    def bump(tc, amp=0.5, w=0.22):
+        return amp * np.exp(-((t - tc) / w) ** 2) * np.sin(2 * np.pi * (t - tc) / 0.09)
+
+    for y0, gray_t, red_t in [(3.0, 1.9, 3.6), (1.7, 5.2, 3.68)]:
+        noise = 0.05 * np.convolve(rng.normal(size=t.size), np.ones(7) / 2.5, "same")
+        sig = y0 + noise + bump(gray_t) + bump(red_t)
+        ax.plot(t, sig, color=COL.blue, lw=1.2)
+        for tc, c in ((gray_t, COL.gray), (red_t, COL.red)):
+            k = np.abs(t - tc) < 0.42
+            ax.plot(t[k], sig[k], color=c, lw=2.2)
+    ax.add_patch(Rectangle((3.42, 1.05), 0.44, 2.6, fc=COL.pale, ec="none", zorder=0))
+    ax.text(0.45, 3.0, "H1", ha="center", va="center", fontsize=18)
+    ax.text(0.45, 1.7, "L1", ha="center", va="center", fontsize=18)
+    ax.text(1.9, 3.75, "地元の雑音", ha="center", va="center", color=COL.gray)
+    ax.text(5.2, 0.95, "地元の雑音", ha="center", va="center", color=COL.gray)
+    ax.text(3.64, 3.88, "重力波", ha="center", va="center", color=COL.red)
+    ax.text(3.64, 0.78, "10 ms 以内", ha="center", va="center")
+    ax.text(3.4, 0.2, "読み方：横軸＝時刻、灰＝片方だけ、赤＝2台にそろう", ha="center", va="center")
+    save(f, OUT / "s06.png")
+
+
+def f_s12():
+    """実物：H1 と L1 の出力の線と、ばらばらに立つ突発雑音の縦棒（模式図）
+    気づく：たまたま 15 ms 以内に重なった1組（赤丸）が、本物と同じ「2台にそろう」形になる
+    配置：上下に2台の出力、横軸＝時刻
+    ラベル：突発雑音・偶然の一致
+    読み方：縦棒＝突発雑音、赤丸＝偶然の一致"""
+    f, ax = fig(6.6, 4.3)
+    ax.set_xlim(0, 6.2)
+    ax.set_ylim(0, 3.9)
+    for y0, ts, hs in [(2.4, [0.9, 1.8, 3.0, 4.3, 5.5], [0.45, 0.3, 0.55, 0.5, 0.35]),
+                       (0.95, [1.3, 2.4, 3.08, 4.9, 5.8], [0.35, 0.5, 0.5, 0.3, 0.45])]:
+        ax.plot([0.6, 6.1], [y0, y0], color=COL.blue, lw=1.5)
+        ax.vlines(ts, y0, [y0 + h for h in hs], color=COL.gray, lw=3)
+    ax.add_patch(Ellipse((3.04, 1.95), 0.6, 2.45, fill=False, ec=COL.red, lw=2))
+    ax.text(0.3, 2.4, "H1", ha="center", va="center", fontsize=18)
+    ax.text(0.3, 0.95, "L1", ha="center", va="center", fontsize=18)
+    ax.text(3.04, 3.45, "偶然の一致", ha="center", va="center", color=COL.red)
+    callout(ax, "突発雑音", target=(4.3, 2.92), at=(5.05, 3.45))
+    ax.text(3.1, 0.3, "読み方：縦棒＝突発雑音、赤丸＝偶然の一致", ha="center", va="center")
+    noticks(ax)
+    ax.spines["left"].set_visible(False)
+    ax.set_xlabel("時刻")
+    save(f, OUT / "s12.png")
+
+
+def f_s13():
+    """比べる：棒グラフ：データ1（探索ごとの「誤報1回あたりの年数」。主役の型を使う探索だけ青、棒の先に値と σ）（データ1：探索ごとの誤報率（偶然でこの強さが出る間隔）。scaffold.py が3b節の表から描いた。強調する棒は highlight）"""
+    f, ax = fig(5.0, 0.7 + 0.55 * 3)
+    figlib.bars(ax, ["型を使う（5.1σ）", "型なし C3（4.6σ）", "型なし C2+C3（4.4σ）"], [203000, 22500, 8400], highlight=0, unit="年")
+    save(f, OUT / "s13.png")
+
+
+def f_s14():
+    """比べる：棒グラフ：データ2（合体前の2つ・合体後・放出。放出だけ赤）（データ2：合体の前と後のブラックホールの質量。scaffold.py が3b節の表から描いた。強調する棒は highlight）"""
+    f, ax = fig(5.6, 0.7 + 0.55 * 4)
+    figlib.bars(ax, ["主のブラックホール", "副のブラックホール", "合体後のブラックホール", "重力波で放出（M⊙c²）"], [36, 29, 62, 3], highlight=3, unit="M⊙")
+    save(f, OUT / "s14.png")
 
 
 if __name__ == "__main__":
-    names = sys.argv[1:] or [k[2:] for k in list(globals()) if k.startswith("f_")]
-    for nm in names:
-        globals()["f_" + nm]()
+    names = sys.argv[1:] or [n[2:] for n in list(globals()) if n.startswith("f_")]
+    for n in names:
+        globals()["f_" + n]()

@@ -1,16 +1,12 @@
-"""ゼミの見本の英語版：論文紹介 "Observation of Gravitational Waves from a Binary Black Hole Merger"（表紙＋本文16枚）。
-英語の依頼でスキルに一から作らせたもの（設定は examples/zemi と同じ。依頼文は README）。outline.md の表から scaffold.py が作り、担当が書き上げた。
+"""Observation of Gravitational Waves from a Binary Black Hole Merger（構成案 outline.md の表から scaffold.py が作った骨組み。TODO を書き換える）。
 
-論文：B. P. Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)（CC BY 3.0）。論文の図は paper_figs/（出典は ATTRIBUTION.md）。
-
-    python figs.py      # 自分で描く図を figs/ に書き出す
-    python build.py     # Gravitational_Waves_slides.pptx を生成（notes.md を発表者ノートに入れる）
+    python <skill>/scripts/make_deck.py <この作業フォルダ>   # 図→組む→描く→検査を1回で
 """
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SKILL = HERE.parents[1]
+SKILL = HERE.parents[1]   # 見本はリポジトリの scripts/ を使う
 sys.path.insert(0, str(SKILL / "scripts"))
 from set_notes import load_notes  # noqa: E402
 from slide_profile import author, deck_options, load_profile  # noqa: E402
@@ -18,170 +14,142 @@ from zemi import Deck  # noqa: E402
 
 T = "Observation of Gravitational Waves from a Binary Black Hole Merger"
 FIG = HERE / "figs"
-PAPER = HERE / "paper_figs"
-OUT = HERE / "Gravitational_Waves_slides.pptx"
+OUT = HERE / "Abbott2016_PRL116_061102_slides.pptx"   # 見本では作業フォルダの中に（スキルで作るときは発表フォルダ <資料名>/ に出る）
 
 P = load_profile(HERE)
-AUTHOR = author(P)
-AUTHOR = "" if AUTHOR == "なし" else AUTHOR   # 表紙の名前（発表は一覧の「発表者名」、無ければ空。講座は「講座名（全N回）」。仮の名前を入れない）
+AUTHOR = author(P)   # 表紙の名前（発表は一覧の「発表者名」、無ければ空。講座は「講座名（全N回）」。仮の名前を入れない）
 deck = Deck(workdir=HERE / "build", **deck_options(P))   # テンプレートを選ぶなら deck_options(P, name="テンプレート2") など
 
 # ---------------------------------------------------------------- 1 表紙
-deck.title_slide(["Paper Review: The First Observation of Gravitational Waves"], author=AUTHOR)
+deck.title_slide(["Paper review: Observation of Gravitational Waves from a Binary Black Hole Merger"], author=AUTHOR)
 
-# ---------------------------------------------------------------- 2 Gravitational waves
-s = deck.slide("Background", summary="Einstein's 1916 waves stretch and squeeze space itself at light speed")
-s.heading("Gravitational waves")
-# 上に文・下に図：3つのラベルを横に並べ、輪の図（横長）を下に。以前は左に文・右に図で、その型が本文の半分を超えていた
-y0 = deck.area["top"] + 0.15
-# 文の塊は2つ（予言と正体を1つに。1枚の文の塊は2つまで：style-guide 8節）
-bs = [s.block("Einstein's prediction, 1916:", ["from GR field equations", "transverse strain wave", "source: changing quadrupole"],
-              x=1.6, y=y0, gap=0),
-      s.block("Size:", ["amplitude {r:remarkably small}", "Einstein himself knew it", "reality debated until 1957"], x=7.6, y=y0, gap=0)]
-s.cur_y = max(b.bottom for b in bs)
-s.figure_below(FIG / "s02.png", caption="(schematic)")
+# ---------------------------------------------------------------- 2 A century-old prediction
+s = deck.slide("Background", summary="Before 2015, the only evidence was one pulsar's energy loss")
+s.heading("A century-old prediction")
+s.block("Prediction (1916)：", ["transverse waves of spatial strain\n(space itself stretches and squeezes)\nmoving at the speed of light"])
+s.block("Indirect evidence：", ["binary pulsar PSR B1913+16,\norbital {r:energy loss} (the orbit\nshrinks as GWs carry energy away)"])
+s.block("Your guess：", ["how far would a 4 km ruler stretch?"])
+if (FIG / "s02.png").exists(): s.figure_beside(FIG / "s02.png", caption="(schematic, stretch exaggerated)")
 
-# ---------------------------------------------------------------- 3 Indirect evidence
-s = deck.slide("Background", summary="Binary pulsar energy loss showed GWs only indirectly")
-s.heading("Indirect evidence")
-# 文の塊は2つ：発見と観測を1つに、目標と問いを1つに（問いは目標の帰結の赤字）
-s.block("Binary pulsar PSR B1913+16:", ["found by Hulse, Taylor (1975)", "energy loss: Taylor, Weisberg (1982)"],
-        then="GWs exist, but {r:only indirectly}", gap=0.45)
-s.block("Next goal:", ["direct amplitude, phase ⇒ GR tests"], then="how to catch a stretch this tiny}\n{r:   and tell it from noise?")   # 2行の赤字（{r:} を行ごとに）
-s.figure_beside(FIG / "s03.png", caption="(schematic)")
+# ---------------------------------------------------------------- 3 表紙
+deck.title_slide(["Observation of Gravitational Waves", "from a Binary Black Hole Merger"], subtitle="B. P. Abbott et al. (LIGO Scientific Collaboration and Virgo Collaboration)\nPhys. Rev. Lett. 116, 061102 (2016)\nCC BY 3.0, DOI 10.1103/PhysRevLett.116.061102", size=36)
 
-# ---------------------------------------------------------------- 4 the paper
-deck.title_slide(["Observation of Gravitational Waves", "from a Binary Black Hole Merger"],
-                 subtitle="The discovery paper of GW150914",
-                 author="B. P. Abbott et al., LIGO and Virgo Collaborations\n"
-                        "Phys. Rev. Lett. 116, 061102 (2016), CC BY 3.0\n"
-                        "DOI: 10.1103/PhysRevLett.116.061102",
-                 bold=False)
+# ---------------------------------------------------------------- 4 Interferometer as a ruler
+s = deck.slide("Detector", summary="Two perpendicular 4 km arms turn a stretch of space into a phase shift")
+s.heading("Interferometer as a ruler")
+b = s.peq(r"\Delta L(t) = \delta L_x - \delta L_y = h(t)\,L")
+d = s.defs(b.x, b.bottom + 0.2, [("h", "strain, the fractional stretch\n(no unit)"), ("L", "arm length, {r:4 km}")])
+s.cur_y = d.bottom + 0.45
+s.block("Readout：", ["ΔL shifts the phase of the\nreturning light → photodetector"])
+if (FIG / "s04.png").exists(): s.figure_beside(FIG / "s04.png", caption="(schematic after Fig. 3, not to scale)")
 
-# ---------------------------------------------------------------- 5 Advanced LIGO
-s = deck.slide("Detector", summary="4 km arms convert ΔL = hL into a light phase shift")
-s.heading("Advanced LIGO")
-s.block("Michelson interferometer:", ["two perpendicular 4 km arms", "one stretches, {r:the other shrinks}",
-                                     "ΔL ⇒ phase shift of returning light"])
-e = s.peq(r"\Delta L(t) = \delta L_x - \delta L_y = h(t)L")
-s.defs(e.x + 0.4, e.bottom + 0.1, [("h", "strain = ΔL/L, no unit"), ("L", "arm length, 4 km")], sep=": ")
-# 文の塊は2つ（干渉計と式の定義）。試験質量（鏡は目印だけ）は図の「Free-hanging test mass」のラベルが担い、言うことは原稿へ
-s.figure_beside(FIG / "s05.png", caption="After Fig. 3 (schematic)")
+# ---------------------------------------------------------------- 5 The size of the target
+s = deck.slide("Detector", summary="The target stretch, 4×10⁻¹⁸ m, is about 1/400 of a proton")
+s.heading("The size of the target")
+s.cur_y = s.key_message("4×10⁻¹⁸ m", sub="about 1/400 of a proton (1.7 fm wide),\npresenter's estimate", y=deck.area["top"] + 0.1).bottom + 0.45   # 図の案から scaffold.py が組んだ（言い方を確かめる）
+s.develop("10⁻²¹ (peak strain of the signal we\nwill see) × 4 km", "{r:4×10⁻¹⁸ m}")
+s.block("Question：", ["how can we catch it?"])
+if (FIG / "s05.png").exists(): s.figure_beside(FIG / "s05.png")   # 図：印象：大きな数字：4×10⁻¹⁸ m（about 1/400 of a proton, 1.7 fm wide; pre（図は figs/s05.png）
 
-# ---------------------------------------------------------------- 6 How small the signal is
-s = deck.slide("Detector", summary="h ≈ 10⁻²¹ changes the arm-length difference by only ~4×10⁻¹⁸ m")
-s.heading("How small the signal is")
-# 上に文・下に図：対数の物差し（横長）を下に。左に式の展開（陽子との比まで）と陽子の幅、右の列に以前の検出器
-y0 = deck.area["top"] + 0.15
-s.develop("peak h ≈ 10⁻²¹\nL = 4 km", "ΔL = hL ≈ 4×10⁻¹⁸ m\n≈ {r:1/400 of a proton}\n(proton ≈ 1.7×10⁻¹⁵ m)", x=0.9, y=y0, after=0)
-left_end = s.cur_y   # 陽子の幅は展開の右に（「Scale」の塊をやめて文の塊を2つに）
-s.block("Earlier:", ["resonant bars (1960s–)", "interferometers 2002–2011"], then="upper limits only", x=7.6, y=y0, gap=0)
-s.cur_y = max(left_end, s.cur_y)
-s.figure_below(FIG / "s06.png", caption="(schematic, log scale)")
+# ---------------------------------------------------------------- 6 More light, sharper ruler
+s = deck.slide("Detector", summary="Recycled light reaches 100 kW per arm, 5,000× the 20 W input")
+s.heading("More light, sharper ruler")
+s.block("Arm cavity：", ["light bounces between the two test\nmasses, each trip adds the shift again"], then="phase effect {r:×300}")
+s.block("Power recycling：", ["a partly transmitting input mirror\nsends light heading back to the laser\ninto the arms again, 20 W → 700 W →\n{r:100 kW}"])
+s.flow(["Laser 20 W", "Beam splitter 700 W", "Each arm cavity 100 kW"], x=deck.area["fig_x"] + 0.8, y=deck.area["top"], w=3.6, h=0.75, gap=0.45, size=18)   # 図の案から scaffold.py が組んだ（言い方を確かめる）
 
-# ---------------------------------------------------------------- 7 Boosting the light
-s = deck.slide("Detector", summary="Cavities build 20 W of laser light up to 100 kW in each arm")
-s.heading("Boosting the light")
-# 図が主役：光の通り道の図そのものを読ませる（20 W → 700 W → 100 kW を線の太さで）。文は右の列に
-s.figure_main(FIG / "s07.png", caption="After Fig. 3, PRL 116, 061102 (2016) (schematic)")
-# 文の塊は2つ：ねらい（ショット雑音）は光を戻す工夫の帰結に
-s.block("Arm cavities:", ["light bounces many times", "between two test-mass mirrors"], then="phase effect {r:×300}", gap=0.45)
-s.block("Power recycling:", ["light sent back in at the input", "(partially transmissive mirror)", "20 W → 700 W → {r:100 kW per arm}"],
-        then="less relative shot noise", gap=0)
+# ---------------------------------------------------------------- 7 Noise by frequency band
+s = deck.slide("Detector", summary="Above 10 Hz, ground motion is cut by >10 orders of magnitude")
+s.heading("Noise by frequency band")
+s.figure_main(FIG / "s07.png", caption="Abbott et al., PRL 116, 061102 (2016), Fig. 3(b), CC BY 3.0")
+s.cases([("Above 150 Hz", "photon shot noise\n⇒ more light"), ("Middle", "thermal noise\n⇒ heavy 40 kg mirrors"), ("Low", "seismic noise\n⇒ {r:quadruple pendulum}\non active isolation")])
 
-# ---------------------------------------------------------------- 8 Where the noise is lowest
-s = deck.slide("Detector", summary="Most sensitive at 100–300 Hz, 3–5× better than initial LIGO")
-s.heading("Where the noise is lowest")
-s.block("Reading:", ["strain noise: lower = quieter"])
-s.cases([("Above 150 Hz", "photon shot noise (slide 7)"),
-         ("Low frequencies", "ground motion ⇒ quadruple pendulum\n+ platform: {r:>10 orders} above 10 Hz"),
-         ("Intermediate", "thermal noise ⇒ 40 kg fused-silica\nmirrors on silica fibers")])
-s.figure_beside(PAPER / "fig3b_noise.png", caption="Fig. 3(b), PRL 116, 061102 (2016); band = signal 35–250 Hz, added")
+# ---------------------------------------------------------------- 8 GW150914
+s = deck.slide("Result 1", summary="On 14 Sep 2015, Livingston saw it 6.9 ms before Hanford")
+s.heading("GW150914")
+y0 = s.cur_y
+s.develop("L1 first", "H1 {r:6.9 ms later}\n(within the 10 ms light time)")
+y1 = s.cur_y
+b2 = s.block("Strength：", ["peak strain 1.0×10⁻²¹,\nSNR 24 (24× typical noise)"], x=deck.area["fig_x"], y=y0)
+w = 10.0
+im = s.image(FIG / "s08.png", (13.333 - w) / 2, max(y1, b2.bottom) + 0.25, w=w)
+s.caption(im, "Abbott et al., PRL 116, 061102 (2016), Fig. 1 top row, CC BY 3.0")
 
-# ---------------------------------------------------------------- 9 Same signal at two sites
-s = deck.slide("Result 1", summary="H1 and L1 saw the same waveform 6.9 ms apart")
-s.heading("Same signal at two sites")
-# 上の1行に「展開（左）→ 大きさ（右）」の2つの塊だけ、下に論文の図を横いっぱいに（以前は縮んで小さかった）。
-# 図は Fig. 1 の上段に、同じ図の縦軸の名前と最下段の時間軸を付けたもの。2か所で見る意味は原稿へ
-y0 = deck.area["top"] + 0.1
-d = s.develop("L1 first\n(Sept. 14, 2015)", "H1 {r:6.9 ms later}\n< 10 ms light travel", x=1.0, y=y0, after=0)
-k = s.block("Size:", ["peak strain 1.0×10⁻²¹", "combined SNR 24 (signal-to-noise)"], x=d.right + 0.6, y=y0, gap=0)
-s.cur_y = max(d.bottom, k.bottom)
-s.figure_below(PAPER / "fig1_strain_axes.png", gap=0.25,
-               caption="Fig. 1 top row with its shared axes, PRL 116, 061102 (2016); right: H1 shifted, inverted")
+# ---------------------------------------------------------------- 9 Frequency and amplitude grow
+s = deck.slide("Result 1", summary="Eight cycles in 0.2 s, rising to 150 Hz at peak amplitude")
+s.heading("Frequency and amplitude grow")
+y0 = s.cur_y
+b1 = s.block("Track：", ["35 → 150 Hz, ~8 cycles in 0.2 s,\namplitude peaks at {r:150 Hz}", "same track in H1 and L1"], y=y0)
+b2 = s.block("Reading：", ["a 'chirp': masses spiral in,\norbit faster, so frequency\nand amplitude rise"], x=deck.area["fig_x"], y=y0)
+w = 10.0
+im = s.image(FIG / "s09.png", (13.333 - w) / 2, max(b1.bottom, b2.bottom) + 0.25, w=w)
+s.caption(im, "Abbott et al., PRL 116, 061102 (2016), Fig. 1 bottom row, CC BY 3.0")
 
-# ---------------------------------------------------------------- 10 A rising chirp
-s = deck.slide("Result 1", summary="In 0.2 s the frequency rose from 35 to 150 Hz")
-s.heading("A rising chirp")
-# 図が主役：時間と周波数の図そのものを読ませる。図の読み方を右の列に
-b = s.figure_main(PAPER / "fig1_timefreq_H1.png", w=6.0, caption="Fig. 1 bottom row (H1), PRL 116, 061102 (2016); label added")
-s.note(b.x + 0.16 * b.w, b.y + 0.05 * b.h, "color: signal power")   # 図の読み方は図の中に（軸は図の軸の名前が言う）
-s.block("Track:", ["{r:35 → 150 Hz in 0.2 s}", "~8 cycles, peak at 150 Hz", "whole signal: 35 → 250 Hz",
-                   "(same track in L1)"], gap=0.45)
-s.block("Meaning:", ["most likely: two masses spiraling in", "energy lost to GWs", "GW frequency = 2 × orbital"],
-        then="shrinking orbit ⇒ faster", gap=0)
+# ---------------------------------------------------------------- 10 Weighing by the chirp
+s = deck.slide("Result 2", summary="The rate of the rise weighs the pair at 70 M⊙ or more in total")
+s.heading("Weighing by the chirp")
+s.figure_main(FIG / "s10.png", w=6.3, caption="Abbott et al., PRL 116, 061102 (2016), Fig. 2 top, CC BY 3.0")
+b = s.peq(r"\mathcal{M} = \frac{(m_1 m_2)^{3/5}}{(m_1+m_2)^{1/5}}", dx=0.0, size=20)
+b = s.peq(r"= \frac{c^3}{G}\left[\frac{5}{96}\pi^{-8/3} f^{-11/3}\dot{f}\right]^{3/5}", dx=0.2, size=20)
+d = s.defs(b.x, b.bottom + 0.15, [("f, ḟ", "observed frequency and\nits rate of change")])
+s.cur_y = d.bottom + 0.4
+s.lead(["From the data: ℳ ≃ 30 M⊙"], "total mass {r:≳ 70 M⊙}")
 
-# ---------------------------------------------------------------- 11 Chirp mass
-s = deck.slide("Result 2", summary="Chirp rate implies a total mass of at least 70 M_{⊙}")
-s.heading("Chirp mass")
-# 文の塊は2つ。一般式（分数の入った長い式）は原稿へ、本文は1行の関係「ℳ ≈ 30 M⊙ ⇒ total ≳ 70 M⊙」に絞る。
-# ℳ は本文の文字だけで書き（式の画像の ℳ と字形が食い違っていた）、M⊙ は ⊙ を下付きに（大きな ⊙ が「MO」に見えた）
-s.block("Chirp mass ℳ:", ["one combination of m_{1}, m_{2}", "set by f and ḟ (the track's slope)",
-                          "alone controls the chirp at low f"], gap=0.45)
-s.block("From Fig. 1:", ["ℳ ≈ 30 M_{⊙}", "detector frame: masses as observed", "total smallest at m_{1} = m_{2}"],
-        then="total ≳ 70 M_{⊙}", gap=0)
-s.figure_beside(PAPER / "fig1_timefreq_H1_marks.png", caption="Fig. 1 bottom row (H1), PRL 116, 061102 (2016); f, ḟ marks added")
+# ---------------------------------------------------------------- 11 Ruling out neutron stars
+s = deck.slide("Result 2", summary="At about 350 km apart, only black holes can hold 70 M⊙")
+s.heading("Ruling out neutron stars")
+if (FIG / "s11.png").exists(): s.figure_main(FIG / "s11.png", caption="(to scale, equal point masses)")
+s.ask("Two neutron stars？", "{r:each ≲ 2 M⊙}")
+s.ask("Neutron star + black\nhole？", "merges at a much lower\nfrequency")
+s.ask("Two black holes？", "{r:350 km apart} (Kepler,\n75 Hz orbit), radii sum\n≳210 km (3 km per M⊙)")
 
-# ---------------------------------------------------------------- 12 Why black holes
-s = deck.slide("Result 2", summary="Of known objects, only black holes are compact enough to orbit at 75 Hz")
-s.heading("Why black holes")
-# 文の塊は2つ：軌道と地平面を「75 Hz の軌道」に、2つの問いを「ほかの候補」に
-s.block("Orbit at 75 Hz:", ["half of the 150 Hz GW peak", "equal masses ≃350 km apart", "horizons: sum ≳210 km",
-                            "(≈3 km per M_{⊙})"], gap=0.45)
-s.block("Other candidates:", ["two neutron stars:", "{r:not enough mass}", "neutron star + black hole:", "merges at {r:lower frequency}"], gap=0)
-s.figure_beside(FIG / "s12.png", caption="(schematic, to scale)")
+# ---------------------------------------------------------------- 12 Glitches and disturbances
+s = deck.slide("Result 3", summary="Non-Gaussian glitches in the data could fake a coincidence")
+s.heading("Glitches and disturbances")
+s.ask("Local disturbance？", "under {r:6% of the signal's strain},\ntoo small to make it")
+s.ask("Chance coincidence？", "must be counted (next)")
+s.compare(("Gravitational wave", ["same shape at both", "≤10 ms apart", "sensors quiet"]), ("Noise", ["shapes differ", "any offset", "sensors see it"]), y=s.cur_y + 0.3)
 
-# ---------------------------------------------------------------- 13 Ruling out chance noise
-s = deck.slide("Result 3", summary="Chance? Time shifts built 608,000 years of noise-only background")
-s.heading("Ruling out chance noise")
-# 文の塊は2つ（問題と手順）。背景が多めになる偏り（控えめな評価）は原稿へ
-s.block("Problem:", ["noise non-Gaussian, nonstationary", "⇒ count it from the data", "no detector shielded from GWs"], gap=0.45)
-s.numbered(["Shift one detector by ≫10 ms", "Search coincidences again", "Count each as 16 noise-only days\n~10⁷ shifts ⇒ {r:608,000 years}"], gap=0)
-s.figure_beside(FIG / "s13.png", y=1.6, caption="(schematic)")
+# ---------------------------------------------------------------- 13 Manufacturing background
+s = deck.slide("Result 3", summary="Sliding one site's 16 days by ≫10 ms gave 608,000 years of noise")
+s.heading("Manufacturing background")
+if (FIG / "s13.png").exists(): s.figure_main(FIG / "s13.png", caption="(schematic)")
+s.numbered(["Shift one site by ≫10 ms\n(beyond the light time, so\nno real wave lines up)", "Re-count coincidences", "Repeat ~10⁷ times\n⇒ {r:608,000 years}"])
+s.block("Bias：", ["conservative, a real\nsignal left in makes noise\nlook stronger"])
 
-# ---------------------------------------------------------------- 14 False alarm rate
-s = deck.slide("Result 3", summary="Noise would mimic it less than once per 203,000 years")
-s.heading("False alarm rate")
-s.figure_main(PAPER / "fig4_search.png", caption="Fig. 4 right, Abbott et al., PRL 116, 061102 (2016); red circle added")
-# 文の塊は2つ（結果）。図の読み方（軸・黒線・橙・上の σ の帯）は図の軸の名前と凡例が言い、原稿で補う
-s.block("GW150914:", ["ρ̂_{c} = 23.6, past all noise", "{r:< 1 per 203,000 years}", "(upper bound: none louder)",
-                      "p < 2×10⁻⁷ = 5.1σ"], gap=0.45)
-s.block("Generic search:", ["no waveform model", "< 1 per 22,500 years: 4.6σ"], gap=0)
+# ---------------------------------------------------------------- 14 Beyond every background event
+s = deck.slide("Result 3", summary="No background event beat it: < 1 false alarm per 203,000 yr")
+s.heading("Beyond every background event")
+b = s.figure_main(FIG / "s14.png", caption="Abbott et al., PRL 116, 061102 (2016), Fig. 4 right, CC BY 3.0")
+s.oval(b.x + 0.907 * b.w - 0.3, b.y + 0.326 * b.h - 0.3, 0.6, 0.6)
+s.block("Binary coalescence：", ["merger templates,\nρ̂c = 23.6 (loudness)"], then="< 1 per 203,000 yr, {r:5.1σ}")
+s.block("Generic transient：", ["no waveform model,\nηc = 20.0"], then="< 1 per 22,500 yr, 4.6σ")
+s.block("Two searches：", ["independent, both detect it"])
 
-# ---------------------------------------------------------------- 15 The source
-s = deck.slide("Discussion", summary="A 36 and 29 M_{⊙} pair merged, radiating 3.0 M_{⊙}c²")
-s.heading("The source")
-b = s.cards([("Masses", "36 and 29\nmerged into one\n(source frame)", "62 M_{⊙}"),            # 並列カード（3つ目は大きな値）
-             ("Energy", "radiated as\ngravitational waves\n(± 0.5)", "3.0 M_{⊙}c²"),
-             ("Distance", "about 1.3 billion\nlight-years\n(z = 0.09)", "410 Mpc")], y=2.0, h=3.35, size=22)
-cap = s.caption(b, "Table I, Abbott et al., PRL 116, 061102 (2016); medians, GW150914")
-# 一般相対論の検証の塊は原稿へ（カードの値3つで文の塊が3つ。4つ目を置かない）
+# ---------------------------------------------------------------- 15 Masses from the full waveform
+s = deck.slide("Discussion", summary="Bayesian fits give 36 and 29 M⊙ before, 62 M⊙ after")
+s.heading("Masses from the full waveform")
+if (FIG / "s15.png").exists(): s.figure_main(FIG / "s15.png", caption="Abbott et al., PRL 116, 061102 (2016), Table I, CC BY 3.0")
+s.develop("36 + 29 M⊙", "{r:62 M⊙}")
+s.block("Radiated：", ["the missing 3.0 ± 0.5 M⊙c²\nas GWs"])
+s.block("GR tests：", ["three checks, {r:no deviation}"])
 
-# ---------------------------------------------------------------- 16 Anticipated questions
-s = deck.slide(T)   # summary なし：帯も●も無い枚になる
-s.heading("Expected Questions")
-s.at(1.0, 1.9)
-s.qa_pairs([("Q1", "Why is the H1 trace inverted\nbefore it is overlaid on L1?", "Two detectors oriented differently\nSame wave appears with opposite sign",
-             (PAPER / "fig1_strain_L1_axes.png", "Slide 9: Fig. 1 top right with its axes, PRL 116, 061102 (2016)")),
-            ("Q2", "Could an earthquake or a local\ndisturbance have caused it?", "Sensors saw nothing like GW150914\nFluctuations: at most 6% of strain\nNo correlated two-site disturbance")])
+# ---------------------------------------------------------------- 16 Back to the question
+s = deck.slide(T, summary="A sub-proton stretch, caught at two sites and not by chance")   # まとめ：結論の一文はこの回の答え
+s.heading("Summary")
+s.recap(kind="筋", steps=["Tiny stretch: 4×10⁻¹⁸ m", "Strong light, quiet mirrors", "Same chirp, two sites", "Not chance: 5.1σ"], points=["Catch it？⇒ strong light, quiet mirrors", "Noise？⇒ < 1 per 203,000 yr", "Source？⇒ {r:merging black holes}"])
 
 # ---------------------------------------------------------------- 17 Anticipated questions
 s = deck.slide(T)   # summary なし：帯も●も無い枚になる
 s.heading("Expected Questions")
 s.at(1.0, 1.9)
-s.qa_pairs([("Q3", "What does 5.1σ mean here?", "False alarm p < 2×10⁻⁷\n= Gaussian tail beyond 5.1σ\nNoise not Gaussian: counted",
-             (PAPER / "fig4_search.png", "Slide 14: Fig. 4 right, PRL 116, 061102 (2016); red circle added")),
-            ("Q4", "Where in the sky\nwas the source?", "Only 2 detectors: time delay\nabout 600 deg² (90%)\nVirgo, KAGRA to narrow it")])
+s.qa_pairs([("Q1", "Could noise in the two detectors\nhave lined up by chance?", "Time-shifted background (608,000 yr):\nnoise this strong < 1 per 203,000 yr,\n5.1σ"), ("Q2", "Could an earthquake or a power-line\ndisturbance have caused it?", "Site sensors: all fluctuations under\n6% of the strain amplitude; no\ncorrelated disturbance at both sites")])
+
+# ---------------------------------------------------------------- 18 Anticipated questions
+s = deck.slide(T)   # summary なし：帯も●も無い枚になる
+s.heading("Expected Questions")
+s.at(1.0, 1.9)
+s.qa_pairs([("Q3", "What does the 6.9 ms delay mean?", "Shorter than the 10 ms light travel\ntime between the sites, so one wave\ncould have passed both", (FIG / "s18.png", "Slide 8 figure: Abbott et al., PRL 116, 061102 (2016), Fig. 1 top right, CC BY 3.0")), ("Q4", "Where in the sky was the source?", "Only two detectors: about 600 deg²\n(90% region), set mainly by arrival\ntime; Virgo and KAGRA will narrow it")])
 
 NOTES = load_notes(HERE / "notes.md")
 for i, sl in enumerate(deck.slides, 1):

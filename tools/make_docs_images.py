@@ -32,14 +32,14 @@ EN_STRUCT_NAMES = ["Premise ⇒ consequence", "Label + explanation", "Side arrow
 PAD, GAP = 15, 14
 JOBS = [  # (出力, 描画のフォルダ, スライド番号, 列の数, 全体の幅)
     ("course-slides-1.jpg", COURSE, range(1, 5), 2, 1648),
-    ("course-slides-2.jpg", COURSE, range(5, 16), 3, 1654),
+    ("course-slides-2.jpg", COURSE, range(5, 18), 3, 1654),
     ("zemi-slides-1.jpg", ZEMI, range(1, 5), 2, 1648),
-    ("zemi-slides-2.jpg", ZEMI, range(5, 17), 3, 1654),
+    ("zemi-slides-2.jpg", ZEMI, range(5, 18), 3, 1654),
 ]
 # README の一番上の動く画像（講座と発表の見本を交互に）：(描画のフォルダ, スライド番号, 上の帯の文字)
-DEMO = [(COURSE, 1, "講座：AI が講師の連続講座"), (COURSE, 3, "講座：結論の一文と図"), (COURSE, 6, "講座：数値はグラフで"),
-        (COURSE, 12, "講座：確認問題"), (ZEMI, 1, "発表：論文紹介"), (ZEMI, 8, "発表：論文の図と数値"),
-        (ZEMI, 13, "発表：結果と赤丸"), (ZEMI, 15, "発表：想定質問と回答案")]
+DEMO = [(COURSE, 1, "講座：AI が講師の連続講座"), (COURSE, 4, "講座：結論の一文と図"), (COURSE, 3, "講座：数値はグラフで"),
+        (COURSE, 14, "講座：確認問題"), (ZEMI, 1, "発表：論文紹介"), (ZEMI, 7, "発表：論文の図と数値"),
+        (ZEMI, 11, "発表：結果と赤丸"), (ZEMI, 16, "発表：想定質問と回答案")]
 
 
 # 英語の README 用：日本語の見本を英語に訳して組み直したもの（examples/zemi_en・examples/course_en。スキル自体の出力は日本語）
@@ -47,14 +47,14 @@ EN_COURSE = ROOT / "examples" / "course_en" / "_work" / "AI_Literacy_01" / "rend
 EN_ZEMI = ROOT / "examples" / "zemi_en" / "render"
 EN_JOBS = [
     ("en-course-slides-1.jpg", EN_COURSE, range(1, 5), 2, 1648),
-    ("en-course-slides-2.jpg", EN_COURSE, range(5, 17), 3, 1654),
+    ("en-course-slides-2.jpg", EN_COURSE, range(5, 19), 3, 1654),
     ("en-zemi-slides-1.jpg", EN_ZEMI, range(1, 5), 2, 1648),
-    ("en-zemi-slides-2.jpg", EN_ZEMI, range(5, 18), 3, 1654),
+    ("en-zemi-slides-2.jpg", EN_ZEMI, range(5, 19), 3, 1654),
 ]
-EN_DEMO = [(EN_COURSE, 1, "Course: an AI-taught series"), (EN_COURSE, 3, "Course: one conclusion line and a figure"),
-           (EN_COURSE, 6, "Course: numbers as charts"), (EN_COURSE, 13, "Course: quiz"), (EN_ZEMI, 1, "Talk: paper review"),
+EN_DEMO = [(EN_COURSE, 1, "Course: an AI-taught series"), (EN_COURSE, 4, "Course: one conclusion line and a figure"),
+           (EN_COURSE, 7, "Course: numbers as charts"), (EN_COURSE, 15, "Course: quiz"), (EN_ZEMI, 1, "Talk: paper review"),
            (EN_ZEMI, 8, "Talk: the paper's figures and numbers"), (EN_ZEMI, 14, "Talk: result with a red circle"),
-           (EN_ZEMI, 16, "Talk: anticipated questions")]
+           (EN_ZEMI, 17, "Talk: anticipated questions")]
 
 
 def demo_gif(out: Path, width: int = 800, bar: int = 40, ms: int = 1800, frames_of=None):
@@ -121,10 +121,10 @@ def labeled(folder: Path, tiles, cols: int = 3, width: int = 1654, label_h: int 
 
 EDGE = [Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"), Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe")]
 NOTES = [("course-notes.jpg", ROOT / "examples" / "course" / "AI活用講座" / "01_生成AIは何をしているか_原稿.html"),
-         ("zemi-notes.jpg", ROOT / "examples" / "zemi" / "重力波の初観測_原稿.html")]
+         ("zemi-notes.jpg", ROOT / "examples" / "zemi" / "Abbott2016_PRL116_061102_原稿.html")]
 # 英語版の見本の原稿のページ（notes_html.py で作る。画面の言葉も英語）。使い方のページの英語版で使う
-EN_NOTES = [("en-course-notes.jpg", ROOT / "examples" / "course_en" / "AI_Literacy" / "01_What a Chat AI Computes_script.html"),
-            ("en-zemi-notes.jpg", ROOT / "examples" / "zemi_en" / "Gravitational_Waves_script.html")]
+EN_NOTES = [("en-course-notes.jpg", ROOT / "examples" / "course_en" / "AI_Literacy" / "01_What Generative AI Actually Computes_script.html"),
+            ("en-zemi-notes.jpg", ROOT / "examples" / "zemi_en" / "Abbott2016_PRL116_061102_script.html")]
 
 
 def card_spans(im, x: int = 16, head: int = 100):

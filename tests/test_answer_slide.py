@@ -34,15 +34,19 @@ def test_answer_slides_are_the_story_answer_the_beat_and_why():
     from pathlib import Path
     text = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
     ans = story.answer_slides(text, "memo")
-    assert ans[9] == "筋の答えの枚" and 8 in ans   # 8枚目は「素朴な見方を崩す」の答えの拍（なぜか）＝だから（問い）
+    assert ans == {10: "筋の答えの枚"}   # 10枚目は筋の答えで、だから（問い）も兼ねる
+    t2 = text.replace("| 11 | 誤りが出やすい所 | だから（帰結） |", "| 11 | 誤りが出やすい所 | だから（問い） |")
+    assert story.answer_slides(t2, "memo")[11] == "だから（問い）の枚"
+    zemi = (Path(__file__).resolve().parents[1] / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
+    assert story.answer_slides(zemi, "outline") == {10: "答えの拍「確かめた結果」の枚", 13: "筋の答えの枚"}   # 型の答えの拍はゼミの見本で
 
 
 def test_table_on_the_answer_slide_warns(memo):
     """答えの枚の図が表・カードだけなら △（デッキの模式図1枚は、易しい枚で満たされていた）。外す理由があれば通す。"""
     assert got(memo)["答えの枚の図"][0] == "✔"
-    edit(memo, "| 時期：年表：", "| 観点：表：理由×中身（地下＝見えない／始まり＝分からない） 年表：")
+    edit(memo, "| 仕組み：模式図：実線の枠の中に", "| 観点：表：理由×中身（計算に入る／入らない） 模式図：実線の枠の中に")
     mark, msg = got(memo)["答えの枚の図"]
-    assert mark == "△" and "[8] 表" in msg and "見える形" in msg
+    assert mark == "△" and "[10] 表" in msg and "見える形" in msg
     edit(memo, "観点：表：理由×中身（", "観点：表：理由×中身（外す理由：見本、")
     assert got(memo)["答えの枚の図"][0] == "✔"
 
@@ -50,7 +54,7 @@ def test_table_on_the_answer_slide_warns(memo):
 def test_story_question_far_from_the_title_warns(memo):
     """筋の問いが題の問いと語を1つも共有しなければ △。題が問いの形でなければ見ない（迷ったら知らせない）。"""
     assert got(memo)["題の問い"][0] == "✔"
-    edit(memo, "生成AIは中で何をしていて、その答えはどこまで信じてよいか？", "確率が低い所は、本当に安心してよいのか？")
+    edit(memo, "答えを知らないのに流暢に書けるなら、生成AIは答えるとき何をしているのか？", "確率が低い所は、本当に安心してよいのか？")
     mark, msg = got(memo)["題の問い"]
     assert mark == "△" and "経験か予想" in msg
     t = memo.read_text(encoding="utf-8")
@@ -83,11 +87,11 @@ def test_analogy_row(memo):
 def test_quiz_must_ask_the_title_question(memo):
     """6問のうち1問が題の問いに答える問：〔題の問い〕か、答えの枚を根拠にした〔型：仕組み〕・なぜ の問。"""
     assert got(memo)["確認問題の題の問い"][0] == "✔"
-    edit(memo, "| 問い | どこまで |", "| 問い | なぜ |")   # なぜの問いなら、仕組みの問が要る
-    edit(memo, "〔題の問い〕", "")
+    edit(memo, "| 問い | 何が |", "| 問い | なぜ |")   # なぜの問いなら、仕組みの問が要る
+    edit(memo, "〔題の問い〕〔ゴール1・10枚目〕", "〔ゴール1・6枚目〕")   # 印を外し、根拠も答えの枚でない枚に
     mark, msg = got(memo)["確認問題の題の問い"]
-    assert mark == "△" and "〔題の問い〕" in msg and "8・9" in msg
-    edit(memo, "〔ゴール1・6枚目〕〔型：仕組み〕", "〔ゴール1・8枚目〕〔型：仕組み〕")   # 答えの枚（8）を根拠にした仕組みの問
+    assert mark == "△" and "〔題の問い〕" in msg and "答えの枚：10" in msg
+    edit(memo, "〔ゴール1・6枚目〕〔型：仕組み〕", "〔ゴール1・10枚目〕〔型：仕組み〕")   # 答えの枚（10）を根拠にした仕組みの問
     assert got(memo)["確認問題の題の問い"][0] == "✔"
     assert got(memo)["確認問題"][0] == "✔" and got(memo)["確認問題の型"][0] == "✔"   # 6問ちょうど・型3種類以上は変わらない
 

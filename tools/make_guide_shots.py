@@ -22,10 +22,10 @@ ZEMI = next((ROOT / "examples" / "zemi").glob("*_原稿.html"))
 COURSE = next((ROOT / "examples" / "course" / "AI活用講座").glob("*_原稿.html"))
 OUT = ROOT / "docs" / "guide"
 VIEW = {"width": 1360, "height": 600}
-SLIDE = 13          # 発表の見本で写す枚（図があり、原稿が長い枚）
+SLIDE = 11          # 発表の見本で写す枚（図があり、原稿が長い枚。論文の Fig. 4 の枚）
 EN_SLIDE = 14       # 英語版の発表の見本で写す枚（論文の Fig. 4 の枚）
-QA_SLIDE = 13       # 講座の見本の確認問題（1-4〜1-6）の枚
-EN_QA_SLIDE = 14    # 英語版の講座の見本の確認問題（1-4〜1-6）の枚
+QA_SLIDE = 15       # 講座の見本の確認問題（1-4〜1-6）の枚
+EN_QA_SLIDE = 16    # 英語版の講座の見本の確認問題（1-4〜1-6）の枚
 QA = "1-5"
 TEXTS = {"ja": ("この図の縦軸は何の数？", "ここはなぜそう言えるの？", "題名・著者・DOI で検索して原文を開き、中身が同じかを確かめる。見つからなければ使わない。"),
          "en": ("What is the vertical axis of this figure?", "Why can we say this?",

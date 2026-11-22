@@ -49,7 +49,9 @@ def test_memo_without_a_figure_plan_is_blocked(root, tmp_path):
     memo = tmp_path / "memo.md"
     shutil.copy2(root / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md", memo)
     t = memo.read_text(encoding="utf-8")
-    t = t.replace("| 7 | テーマ | 実在しない文献の割合の棒（2本） | Walters & Wilder (2023) |", "| 7 | テーマ | なし | — |")
+    old = "| 違い：比較：頼みたいこと（役に立つ、正直、無害）と 次の語の予測だけ（事実と違う、有害、役に立たない） |"
+    assert old in t
+    t = t.replace(old, "| なし |")   # 7枚目の「図で見せるもの」を外す
     memo.write_text(t, encoding="utf-8")
     m = {item: (mark, msg) for mark, item, msg in cm.check(memo)}
     assert m["図の無いスライド"][0] == "✘" and "7" in m["図の無いスライド"][1]

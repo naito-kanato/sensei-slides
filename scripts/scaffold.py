@@ -795,6 +795,27 @@ def clean_source(src: str) -> str:
     return re.sub(r"\s{2,}", " ", t).strip(" 、，,。")
 
 
+# 原稿に入れる決まり文句（日本語の回は日本語、ほかの言語の回は英語。英語のデッキに日本語の行が残っていた）
+NOTE_PHRASES = {
+    "ja": {"src": "※ 出典：{}", "quiz": "確認問題です。まず自分で答えを考えてから、次の枚の解答と比べてください。", "q": "{}。{}",
+           "back": "{}枚目で見たことを思い出してください。", "sep": "・", "ans": "{} です。{}答えは、{}。",
+           "need": "{}が入っていれば正解です。", "two": "{}、それに{}", "n": "の{}つ", "quote": "「{}」", "list": "、"},
+    "en": {"src": "※ Source: {}", "quiz": "Review questions. Think of your own answer first, then compare it with the answers on the next slide.",
+           "q": "{}. {}", "back": "Recall what you saw on slide {}. ", "sep": " and ", "ans": "{}. {}The answer: {}.",
+           "need": "Your answer is correct if it includes {}.", "two": "{} and {}", "n": "", "quote": "\u201c{}\u201d", "list": ", "},
+}
+
+
+def note_phrases(text: str = "") -> dict:
+    """原稿の決まり文句（設計メモ・構成案のオプションの言語から。日本語でなければ英語）。"""
+    try:
+        import language as LG
+        from slide_profile import read_options
+        return NOTE_PHRASES["ja" if LG.is_japanese(read_options(text).get("言語")) else "en"]
+    except Exception:
+        return NOTE_PHRASES["ja"]
+
+
 def note_sources(text: str, cells: str) -> list:
     """本文の要点・図の案の〔事実N〕〔データN〕から、3節・3b節の出典の「※ 出典：…」の行（スクリプトが原稿に入れる）。"""
     out = []
@@ -818,7 +839,7 @@ def note_sources(text: str, cells: str) -> list:
         else:
             continue
         src = clean_source(src)
-        line = f"※ 出典：{src}"
+        line = note_phrases(text)["src"].format(src)
         if src and line not in out:
             out.append(line)
     return out
@@ -834,6 +855,7 @@ def notes_md(kind, rows, care, minutes=None, text: str = "") -> str:
     except Exception:
         qi = {}
     per = f"{minutes * 300 / max(len(body), 1):.0f}字" if minutes else "400字"
+    P = note_phrases(text)
     L = []
     for r in rows:
         n, role = r["#"], col(r, "役割") or "本文"
@@ -847,7 +869,7 @@ def notes_md(kind, rows, care, minutes=None, text: str = "") -> str:
         for c in care.get(n, []):
             hint.append(f"手当て：{c}")
         if role == "確認問題" and quiz.get(n):
-            text_ = "確認問題です。まず自分で答えを考えてから、次の枚の解答と比べてください。\n\n" + "\n\n".join(f"{k}。{t}" for k, t in quiz[n])
+            text_ = P["quiz"] + "\n\n" + "\n\n".join(P["q"].format(k, t) for k, t in quiz[n])
             L += [f"## {n}", "", text_, ""]
             continue
         if role == "解答" and quiz.get(n):
@@ -857,10 +879,13 @@ def notes_md(kind, rows, care, minutes=None, text: str = "") -> str:
                 el = [TAG.sub("", e).strip() for e in (it[4] or []) if e.strip()]
                 basis = (re.findall(r"(\d+)\s*枚", it[2] or "") if isinstance(it[2], str) else [str(it[2])] if isinstance(it[2], int)
                          else [str(x) for x in (it[2] or [])])
-                back = f"{'・'.join(basis)}枚目で見たことを思い出してください。" if basis else ""
-                need = ("、".join(f"「{e}」" for e in el[:-1]) + f"、それに「{el[-1]}」" if len(el) >= 2 else f"「{el[0]}」" if el else "")
-                parts.append(f"{k} です。{back}答えは、{t.rstrip('。')}。"
-                             + (f"\n\n{need}{'の' + str(len(el)) + 'つ' if len(el) >= 2 else ''}が入っていれば正解です。" if el else ""))
+                back = P["back"].format(P["sep"].join(basis)) if basis else ""
+                q_ = [P["quote"].format(e) for e in el]
+                need = P["two"].format(P["list"].join(q_[:-1]), q_[-1]) if len(q_) >= 2 else (q_[0] if q_ else "")
+                if len(q_) >= 2 and P["n"]:
+                    need += P["n"].format(len(q_))
+                parts.append(P["ans"].format(k, back, t.rstrip("。.").rstrip())
+                             + ("\n\n" + P["need"].format(need) if el else ""))
             L += [f"## {n}", "", "\n\n".join(parts), ""]
             continue
         src = note_sources(text, col(r, "本文の要点") + " " + col(r, "図で見せるもの", "図")) if text and role == "本文" else []

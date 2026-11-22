@@ -31,7 +31,7 @@ GOOD_HTML = '<html><head><meta name="generator" content="sensei-slides notes_htm
 def finish(pptx, work, monkeypatch):
     """描画結果・原稿ページ・レビューの記録を置き、描画の検査は ERROR 0 として扱う。"""
     (work / "render").mkdir(exist_ok=True)
-    (work / "render" / "shapes.json").write_text(json.dumps({"slideWidth": 960, "slideHeight": 540, "slides": 15, "shapes": []}), encoding="utf-8")
+    (work / "render" / "shapes.json").write_text(json.dumps({"slideWidth": 960, "slideHeight": 540, "slides": 17, "shapes": []}), encoding="utf-8")
     pptx.with_name("01_生成AIは何をしているか_原稿.html").write_text(GOOD_HTML, encoding="utf-8")
     (work / "review.md").write_text("## 判定\n直してから渡す → 直した\n## 直した点\n- 1枚目の文字量\n", encoding="utf-8")
     # 担当を起動した記録（brief.py が残す）。見本のファイルの日付が新しい（clone した直後など）と、記録の無い作業は ✘ になるため
@@ -48,7 +48,9 @@ def test_finds_course_work_folder(course):
 
 def test_unfinished_deck_is_not_ready(course):
     pptx, work = course
-    (work / "review.md").unlink(missing_ok=True)                  # 見本にはレビューの記録が入っているので、まだの状態にする
+    (work / "review.md").unlink(missing_ok=True)                  # レビューの記録が無い状態にする
+    readme = pptx.parent / "00_README.md"                         # 見本は軽さ「標準」（別のレビューを省く）。念入りの回として見る
+    readme.write_text(readme.read_text(encoding="utf-8").replace("- 軽さ：標準", "- 軽さ：念入り"), encoding="utf-8")
     m = marks(cd.check(pptx, cd.find_work(pptx)))
     assert m["作業フォルダ"] == "✔"           # memo.md・build.py・notes.md がある
     assert m["読み上げ原稿"] == "✔"           # build.py が notes.md を入れている
@@ -104,7 +106,7 @@ def test_missing_notes_are_listed(course, monkeypatch):
 
 def test_work_folder_missing(built, tmp_path):
     pptx = tmp_path / "単独_スライド.pptx"
-    shutil.copy2(built / "examples" / "zemi" / "重力波の初観測_スライド.pptx", pptx)
+    shutil.copy2(built / "examples" / "zemi" / "Abbott2016_PRL116_061102_スライド.pptx", pptx)
     assert cd.find_work(pptx) is None
     assert marks(cd.check(pptx, None))["作業フォルダ"] == "✘"
 

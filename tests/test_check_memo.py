@@ -36,8 +36,8 @@ def keep_body_rows(memo, n):
 
 
 def test_example_memo_is_ready(memo):
-    assert cm.body_rows(memo.read_text(encoding="utf-8"))[0] == "次の語を予測する"
-    assert len(cm.body_rows(memo.read_text(encoding="utf-8"))) == 10    # 表紙・確認問題・解答の行は数えない
+    assert cm.body_rows(memo.read_text(encoding="utf-8"))[0] == "あなたの予想"
+    assert len(cm.body_rows(memo.read_text(encoding="utf-8"))) == 11    # 表紙・まとめ・確認問題・解答の行は数えない
     assert set(marks(cm.check(memo)).values()) <= {"✔", "・"}   # 「・」＝レビュー前（memo_review.md を写していない）
     assert cm.main([str(memo)]) == 0
 
@@ -114,18 +114,19 @@ def test_memo_review_required_only_at_the_end(memo, monkeypatch):
 
 def test_numeric_points_need_sources(memo):
     text = memo.read_text(encoding="utf-8")
-    memo.write_text(text.replace("〔事実7〕", "", 1), encoding="utf-8")
+    memo.write_text(text.replace("1750億個の数、2020年〔事実6〕", "1750億個の数、2020年", 1), encoding="utf-8")
     assert marks(cm.check(memo))["要点の出どころ"] == "△"
 
 
 def test_course_needs_a_recap_slide(memo, monkeypatch):
     """本文6枚以上の講座は、最後にまとめの枚（役割「まとめ」）。睡眠の比べで、まとめの枚が無いと採点者2人が減点した"""
     monkeypatch.delenv("SENSEI_SKIP_EXAMPLE_COPY", raising=False)
-    assert marks(cm.check(memo))["まとめの枚"] == "✘"
     t = memo.read_text(encoding="utf-8")
-    t = re.sub(r"^\| (1[2-5]) \|", lambda m: f"| {int(m.group(1)) + 1} |", t, flags=re.M)
-    row = "| 12 | まとめ | だから（帰結） | 生成AIは次の語を予測し、確かめて使う | — | 何でも知っている → 次の語を予測する / 答えは正しい → もっともらしい誤りがある | — | — | まとめ |\n"
-    t = re.sub(r"^(\| 13 \| 確認問題)", row.replace("\\", "\\\\") + r"\1", t, count=1, flags=re.M)
+    no = re.sub(r"^\| 13 \| まとめ \|.*\n", "", t, count=1, flags=re.M)   # 見本のまとめの枚を外し、あとの枚を詰める
+    no = re.sub(r"^\| (1[4-7]) \|", lambda m: f"| {int(m.group(1)) - 1} |", no, flags=re.M)
+    assert no != t
+    memo.write_text(no, encoding="utf-8")
+    assert marks(cm.check(memo))["まとめの枚"] == "✘"
     memo.write_text(t, encoding="utf-8")
-    assert len(cm.body_rows(t)) == 10   # まとめの枚は本文に数えない
+    assert len(cm.body_rows(t)) == 11   # まとめの枚は本文に数えない
     assert marks(cm.check(memo))["まとめの枚"] == "✔"

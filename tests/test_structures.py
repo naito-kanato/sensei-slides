@@ -78,7 +78,7 @@ def test_plan_column_and_checks(tmp_path):
 def test_examples_have_form_column(root):
     for path, kind in ((root / "examples/zemi/outline.md", "outline"), (root / "examples/course/_work/AI活用講座_01/memo.md", "memo")):
         plan = stc.plan_forms(path.read_text(encoding="utf-8"), kind)
-        assert plan and not any(isinstance(k, tuple) for ks in plan.values() for k in ks), path
+        assert plan and not any(isinstance(k, tuple) and k != ("?", "想定質問") for ks in plan.values() for k in ks), path   # 想定質問の枚は本文の形の外
 
 
 def test_mismatch_when_part_is_missing(tmp_path, png):

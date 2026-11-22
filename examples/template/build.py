@@ -1,9 +1,9 @@
-"""テンプレートを差し替える見本：ゼミの見本（重力波の初観測、テンプレート1）の4枚を、別のテンプレート（既定は テンプレート2）で組む。
+"""テンプレートを差し替える見本：重力波の初観測の4枚（表紙・背景・実験手法・結果）を、別のテンプレート（既定は テンプレート2）で組む。
 
-中身は examples/zemi/build.py の1・2・5・8枚目と同じ。違うのはテンプレートだけ（deck_options の name）。
+中身は型の見本（examples/structures）と同じ題材で、テンプレートだけを変えて見比べる（deck_options の name）。
 本文・図の位置は構造の本文の場所（deck.area）から取る（テンプレート1 の座標のままだと、結論の囲みの構造で下の図が囲みにかかり、
 左の淡い柱の構造で本文が柱からはみ出していた。check_layout の構造の検査で見つけた）。
-図はゼミの見本のものを使うので、先に examples/zemi で figs.py を走らせておく。
+図は型の見本のもの（figs/ と paper_figs/）を使うので、先に examples/structures で figs.py を走らせておく。
 
     python build.py           # テンプレートの見本_スライド.pptx を生成（テンプレート2）
     python build.py テンプレート3  # 同梱のほかのテンプレートで（テンプレート3_テンプレートの見本_スライド.pptx）
@@ -20,16 +20,16 @@ sys.path.insert(0, str(SKILL / "scripts"))
 from slide_profile import author, deck_options, load_profile  # noqa: E402
 from zemi import Deck, wrap_to  # noqa: E402
 
-ZEMI = HERE.parent / "zemi"
-FIG = ZEMI / "figs"
-PAPER = ZEMI / "paper_figs"
+STRUCT = HERE.parent / "structures"
+FIG = STRUCT / "figs"
+PAPER = STRUCT / "paper_figs"   # 論文の図の切り出し（出典は paper_figs/ATTRIBUTION.md）
 NAME = sys.argv[1] if len(sys.argv) > 1 else "テンプレート2"
 OUT = HERE / ("テンプレートの見本_スライド.pptx" if NAME == "テンプレート2" else f"{NAME}_テンプレートの見本_スライド.pptx")
 SRC = "Abbott et al., PRL 116, 061102 (2016)"
 
 P = load_profile(HERE)
 AUTHOR = author(P) or "発表者名"
-deck = Deck(workdir=HERE / "build", **deck_options(P, name=NAME))   # ← ここだけがゼミの見本と違う
+deck = Deck(workdir=HERE / "build", **deck_options(P, name=NAME))   # ← テンプレートを変えるのはここだけ
 A = deck.area                       # 構造ごとの本文の場所（x・top・fig_x、柱の構造では text_right）
 COL = "text_right" in A             # 左の淡い柱の構造：本文は柱の中（1行14字前後）、図は右の白い所
 R = 12.65                           # 図の右端（ページの右の余白 0.4 in の内側）
@@ -50,7 +50,7 @@ def lines(*items):
 
 def beside(s, path, y, caption=None):
     """本文の右に、描いた幅の図を置く。柱の構造では右の白い所の fig_x から。本文の下端・右端に入らなければ縮める
-    （ゼミの見本の図は結論ヘッダーの広い本文の場所に合わせて大きく描いてあるので、本文の狭い構造では少し縮む）。"""
+    （図は結論ヘッダーの広い本文の場所に合わせて大きく描いてあるので、本文の狭い構造では少し縮む）。"""
     with Image.open(path) as im:
         w, h = im.size[0] / im.info["dpi"][0], im.size[1] / im.info["dpi"][0]
     tr = max(b.right for kind, b in s.boxes if kind != "image" and deck.header_bottom - 0.2 < b.y < deck.content_bottom)
@@ -100,6 +100,6 @@ else:
 s.p(fit("ひずみの最大 1.0×10^{−21}\n2台合わせた SN 比（信号と雑音の比）24"))
 s.figure_below(PAPER / "fig1_strain.png", caption=f"（{SRC}, Fig. 1 上段。縦軸はひずみ ×10^{{−21}}）")   # 構造の下端に収める
 
-for sl, note in zip(deck.slides, ["テンプレートの見本（表紙）。", "ゼミの見本の2枚目と同じ中身。", "ゼミの見本の5枚目と同じ中身。", "ゼミの見本の8枚目と同じ中身。"]):
+for sl, note in zip(deck.slides, ["テンプレートの見本（表紙）。", "背景：重力波。", "実験手法：Advanced LIGO 検出器。", "結果①：2台で同じ信号。"]):
     sl.notes(note)
 deck.save(OUT, title="テンプレートの見本", author=AUTHOR)

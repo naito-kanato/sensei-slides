@@ -5,7 +5,7 @@
     python build.py テンプレート3      # ほかの構造で数枚：テンプレート3_型の見本_スライド.pptx（3〜7 も同じ）
     python build.py テンプレート2 深緑  # 構造と色を指定：テンプレート2_深緑_型の見本_スライド.pptx
 
-図はゼミの見本（examples/zemi/figs）と、このフォルダの figs/ のものを使う。shift_before・shift_after は説明のための例（実在の測定ではない）。
+図はこのフォルダの figs/（figs.py が描く）と paper_figs/（論文の図の切り出し）のものを使う。shift_before・shift_after は説明のための例（実在の測定ではない）。
 """
 import sys
 from pathlib import Path
@@ -16,7 +16,8 @@ sys.path.insert(0, str(SKILL / "scripts"))
 from slide_profile import deck_options, load_profile  # noqa: E402
 from zemi import Deck  # noqa: E402
 
-ZFIG = HERE.parent / "zemi" / "figs"
+ZFIG = HERE / "figs"
+PAPER = HERE / "paper_figs"   # 論文の図の切り出し（出典は paper_figs/ATTRIBUTION.md）
 FIG = HERE / "figs"
 NAME = sys.argv[1] if len(sys.argv) > 1 else "テンプレート1"
 COLOR = sys.argv[2] if len(sys.argv) > 2 else None
@@ -30,7 +31,7 @@ R = 12.65   # 図の右端（ページの右の余白 0.4 in の内側）
 
 
 def zfig(s, name, y):
-    """ゼミの見本の図を、本文の右に描いた幅のまま置く（ゼミの見本の図は結論ヘッダーの本文の場所に合わせて幅 5.6〜6 in で描いてある）。
+    """figs/ の図を、本文の右に描いた幅のまま置く（図は結論ヘッダーの本文の場所に合わせて幅 5.6〜6 in で描いてある）。
     柱の構造では右の白い所の fig_x から。本文の下端・右端に入らなければ縮める。"""
     from PIL import Image
     path = name if isinstance(name, Path) else ZFIG / name
@@ -68,7 +69,7 @@ def full():
     s.develop(("ひずみ：", ["1.0 × 10^{-21}"]), "腕 4 km の長さの変化\n{r:約 4 × 10^{-18} m}")
     s.develop("2つの検出器で\n同じ波形", "{r:装置の雑音では}\n{r:説明できない}")
     s.develop("周波数 35 Hz", "250 Hz まで\n約 0.2 s で上昇")
-    b = zfig(s, FIG / "same_wave.png", y=2.0)   # 置く幅で描いた図（ゼミの見本の timeshift は縦に長く、ここでは縮んで文字が 14pt を下回る）
+    b = zfig(s, FIG / "same_wave.png", y=2.0)   # 置く幅で描いた図（figs/timeshift は縦に長く、ここでは縮んで文字が 14pt を下回る）
     s.caption(b, "（説明のための例）")
 
     s = deck.slide(T, summary="条件の場合分け：条件を太字、説明を字下げして灰色の囲みに")
@@ -157,7 +158,7 @@ def full():
     # ---- 図が主役：左に大きな図、右の細い列に補足（「左に文・右に図」が続くときの代わりにも）
     s = deck.slide(T, summary="図が主役：左に図を大きく、右に図の読み方")
     s.heading("図が主役（s.figure_main）")
-    b = s.figure_main(HERE.parent / "zemi" / "paper_figs" / "fig2_waveform_lower.png",
+    b = s.figure_main(PAPER / "fig2_waveform_lower.png",
                       caption="（Abbott et al., PRL 116, 061102 (2016), Fig. 2 の一部）")
     s.block("上：ひずみの波形", ["灰：観測から復元", "赤：一般相対論の計算"], then="2つがほぼ重なる")
     s.block("下：速さと間隔", ["緑：相対速度（光速が1）", "黒：中心の間隔", "合体の直前に光速の半分超"], gap=0)
@@ -166,7 +167,7 @@ def full():
     from PIL import Image
     crop = HERE / "build" / "q_strain_right.png"
     crop.parent.mkdir(parents=True, exist_ok=True)
-    with Image.open(HERE.parent / "zemi" / "paper_figs" / "fig1_strain.png") as im:   # 切り出すだけ（描き足さない）
+    with Image.open(PAPER / "fig1_strain.png") as im:   # 切り出すだけ（描き足さない）
         im.crop((im.width * 53 // 100, 0, im.width, im.height)).save(crop)
     s = deck.slide(T)
     s.heading("想定質問（s.qa_pairs。図は4つ目）")

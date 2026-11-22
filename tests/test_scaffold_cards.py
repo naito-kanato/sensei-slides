@@ -16,25 +16,25 @@ def work(root, tmp_path):
 
 def test_cards_for_body_slides(work):
     names = sorted(p.name for p in (work / "cards").glob("[0-9][0-9].md"))
-    assert names[0] == "02.md" and "04.md" not in names and "01.md" not in names   # 表紙・論文の表紙はカードなし
-    c = (work / "cards" / "06.md").read_text(encoding="utf-8")
-    assert "この枚の青帯：差は陽子より小さく" in c
-    assert "前の枚（5）の青帯" in c and "次の枚（7）の青帯" in c                     # 前後のつながり
+    assert names[0] == "02.md" and "01.md" not in names and len(names) == 16   # 表紙はカードなし（見本に論文の表紙は無い）
+    c = (work / "cards" / "04.md").read_text(encoding="utf-8")
+    assert "この枚の青帯：低い周波数は地面の揺れ" in c
+    assert "前の枚（3）の青帯" in c and "次の枚（5）の青帯" in c                     # 前後のつながり
     assert "しかし（壁）" in c and "ここに壁があります" in c                          # 前の枚からの書き方
     common = (work / "cards" / "00_共通.md").read_text(encoding="utf-8")
-    assert "筋の問い（3枚目）" in common and "筋の問い（" not in c and "00_共通.md" in c   # どのカードにも同じ決まりは共通の紙に1回だけ
-    assert "figs/s06.png" in c and 'summary="差は陽子より小さく' in c                 # 図の名前と骨組み
+    assert "筋の問い（2枚目）" in common and "筋の問い（" not in c and "00_共通.md" in c   # どのカードにも同じ決まりは共通の紙に1回だけ
+    assert "figs/s04.png" in c and 'summary="低い周波数は地面の揺れ' in c             # 図の名前と骨組み
 
 
 def test_merge_puts_parts_back(work):
-    (work / "parts" / "06.py").write_text(
-        's = deck.slide("実験手法", summary="差は陽子より小さく、腕の中の光を 100 kW に強める")\ns.p("書いた本文")\n', encoding="utf-8")
-    (work / "parts" / "06.md").write_text("## 6\nしかし、ここに壁があります。\n", encoding="utf-8")
+    (work / "parts" / "04.py").write_text(
+        's = deck.slide("実験手法", summary="低い周波数は地面の揺れ、高い周波数は光の粒の雑音が邪魔をする")\ns.p("書いた本文")\n', encoding="utf-8")
+    (work / "parts" / "04.md").write_text("## 4\nしかし、ここに壁があります。\n", encoding="utf-8")
     assert scaffold.main([str(work), "--merge"]) == 0
     b = (work / "build.py").read_text(encoding="utf-8")
     assert 's.p("書いた本文")' in b and b.count("deck.slide(") >= 12
     n = (work / "notes.md").read_text(encoding="utf-8")
-    assert "## 6\nしかし、ここに壁があります。" in n and "## 7" in n
+    assert "## 4\nしかし、ここに壁があります。" in n and "## 5" in n
     compile(b, "build.py", "exec")
 
 
@@ -56,16 +56,22 @@ def test_underline_marker_becomes_markup():
 
 
 def test_table_slide_gets_no_figure_file(work):
-    c = (work / "cards" / "14.md").read_text(encoding="utf-8")
-    assert "s14.png" not in c and "s.table" in c
+    c = (work / "cards" / "15.md").read_text(encoding="utf-8")   # 図が「—」の枚（まとめ）
+    assert "s15.png" not in c and "s.table" in c
     assert "1行は20字まで" in (work / "cards" / "00_共通.md").read_text(encoding="utf-8")
 
 
-def test_points_go_to_the_slots_of_each_form(work):
-    c = (work / "cards" / "09.md").read_text(encoding="utf-8")   # ラベル・展開：「→」の要点は展開へ、「見出し：」の要点はラベルへ
-    assert 's.develop("始まり 35 Hz", "{r:250 Hz まで' in c   # 見本の構成案の文言は手直しで変わるので、頭だけ見る
+def test_points_go_to_the_slots_of_each_form(root, tmp_path):
+    # 見本にラベル・展開の枚が無いので、3枚目（式の注釈・展開）の形をラベル・展開に変えて組む
+    text = (root / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
+    assert text.count("| 式の注釈・展開 |") == 1
+    (tmp_path / "outline.md").write_text(text.replace("| 式の注釈・展開 |", "| ラベル・展開 |"), encoding="utf-8")
+    shutil.copy2(root / "examples" / "zemi" / "outline_review.md", tmp_path / "outline_review.md")
+    assert scaffold.main([str(tmp_path)]) == 0
+    c = (tmp_path / "cards" / "03.md").read_text(encoding="utf-8")   # ラベル・展開：「→」の要点は展開へ、「見出し：」の要点はラベルへ
+    assert 's.develop("腕の差", "{r:明暗が h に比例' in c   # 見本の構成案の文言は手直しで変わるので、頭だけ見る
     assert any(line.startswith('s.block("') and "：" in line for line in c.splitlines())
-    assert not any("35 Hz" in line for line in c.splitlines() if line.startswith("s.block"))   # 同じ要点を2つの形に入れない
+    assert not any("腕の差" in line for line in c.splitlines() if line.startswith("s.block"))   # 同じ要点を2つの形に入れない
 
 
 def test_cards_share_excerpt_files(root, tmp_path):
@@ -89,7 +95,7 @@ def test_card_has_notes_frame_and_keep_numbers_rule(work):
     common = (work / "cards" / "00_共通.md").read_text(encoding="utf-8")   # 原稿の型と数値の決まりは共通の紙に
     assert "①導入" in common and "②図の読み方" in common and "⑤次の枚へのつなぎ" in common
     assert "不等号" in common and "変えない" in common
-    assert "〔要旨〕" in c                                   # 要点の出どころはカードに見せる
+    assert "〔II〕" in c                                     # 要点の出どころはカードに見せる
     assert "〔" not in (work / "build.py").read_text(encoding="utf-8")   # 骨組み（スライド）には出さない
 
 
@@ -101,13 +107,13 @@ def test_course_card_lists_fact_rows(root, tmp_path):
         shutil.copy2(src / f, w / f)
     assert scaffold.main([str(w)]) == 0
     c = (w / "cards" / "07.md").read_text(encoding="utf-8")
-    assert "この枚の要点が使う事実" in c and "事実7：" in c and "55%" in c
+    assert "この枚の要点が使う事実" in c and "事実7：" in c and "利用者の意図に沿うとは限らず" in c
 
 
 def test_try_one_part_reports_plan_checks(work, capsys):
     """書き手が部品のソースを読まずに自分の1枚を確かめる道具（scaffold.py --try NN）。描かず、作業フォルダに残さない。"""
     (work / "parts" / "06.py").write_text(
-        's = deck.slide("実験手法", summary="差は陽子より小さく、腕の中の光を 100 kW に強める")\ns.p("書いた本文")\n', encoding="utf-8")
+        's = deck.slide("実験方法", summary="2台の間は光で 10 ms、そろって揺れたものだけを候補にする")\ns.p("書いた本文")\n', encoding="utf-8")
     scaffold.main([str(work), "--try", "6"])
     out = capsys.readouterr().out
     assert "結論の一文：ある" in out and "本文の字数" in out
@@ -149,17 +155,12 @@ def test_producer_split_at_eight_cards(work):
 
 def test_recap_role_is_built_from_the_story_table(root, tmp_path):
     """役割「まとめ」の枚は、筋の表の問いと答えを入れた s.recap で組む（まとめの形を決めて縛る）。"""
-    import re as _re
     import story
     text = (root / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
-    lines = text.splitlines()
-    i = next(k for k, l in enumerate(lines) if l.startswith("| 14 "))
-    cells = lines[i].split("|")
-    role_col = next(k for k, h in enumerate(next(l for l in lines if l.startswith("| 番号")).split("|")) if h.strip() == "役割")
-    cells[role_col] = " まとめ "
-    lines[i] = "|".join(cells)
-    (tmp_path / "outline.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    shutil.copy2(root / "examples" / "zemi" / "outline_review.md", tmp_path / "outline_review.md")
+    row = next(l for l in text.splitlines() if l.startswith("| 15 "))
+    assert row.rstrip().rstrip("|").rsplit("|", 1)[-1].strip() == "まとめ"   # 見本の15枚目が役割「まとめ」（最後の列）
+    for f in ("outline.md", "outline_review.md"):
+        shutil.copy2(root / "examples" / "zemi" / f, tmp_path / f)
     assert scaffold.main([str(tmp_path)]) == 0
     py = (tmp_path / "build.py").read_text(encoding="utf-8")
     ans = story.story_table(text)["答え"][0]

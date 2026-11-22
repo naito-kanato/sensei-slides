@@ -20,12 +20,12 @@ def test_course_example_follows_its_plan(built):
     work = built / "examples" / "course" / "_work" / "AI活用講座_01"
     prs = Presentation(built / "examples" / "course" / "AI活用講座" / "01_生成AIは何をしているか_スライド.pptx")
     plan = fp.plan_from_text((work / "memo.md").read_text(encoding="utf-8"), "memo")
-    assert fp.actual_kinds(prs.slides[3]) == {"流れ図"}                     # 4枚目：学習の2段階
-    assert "図" in fp.actual_kinds(prs.slides[1])                          # 2枚目：棒グラフ
-    assert fp.mismatches(prs, plan, skip={1, 12, 13, 14, 15}) == []
-    plan[2] = "—"                                                           # 案から図を消すと…（図は残っていてよい）
-    plan[4] = "—"                                                           # 案に無い流れ図は見つかる
-    assert fp.mismatches(prs, plan, skip={1, 12, 13, 14, 15}) == [(4, "図の案に無い流れ図")]
+    assert fp.actual_kinds(prs.slides[4]) == {"流れ図"}                     # 5枚目：1つ選んで足す流れ
+    assert "図" in fp.actual_kinds(prs.slides[2])                          # 3枚目：棒グラフ
+    assert fp.mismatches(prs, plan, skip={1, 14, 15, 16, 17}) == []
+    plan[3] = "—"                                                           # 案から図を消すと…（図は残っていてよい）
+    plan[5] = "—"                                                           # 案に無い流れ図は見つかる
+    assert fp.mismatches(prs, plan, skip={1, 14, 15, 16, 17}) == [(5, "図の案に無い流れ図")]
 
 
 def test_too_many_flows_need_a_reason():
