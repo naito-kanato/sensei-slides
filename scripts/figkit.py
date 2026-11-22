@@ -207,6 +207,41 @@ def text_on_lines(f, gap_pt=TEXT_GAP_PT):
     return hits
 
 
+def raster_font(f):
+    """図の中に貼った画像（imshow。資料の図の切り出しなど）の文字の大きさ（pt、図を描いた大きさで）。いちばん小さいもの。無ければ None。
+    MinFontPt は matplotlib の文字だけなので、貼った論文の図の小さい字が隠れていた（見本のゼミで、図に大きな注記を足した論文の図の字が
+    投影で読めず、採点者2人が減点した）。save が PNG に RasterFontPt として書き、描画の検査が置いた大きさで見る。"""
+    imgs = [im for ax in f.axes for im in ax.get_images()]
+    if not imgs:
+        return None
+    try:
+        import io
+        from PIL import Image
+        from check_layout import glyph_pt
+    except Exception:   # noqa: BLE001
+        return None
+    f.canvas.draw()
+    out = []
+    for im in imgs:
+        try:
+            a = np.asarray(im.get_array())
+            if a.ndim < 2 or min(a.shape[:2]) < 40:
+                continue
+            if a.dtype.kind == "f":
+                a = (np.clip(a, 0, 1) * 255).astype("uint8")
+            h_in = im.get_window_extent().height / f.dpi
+            if h_in < 0.8:
+                continue
+            buf = io.BytesIO()
+            Image.fromarray(a.astype("uint8")).save(buf, "PNG")
+            pt = glyph_pt(buf.getvalue(), h_in)
+        except Exception:   # noqa: BLE001
+            continue
+        if pt is not None:
+            out.append(pt)
+    return min(out) if out else None
+
+
 def save(f, path, tight=True):
     from pathlib import Path
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -223,6 +258,9 @@ def save(f, path, tight=True):
             if leg is not None:
                 free += [t.get_text().strip() for t in leg.get_texts() if t.get_text().strip()]
         kw["metadata"]["FigTexts"] = " | ".join(free)[:2000]
+        rf = raster_font(f)
+        if rf is not None:
+            kw["metadata"]["RasterFontPt"] = f"{rf:.1f}"
     if tight:
         f.savefig(path, bbox_inches="tight", pad_inches=0.06, **kw)
     else:

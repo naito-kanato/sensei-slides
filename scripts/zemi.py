@@ -2009,9 +2009,14 @@ class Slide:
         """置いた図の中のいちばん小さい字（figkit.save が画像に書いた MinFontPt × 縮尺）が、描画の検査の下限より小さければ知らせる。"""
         try:
             with Image.open(path) as im:
-                mf = float(im.info.get("MinFontPt") or im.text.get("MinFontPt"))
-                px, dpi = im.size[0], (im.info.get("dpi") or (0, 0))[0]
-        except Exception:   # noqa: BLE001  記録の無い画像（資料の切り出し・写真）は描画の検査が画像から測る
+                meta = {**getattr(im, "text", {}), **{k: v for k, v in im.info.items() if isinstance(v, str)}}
+                px, py, dpi = im.size[0], im.size[1], (im.info.get("dpi") or (0, 0))[0]
+        except Exception:   # noqa: BLE001
+            return
+        self._raster_font(pic, path, w, meta, px, py, dpi)
+        try:
+            mf = float(meta.get("MinFontPt"))
+        except Exception:   # noqa: BLE001  記録の無い画像（資料の切り出し・写真）は上で画像から測った
             return
         drawn = px / dpi if dpi and dpi >= 100 else None
         eff = mf * (w / drawn if drawn else 1.0)
@@ -2019,6 +2024,25 @@ class Slide:
         if eff < lim - 0.25:
             self.deck._notes.append((self._no(), f"図の文字が小さい（{pic.name}：いちばん小さい字が置いた大きさで {eff:.1f}pt < {lim:g}pt）"
                                                   " → 置く幅で描き直す（fig() の幅を置く幅に、目盛り・注記は 14pt 以上）"))
+
+    def _raster_font(self, pic, path, w, meta, px, py, dpi):
+        """資料の図（切り出しの画像、または figkit の図に貼った切り出し）の文字が、置いた大きさで描画の検査の下限（12pt）より小さければ知らせる。
+        figkit の図に貼ったものは save が書いた RasterFontPt × 縮尺、記録の無い画像は画像から測る。"""
+        lim = _rule("RASTER_FONT_MIN")
+        try:
+            if meta.get("RasterFontPt"):
+                drawn = px / dpi if dpi and dpi >= 100 else None
+                pt = float(meta["RasterFontPt"]) * (w / drawn if drawn else 1.0)
+            elif not meta.get("MinFontPt"):
+                from check_layout import glyph_pt
+                pt = glyph_pt(Path(path).read_bytes(), w * py / px)
+            else:
+                return
+        except Exception:   # noqa: BLE001
+            return
+        if pt is not None and pt < lim:
+            self.deck._notes.append((self._no(), f"資料の図の文字が小さい（{pic.name}：置いた大きさで約 {pt:.0f}pt < {lim:g}pt）"
+                                                  " → 話すパネルだけを切り出して大きく置く（元の図の1.5倍ほど。図が主役の枠）。読ませたい所は自分の大きな注記で"))
 
     def _body(self):
         """本文の図形：[(要素, Box, 種類, 名前)]。上の見出しの領域・結論の置き場・図に重ねる注目の印は除く。"""

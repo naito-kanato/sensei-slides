@@ -531,7 +531,8 @@ def notes_where_mismatch(text, figs, W):
 
 
 def raster_fonts(pptx_path):
-    """スライド番号 → [(図形名, 測った文字の大きさ pt)]：figkit の記録（MinFontPt）が無い、高さ1in以上の画像（資料の図・写真）だけ。"""
+    """スライド番号 → [(図形名, 測った文字の大きさ pt)]：figkit の記録（MinFontPt）が無い、高さ1in以上の画像（資料の図・写真）と、
+    figkit の図に貼った資料の図（RasterFontPt）。"""
     out = {}
     try:
         from PIL import Image
@@ -550,9 +551,15 @@ def raster_fonts(pptx_path):
                 if h_in < FIG_MIN_H / PT:
                     continue
                 with Image.open(io.BytesIO(sh.image.blob)) as im:
-                    if im.info.get("MinFontPt") or getattr(im, "text", {}).get("MinFontPt"):
-                        continue
-                pt = glyph_pt(sh.image.blob, h_in)
+                    meta = {**getattr(im, "text", {}), **{k: v for k, v in im.info.items() if isinstance(v, str)}}
+                    px_w, dpi = im.size[0], (im.info.get("dpi") or (0, 0))[0]
+                if meta.get("RasterFontPt"):   # figkit の図に貼った資料の図（save が図を描いた大きさで測った）× 縮尺
+                    drawn = px_w / dpi if dpi and dpi >= 100 else None
+                    pt = float(meta["RasterFontPt"]) * (Emu(sh.width).inches / drawn if drawn else 1.0)
+                elif meta.get("MinFontPt"):
+                    continue
+                else:
+                    pt = glyph_pt(sh.image.blob, h_in)
             except Exception:
                 continue
             if pt is not None:
