@@ -41,10 +41,12 @@ def test_new_and_old_label_names():
 
 
 def test_deep_rows_only_for_experts(tmp_path):
-    # 深は、かなり知っている聞き手のときだけ1枚に1つまで。初学者・多少知っているでは書き手に渡さない
+    # 深は、かなり知っている聞き手のときだけ1枚に1つまで。初学者・多少知っている（前の版の「初学者・多少知っている」も）では書き手に渡さない
     rows = ROWS + "- [5] 「K ⇒ L」｜論拠｜深｜補う前提：Kの背景｜使う所：なし｜架け方：原稿の ※\n"
-    for fam, want in (("初学者・多少知っている", {}), ("かなり知っている", {5: ["Iの背景"]})):
-        d = tmp_path / fam
+    cases = (("初学者", {}), ("多少知っている（分野の入門の授業まで）", {}), ("初学者・多少知っている", {}),
+             ("かなり知っている（その分野が専門）", {5: ["Iの背景"]}))
+    for i, (fam, want) in enumerate(cases):
+        d = tmp_path / str(i)
         d.mkdir()
         (d / "outline_review.md").write_text(rows, encoding="utf-8")
         (d / "outline.md").write_text(f"聞き手のテーマへの詳しさ：{fam}\n", encoding="utf-8")

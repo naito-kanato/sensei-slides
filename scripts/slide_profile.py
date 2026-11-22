@@ -26,7 +26,13 @@ BUNDLED_DIR = SKILL / "assets" / "templates"   # 同梱のテンプレート（�
 BUNDLED = BUNDLED_DIR / "テンプレート1.pptx"   # 名前を言わないときのテンプレート
 
 # 聞き手のテーマへの詳しさ → 丁寧さ（推論距離のつまみ。references/inference-distance.md 1節）
-FAMILIARITY = {"初学者": 0, "多少知っている": 0, "かなり知っている": 1}   # 選択肢は「初学者・多少知っている」と「かなり知っている」の2つ（前の3つの言葉も読める）
+FAMILIARITY = {"初学者": 0, "多少知っている": 0, "かなり知っている": 1}   # 3段。丁寧さは 0・0・1（詳しさで二重に割り引かない）
+# 段ごとの聞き手の像の一言。前提知識の一覧に無い語は、この像の聞き手が知っているかで決める（inference-distance.md 1節）
+FAMILIARITY_IMAGE = {"初学者": "そのテーマの分野もほとんど知らない（高校までと日常の知識）",
+                     "多少知っている": "その分野の基礎（大学の入門の授業くらい）は知っているが、テーマの小分野は知らない",
+                     "かなり知っている": "その分野が専門"}
+FAMILIARITY_OLD = "初学者・多少知っている"   # 前の版の1つの選択肢。多少知っているとして読む
+FAMILIARITY_CHOICES = "／".join(f"{k}＝{v}" for k, v in FAMILIARITY_IMAGE.items())
 FAMILIARITY_KEY = "聞き手のテーマへの詳しさ"
 # 推論距離を測るだけにする設定（監査して穴を記録するが、手当てはしない。references/inference-distance.md 8節）
 MEASURE_KEY = "推論距離"
@@ -147,19 +153,25 @@ def author(p):
 
 
 def politeness(p):
-    """丁寧さ：一覧に書いてあればその値、無ければ聞き手のテーマへの詳しさから（初学者・多少知っている 0・かなり知っている 1）。"""
+    """丁寧さ：一覧に書いてあればその値、無ければ聞き手のテーマへの詳しさから（初学者 0・多少知っている 0・かなり知っている 1）。"""
     v = option(p, "丁寧さ")
     if v and re.search(r"\d", v):
         return int(re.search(r"\d", v).group(0))
     return level_of(option(p, FAMILIARITY_KEY))
 
 
+def familiarity_label(familiarity):
+    """詳しさの値 → 段の名前（初学者／多少知っている／かなり知っている）。後ろに像の一言が付いていてもよい（最初に出る段の名前を取る）。
+    前の版の「初学者・多少知っている」は多少知っているとして読む。分からなければ None。"""
+    v = (familiarity or "").replace(FAMILIARITY_OLD, "多少知っている")
+    hits = [(v.find(k), k) for k in FAMILIARITY if k in v]
+    return min(hits)[1] if hits else None
+
+
 def level_of(familiarity):
     """詳しさの言葉 → 丁寧さ。分からなければ None。"""
-    for k, v in FAMILIARITY.items():
-        if familiarity and k in familiarity:
-            return v
-    return None
+    k = familiarity_label(familiarity)
+    return None if k is None else FAMILIARITY[k]
 
 
 def bundled_templates():
@@ -220,8 +232,8 @@ def template(p, name=None, place_name=None, _resolved=False):
 
 # 始めるときに聞く一覧：(項目, 既定値, 選べる値・説明, 必須か)。kind＝ゼミ／講座で出す行が変わる
 OPTIONS = [
-    (FAMILIARITY_KEY, "", "初学者・多少知っている／かなり知っている（丁寧さがこれで決まる）", True),
-    ("丁寧さ", "", "詳しさから（初学者・多少知っている 0・かなり知っている 1）。1枚に許す「あとで使う前提」の穴の数。変えてもよい", False),
+    (FAMILIARITY_KEY, "", FAMILIARITY_CHOICES + "（聞き手の像と丁寧さがこれで決まる。像の一言を添えてよい）", True),
+    ("丁寧さ", "", "詳しさから（初学者 0・多少知っている 0・かなり知っている 1）。1枚に許す「あとで使う前提」の穴の数。変えてもよい", False),
     (MEASURE_KEY, "直す", "直す（監査して、要の穴に手当てする）／測るだけ（監査して穴を記録するが、手当てはしない。手当ての効きを比べるとき用）", False),
     (LANG_KEY, "日本語", "既定は依頼文の言語（英語の依頼なら英語）。日本語／英語／ほかの言語（スライド・原稿・確認問題・原稿のページをその言語で作る。"
      "構成案・設計メモの説明と担当への依頼は日本語のまま。表のタイトル・●見出し・結論の列と確認問題の文はその言語で書く）", False),

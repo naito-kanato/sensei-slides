@@ -10,8 +10,9 @@
     - 上限はゆるめ：発表時間÷1.2分（20分なら16枚）。超えたら △。範囲を絞るか、1枚にまとめられる所をまとめる
     - どうしても外れるなら、outline.md に「枚数の理由：…」と書く。書いてあれば ✔
   発表時間が書いていない（ひとりゼミなど）ときは数えない。
-  前提と丁寧さ：必須の「聞き手のテーマへの詳しさ（初学者・多少知っている／かなり知っている）」と「聞き手の前提知識（知っている＝…／知らない＝…）」が
-    書いてある。無ければ ✘（小さな依頼でも。聞いて書くまで先へ進まない）。丁寧さは、書いていなければ詳しさから（初学者・多少知っている 0、かなり知っている 1）
+  前提と丁寧さ：必須の「聞き手のテーマへの詳しさ（初学者／多少知っている／かなり知っている。像の一言を添える）」と「聞き手の前提知識（知っている＝…／知らない＝…）」が
+    書いてある。無ければ ✘（小さな依頼でも。聞いて書くまで先へ進まない）。丁寧さは、書いていなければ詳しさから（初学者 0・多少知っている 0・かなり知っている 1）。
+    前の版の「初学者・多少知っている」は多少知っているとして読む
     （構成案のレビューの推論距離の監査が、これを前提にする。references/inference-distance.md）
   推論距離の手当て：構成案のレビューの結果（outline.md と同じフォルダの outline_review.md）の
     穴の行（「[番号] 「A ⇒ B」｜種類｜要否｜…」、穴1つに1行。要否は 筋・語・あと・像・深 のうち当たるもの全部）で、要1・要2・要4があるスライドと、要3が丁寧さより多いスライドが、
@@ -81,14 +82,20 @@ def knowledge(text: str) -> bool:
     return bool(re.search(r"知っている\s*[＝=]\s*\S", text) and re.search(r"知らない\s*[＝=]\s*\S", text))
 
 
-def familiarity(text: str):
-    """聞き手のテーマへの詳しさ（初学者・多少知っている・かなり知っている）。オプションの表か「聞き手のテーマへの詳しさ：…」の行から。無ければ None。"""
-    from slide_profile import FAMILIARITY, read_options, FAMILIARITY_KEY
+def familiarity_value(text: str) -> str:
+    """「聞き手のテーマへの詳しさ」の値（段の名前と像の一言）。オプションの表か「聞き手のテーマへの詳しさ：…」の行から。無ければ空。"""
+    from slide_profile import read_options, FAMILIARITY_KEY
     v = read_options(text).get(FAMILIARITY_KEY, "")
     if not v:
         m = re.search(FAMILIARITY_KEY + r"\s*[：:|]\s*([^\n|]+)", text)
         v = m.group(1) if m else ""
-    return next((k for k in FAMILIARITY if k in v), None)
+    return v
+
+
+def familiarity(text: str):
+    """聞き手のテーマへの詳しさの段（初学者・多少知っている・かなり知っている）。前の版の「初学者・多少知っている」は多少知っている。無ければ None。"""
+    from slide_profile import familiarity_label
+    return familiarity_label(familiarity_value(text))
 
 
 def politeness(text: str):
@@ -186,16 +193,17 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
     講座の設計メモでも使う（review="memo_review.md"、what="設計メモ"）。"""
     REVIEW = review  # noqa: N806（この関数の中だけ、講座の memo_review.md に読み替える）
     res = []
-    from slide_profile import FAMILIARITY
+    from slide_profile import FAMILIARITY, FAMILIARITY_OLD
     fam = familiarity(text)
+    old = FAMILIARITY_OLD in familiarity_value(text)
     lv = politeness(text)
     if lv is None and fam is not None:
-        lv = FAMILIARITY[fam]          # 丁寧さは、書いていなければ詳しさから（初学者・多少知っている 0・かなり知っている 1）
-    miss = [w for w, ok in (("聞き手のテーマへの詳しさ（初学者・多少知っている／かなり知っている）", fam is not None),
+        lv = FAMILIARITY[fam]          # 丁寧さは、書いていなければ詳しさから（初学者 0・多少知っている 0・かなり知っている 1）
+    miss = [w for w, ok in (("聞き手のテーマへの詳しさ（初学者／多少知っている／かなり知っている）", fam is not None),
                             ("聞き手の前提知識（知っている＝…／知らない＝…）", knowledge(text))) if not ok]
     res.append(("✘" if miss else "✔", "前提と丁寧さ",
                 f"必須の {'・'.join(miss)} が無い。聞いて書くまで先へ進まない（推論距離の監査の前提。オプションの表か設計メモの1節に書く）" if miss
-                else f"詳しさ {fam}・前提知識あり・丁寧さ {lv}"))
+                else f"詳しさ {fam}{'（前の版の「初学者・多少知っている」を多少知っているとして読んだ）' if old else ''}・前提知識あり・丁寧さ {lv}"))
     rv = outline.with_name(REVIEW)
     if not rv.exists():
         if not require_review:   # 推論距離の担当が設計のあとに見る（next_step が起動を案内する）。抜けているのが見えるように1行出す

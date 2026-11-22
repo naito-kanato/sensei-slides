@@ -47,6 +47,18 @@ def test_course_memo_gives_politeness_from_familiarity(tmp_path):
     assert sp.politeness(p) == 0 and sp.author(p) == ""
 
 
+def test_familiarity_has_three_levels_with_an_image():
+    """詳しさは3段で、丁寧さは 0・0・1。後ろに像の一言が付いても段を読み、前の版の「初学者・多少知っている」は多少知っているとして読む。"""
+    assert [sp.level_of(k) for k in ("初学者", "多少知っている", "かなり知っている")] == [0, 0, 1]
+    assert sp.familiarity_label("多少知っている（物理の学部の授業まで。テーマの小分野は知らない）") == "多少知っている"
+    assert sp.familiarity_label("初学者（高校までと日常の知識。かなり知っている人の言葉は使わない）") == "初学者"
+    assert sp.familiarity_label("かなり知っている（その分野が専門）") == "かなり知っている"
+    assert sp.familiarity_label("初学者・多少知っている") == "多少知っている"
+    assert sp.familiarity_label("") is None and sp.level_of("ふつう") is None
+    row = next(l for l in sp.options_table({}, {}).splitlines() if l.startswith("| 聞き手のテーマへの詳しさ"))
+    assert all(f"{k}＝{v}" in row for k, v in sp.FAMILIARITY_IMAGE.items())   # 選べる値に段ごとの像の一言
+
+
 def test_no_list_gives_empty_values(tmp_path):
     p = sp.load_profile(tmp_path)
     assert sp.author(p) == "" and sp.politeness(p) is None

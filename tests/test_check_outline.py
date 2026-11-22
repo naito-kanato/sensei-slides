@@ -162,6 +162,21 @@ def test_review_file_required_only_at_the_end(outline):
     assert marks(outline, require_review=True)["推論距離の手当て"] == "✘"
 
 
+def test_familiarity_level_and_image(reviewed):
+    """詳しさの行は段の名前と像の一言。前の版の「初学者・多少知っている」は多少知っているとして読み、そう知らせる。"""
+    msg = {item: m for _, item, m in co.check(reviewed)}["前提と丁寧さ"]
+    assert "詳しさ 多少知っている（前の版" in msg
+    s = reviewed.read_text(encoding="utf-8")
+    for val, fam in (("初学者（高校までと日常の知識）", "初学者"), ("多少知っている（物理の学部の授業まで）", "多少知っている"),
+                     ("かなり知っている（その分野が専門）", "かなり知っている")):
+        t, n = re.subn(r"(\|\s*聞き手のテーマへの詳しさ\s*\|)[^|\n]*\|", rf"\g<1> {val} |", s, count=1)
+        assert n == 1
+        reviewed.write_text(t, encoding="utf-8")
+        assert co.familiarity(t) == fam
+        r = {item: (mk, m) for mk, item, m in co.check(reviewed)}["前提と丁寧さ"]
+        assert r[0] == "✔" and f"詳しさ {fam}・" in r[1] and "前の版" not in r[1]
+
+
 def test_missing_familiarity_blocks(reviewed):
     """必須の「聞き手のテーマへの詳しさ」が無いと、小さな依頼でも ✘（先へ進めない）。"""
     s = reviewed.read_text(encoding="utf-8")

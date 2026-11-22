@@ -119,6 +119,7 @@ def test_start_gives_the_main_everything_once(capsys):
     out = capsys.readouterr().out
     assert "Claude Code：" in out and "sensei-slides-worker" in out
     assert "① 詳しさ" in out and "| 聞き手のテーマへの詳しさ | 初学者 |" in out
+    assert "初学者／多少知っている／かなり知っている" in out                       # 詳しさは3段
     assert "brief.py 地図の担当" in out and "sleep" in out
     assert len(out.encode("utf-8")) < 27000
     assert next_step.main(["--start", "発表"]) == 0
