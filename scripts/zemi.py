@@ -2398,7 +2398,9 @@ class Deck:
         """表紙／区切りスライド（左上の縦棒だけのレイアウト）。lines は節番号付きの題目を1行ずつ。
         論文の表紙（過去の論文紹介のデッキの形）は lines に英題（2行まで）、subtitle に和訳（28pt）、author に著者名（20pt、\\n で2行）。
         元デッキの英題は太字でないので bold=False にする。
-        roadmap（講座）は、問いから答えまでの段 ["A", "B", "C"]。題の下に「今日の道筋：A → B → C」を1行（入らなければ2行）で置く。"""
+        roadmap は、問いから答えまでの段 ["A", "B（Bが答える問い）", "C"]。題の下に、段を点と細い線でつないだ道筋を置く
+        （点の下に段の名前、その下に（）の中の問いを小さく）。段の名前が本文の枚の節（slide の title か section）と同じなら、
+        その枚の上の小見出しが「A › B › C」の進み具合になり、今の段だけ濃くなる（_breadcrumb）。"""
         slide = self.prs.slides.add_slide(self.layout_title)
         for ph in list(slide.placeholders):  # 空のタイトル枠は使わない（元デッキ同様テキストボックスで置く）
             ph._element.getparent().remove(ph._element)
@@ -2433,21 +2435,70 @@ class Deck:
             b = s.text(cx - sw / 2, y, subtitle, size=28, align="c", w=sw)
             y = b.bottom + 0.3
         if roadmap:
-            head = "今日の道筋：" if self.lang == "日本語" else "Today: "
-            line = head + " → ".join(roadmap)
-            span = x1 - x0 - 0.8
-            if text_width_pt(parse_markup(line), 20) / 72.0 + 0.3 > span:   # 入らなければ段の区切りで2行に
-                k = -(-len(roadmap) // 2)
-                line = head + " → ".join(roadmap[:k]) + " →\n" + " → ".join(roadmap[k:])
-            rw = min(span, max(text_width_pt(l, 20) for l in split_lines(parse_markup(line))) / 72.0 + 0.3)
-            b = s.text(cx - rw / 2, y, line, size=20, color=C.TEXT, align="c", w=rw, name="道筋")
-            y = b.bottom + 0.1
+            y = self._roadmap_strip(s, roadmap, x0, x1, y + 0.1) + 0.1
         if author:
             aw = text_width_pt(parse_markup(author), 20) / 72.0 + 0.3
             s.text(cx - aw / 2, max(y + 0.6, 4.98), author, size=20, align="c", w=aw)
         self._add_slide_number(slide, self.layout_title)
         self.slides.append(s)
         return s
+
+    @staticmethod
+    def roadmap_steps(roadmap) -> list:
+        """道筋の段 ["A", "B（問い）"] → [(名前, 問い)]（問いが無ければ ""）。"""
+        out = []
+        for r in roadmap or []:
+            m = re.match(r"^\s*(.+?)\s*[（(]\s*(.+?)\s*[）)]\s*$", r)
+            out.append((m.group(1), m.group(2)) if m else (r.strip(), ""))
+        return out
+
+    def _roadmap_strip(self, s, roadmap, x0, x1, y) -> float:
+        """表紙の道筋：段を点と細い線でつなぎ、点の下に段の名前（太字）と、その段が答える問い（小さく）。下端の y を返す。
+        「今日の道筋：A → B → C」の1行より、段の数と順番が一目で分かる（見本のゼミで、道筋が画面に無いと採点者2人が減点した）。"""
+        steps = self.roadmap_steps(roadmap)
+        self.roadmap = [n for n, _ in steps]
+        k = len(steps)
+        lab = "今日の道筋" if self.lang == "日本語" else "Today"
+        s.text(x0 + 0.6, y, lab, size=14, color=C.GRAY, name="道筋")
+        y += 0.45
+        slot = (x1 - x0 - 1.2) / k
+        xs = [x0 + 0.6 + slot * (j + 0.5) for j in range(k)]
+        if k > 1:
+            s.line(xs[0], y + 0.11, xs[-1], y + 0.11, color="C8CED6", width=2.0).name = "道筋の線"
+        bottom = y + 0.3
+        for x, (name, ask) in zip(xs, steps):
+            dot = s.slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(x - 0.11), Inches(y), Inches(0.22), Inches(0.22))
+            dot.name = "道筋の点"
+            dot.fill.solid(); dot.fill.fore_color.rgb = RGBColor.from_string(C.BAND)
+            dot.line.fill.background()
+            st = dot._element.find(qn("p:style"))
+            if st is not None:
+                dot._element.remove(st)
+            nm = wrap_to(name, slot - 0.15, 18)
+            b = s.text(x - (slot - 0.1) / 2, y + 0.3, nm, size=18, bold=True, color=C.BAND, align="c", w=slot - 0.1, name="道筋", fit=False)
+            bottom = max(bottom, b.bottom)
+            if ask:
+                b2 = s.text(x - (slot - 0.1) / 2, b.bottom - 0.02, wrap_to(ask, slot - 0.15, 14), size=14, color=C.TEXT, align="c",
+                            w=slot - 0.1, name="道筋", fit=False)
+                bottom = max(bottom, b2.bottom)
+        return bottom
+
+    def _breadcrumb(self, ph, cur: str):
+        """本文の枚の上の小見出し（タイトルの枠）を、道筋の段の進み具合「A › B › C」にする。今の段だけ主色の太字、ほかは灰色。
+        ●見出しは、このあと s.heading が「／ 見出し」として後ろに足す。"""
+        tf = ph.text_frame
+        p = tf.paragraphs[0]
+        sep = " › "
+        for j, n in enumerate(self.roadmap):
+            if j:
+                r = p.add_run(); r.text = sep
+                r.font.color.rgb = RGBColor.from_string(C.GRAY)
+            r = p.add_run(); r.text = n
+            rPr = r._r.get_or_add_rPr()
+            rPr.set("lang", self.lang_code); rPr.set("altLang", self.alt_code)
+            on = n == cur
+            r.font.bold = on
+            r.font.color.rgb = RGBColor.from_string(C.BAND if on else C.GRAY)
 
     def slide(self, title: str, summary: str | None = None, section: str | None = None, plain: bool | None = None) -> Slide:
         """本文スライド（タイトル＋結論の置き場）。summary は「このスライドの結論」1文（下の帯・囲み・結論の一文・副題・柱の下。構造による）。
@@ -2465,7 +2516,10 @@ class Deck:
         for ph in list(slide.placeholders):
             t = ph.placeholder_format.type
             if t == PP_PLACEHOLDER.TITLE:
-                self._set_placeholder_text(ph, title)
+                if getattr(self, "roadmap", None) and (section or title) in self.roadmap and not plain:
+                    self._breadcrumb(ph, section or title)   # 道筋の段の名前の枚は、上の小見出しを進み具合に
+                else:
+                    self._set_placeholder_text(ph, title)
             elif self.band_idx is not None and ph.placeholder_format.idx == self.band_idx:
                 if summary:
                     self._set_placeholder_text(ph, summary, align=self.band_align)

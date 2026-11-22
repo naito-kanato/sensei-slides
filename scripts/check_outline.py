@@ -263,7 +263,40 @@ def check(outline: Path, require_review: bool = False):
         except Exception:   # noqa: BLE001
             fit = []
     return (count(text, body) + ([tp] if tp else []) + ([ut] if ut else []) + ([fw] if fw else []) + story.check(text, "outline", story.body_numbers(text, "outline"), "構成案")
-            + copied + flows(text, outline.parent) + fit + reasoning(outline, text, require_review and not small, small))
+            + copied + flows(text, outline.parent) + roadmap(text, rows) + fit + reasoning(outline, text, require_review and not small, small))
+
+
+def roadmap(text: str, rows):
+    """発表の道筋：「- 道筋：節の名前（その節が答える問い）→ …」。表紙に点と線で載り、段の名前と同じタイトルの枚は、上の小見出しが
+    「背景 › 手法 › 結果」の進み具合になる。本文6枚以上で、無い（△）・本文の枚のタイトルが段に無い（△：その枚に進み具合が出ない）。
+    見本のゼミで、問いはあっても答えまでの道筋が画面に無く、採点者2人が減点した。"""
+    import check_memo
+    from structures import plan_roles
+    if not rows:
+        return []
+    head = rows[0]
+    i_t = next((k for k, h in enumerate(head) if "タイトル" in h), None)
+    roles = plan_roles(text, "outline") or {}
+    body = [r for r in rows[1:] if r and r[0].strip().isdigit() and roles.get(int(r[0]), "本文") == "本文"]
+    if len(body) <= 5:
+        return []
+    steps = check_memo.roadmap_of(text)
+    if steps is None:
+        return [("△", "道筋", "聞き手が答えまでの地図を先に持てるように、「- 道筋：<節の名前>（その節が答える問い）→ …」を1行"
+                 "（3〜5段。節の名前は「構成」の表のタイトルの列と同じにする：表紙に点と線で載り、各枚の上の小見出しが今の節を示す進み具合になる。"
+                 "名前は論文に合わせて：背景・解析手法・理論・計算・実験との比べ など）")]
+    names = [re.sub(r"\s*[（(].*?[）)]\s*$", "", s).strip() for s in steps]
+    if i_t is None:
+        return [("✔", "道筋", " → ".join(names))]
+    titles = list(dict.fromkeys(r[i_t].strip() for r in body if len(r) > i_t and r[i_t].strip() not in ("", "—", "-")))
+    off = [t for t in titles if t not in names]
+    unused = [n for n in names if n not in titles]
+    if off or unused:
+        return [("△", "道筋", "道筋の段の名前と、本文の枚のタイトルが合っていない"
+                 + (f"（段に無いタイトル：{'・'.join(off[:5])}。この枚の上には進み具合が出ない）" if off else "")
+                 + (f"（同じタイトルの枚が無い段：{'・'.join(unused[:5])}）" if unused else "")
+                 + "。タイトルを段の名前にそろえるか、段を直す")]
+    return [("✔", "道筋", " → ".join(names))]
 
 
 def flows(text: str, folder=None):

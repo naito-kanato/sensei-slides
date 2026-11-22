@@ -34,9 +34,10 @@ def test_roadmap_goes_on_the_cover(tmp_path):
                   roadmap=["いちばん長い段の名前その一", "いちばん長い段の名前その二", "いちばん長い段の名前その三", "四"])
     d.save(tmp_path / "c.pptx")
     covers = list(Presentation(tmp_path / "c.pptx").slides)
-    road = [next(sh.text_frame.text for sh in s.shapes if sh.name == "道筋") for s in covers]
-    assert road[0] == "今日の道筋：よく聞く説明を確かめる → 空気を曲げる → 離陸と乱気流"
-    assert "\n" in road[1]                                            # 入らなければ段の区切りで2行に
+    road = [[sh.text_frame.text for sh in s.shapes if sh.name == "道筋"] for s in covers]
+    assert road[0] == ["今日の道筋", "よく聞く説明を確かめる", "空気を曲げる", "離陸と乱気流"]   # 点と線の道筋（点の下に段の名前）
+    assert sum(sh.name == "道筋の点" for sh in covers[1].shapes) == 4
+    assert any("\n" in t for t in road[1])                           # 段の幅に入らない名前は折る
 
 
 def test_goal_topic_with_only_text_boxes_warns():

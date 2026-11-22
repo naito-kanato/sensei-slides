@@ -253,8 +253,8 @@ def roadmap_check(text: str, body_n: int):
     steps = roadmap_of(text)
     if steps is None:
         return [("△", "道筋", "学習者が答えまでの地図を先に持てるように、1節に「- 道筋：<段1> → <段2> → <段3>」を1行"
-                 f"（3〜4段、1段{ROADMAP_STEP_MAX}字まで。問いから答えまでの大きな段。表紙の題の下に載る）")]
-    long_ = [s for s in steps if len(s) > ROADMAP_STEP_MAX]
+                 f"（3〜4段、1段{ROADMAP_STEP_MAX}字まで。段の後ろに（その段が答える問い）を足せる。表紙の題の下に点と線で載る）")]
+    long_ = [s for s in steps if len(re.sub(r"[（(].*?[）)]\s*$", "", s)) > ROADMAP_STEP_MAX]   # （答える問い）は数えない
     if not 2 <= len(steps) <= 5 or long_:
         return [("△", "道筋", f"道筋は3〜4段・1段{ROADMAP_STEP_MAX}字まで（今：{len(steps)}段"
                  + (f"、長い段：{'・'.join(long_[:3])}" if long_ else "") + "）")]
