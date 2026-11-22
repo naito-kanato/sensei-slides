@@ -99,7 +99,9 @@ def figure_talk(secs: dict, kinds: dict) -> list:
     return out
 
 
-SCRIPT_POS = re.compile(r"右端|左端|一番上|一番下|いちばん上|いちばん下|[上下左右]から[1-9１-９一二三四五]番目")   # 図の中の位置で指す言い方
+# 部品の図の向きと合わない、図の中の指し方（棒グラフは横棒で上から並ぶ・流れ図は上から下。位置で指すこと自体はよい）
+SCRIPT_POS = {"棒グラフ": re.compile(r"右端|左端|(?:棒|グラフ)の(?:左|右)|(?:左|右)(?:が|側|の棒|から)"),
+              "流れ図": re.compile(r"(?:左|右)から(?:見|読|順|右|左)|(?:左|右)の箱|右へ進")}
 RECAP_MIN_BODY = 6   # 本文がこの枚数以上の講座は、最後にまとめの枚（輪読の型は、最後の拍が節のまとめなので要らない）
 
 
@@ -870,6 +872,12 @@ def check(memo: Path, require_review: bool = False):
                                 + "（確かさの断り・作業の経緯は設計メモの3節の確認の列か8節へ。原稿は「〜とされます」「ここは講師のまとめです」のように聞き手に言う形だけ）"))
                 import figplan as _fp
                 kinds = {r["#"]: _fp.parse_fig(scaffold.col(r, "図で見せるもの", "図"))[1] for r in srows}
+                # 部品の図の向きと合わない指し方（比べと見本で「右端の〜」「棒グラフの左が」が横棒の上下、「左から」が縦の流れ図だった）
+                pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for k in [kinds.get(n)] if k in SCRIPT_POS
+                       for m in [SCRIPT_POS[k].search(t)] if m]
+                if pos:
+                    res.append(("△", "原稿の図の指し方", "部品の図の向きと合わない指し方（棒グラフは横棒で図の案の順に上から、流れ図は上から下）：" + "・".join(pos[:6])
+                                + "（「右の棒」→「下の『〇〇』の棒」、「左から見て」→「上から見て」。位置で指すのはよい）"))
                 talk = figure_talk(secs, {n: k for n, k in kinds.items() if k})
                 if talk:
                     res.append(("△", "原稿の図の種類", "原稿は、その枚の図の案の図を話す（原稿は図より先に書くので、話す図が案と別物になりやすい）。"
@@ -881,11 +889,6 @@ def check(memo: Path, require_review: bool = False):
                 if lack:
                     res.append(("✘", "原稿の手当て", "手当てで原稿に回すと書いたのに、script.md に無い：" + "、".join(f"[{n}] {w}" for n, w in lack[:6])
                                 + "（手当ては script.md のその枚の原稿に直接入れる。制作の担当は原稿を書き直さない。言い方を変えたなら、手当ての行も直す）"))
-                # 図の中の位置で指す言い方（図の向き・並びは制作の担当があとで決めるので、原稿と食い違う。比べで「右端の〜」が横棒の一番下だった）
-                pos = [f"{n}「{m.group(0)}」" for n, t in secs.items() for m in [SCRIPT_POS.search(t)] if m]
-                if pos:
-                    res.append(("△", "原稿の図の指し方", "図の部分は、組むときに変わる位置・順番・色ではなく、ラベルと中身で指す。位置で指している枚：" + "・".join(pos[:6])
-                                + "（「右端の棒」→「〇〇（その棒の名前）の棒」）"))
         import language as _LG   # 図の案を読むスクリプトは日本語の書き方だけ（ほかの言語の回は、読めない所を担当が組む）
         bad = scaffold.unbuildable(srows) if _LG.is_japanese(_LG.deck_language(start=memo.parent)) else []
         if bad:

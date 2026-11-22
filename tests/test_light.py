@@ -354,8 +354,8 @@ def test_scaffold_copies_memo_terms_into_the_readme(tmp_path):
 
 
 def test_script_length_and_position_words(tmp_path, monkeypatch):
-    """script.md の本文の枚が300〜400字から外れた枚と、図の中の位置で指す言い方（「右端の棒」）を check_memo が △。
-    比べで、最大501字の枚があり、「右端の〜」が横棒の一番下を指していた（図の向きは制作の担当があとで決める）。"""
+    """script.md の本文の枚が300〜400字から外れた枚と、部品の図の向きと合わない指し方（横棒の「右端」・縦の流れ図の「左から」）を check_memo が △。
+    比べで、最大501字の枚があり、「右端の〜」が横棒の一番下を指していた。位置で指すこと自体（「上の棒」「上から見て」）は通す。"""
     monkeypatch.delenv("SENSEI_SKIP_EXAMPLE_COPY", raising=False)
     import check_memo
     src = (Path(__file__).resolve().parents[1] / "examples" / "course" / "_work" / "AI活用講座_01" / "memo.md").read_text(encoding="utf-8")
@@ -365,8 +365,13 @@ def test_script_length_and_position_words(tmp_path, monkeypatch):
     (w / "script.md").write_text("".join(f"## {n}\n{ok}\n" for n in range(1, 12)), encoding="utf-8")
     items = {i: m for m, i, _ in check_memo.check(w / "memo.md")}
     assert "原稿の字数" not in items and "原稿の図の指し方" not in items
-    body = "".join(f"## {n}\n" + ("あ" * 500 if n == 3 else ok) + ("棒グラフの右端が南海トラフです。" if n == 4 else "") + "\n\n" for n in range(1, 12))
+    good = {3: "上の赤い棒が実在しない割合です。", 5: "流れ図を上から見てください。"}
+    (w / "script.md").write_text("".join(f"## {n}\n{ok}{good.get(n, '')}\n" for n in range(1, 12)), encoding="utf-8")
+    items = {i: m for m, i, _ in check_memo.check(w / "memo.md")}
+    assert "原稿の図の指し方" not in items
+    bad = {3: "棒グラフの右端が実在しない割合です。", 5: "流れ図を左から見てください。"}
+    body = "".join(f"## {n}\n" + ("あ" * 500 if n == 4 else ok) + bad.get(n, "") + "\n\n" for n in range(1, 12))
     (w / "script.md").write_text(body, encoding="utf-8")
     out = {i: (m, t) for m, i, t in check_memo.check(w / "memo.md")}
-    assert out["原稿の字数"][0] == "△" and "3（500字）" in out["原稿の字数"][1]
-    assert out["原稿の図の指し方"][0] == "△" and "4「右端」" in out["原稿の図の指し方"][1]
+    assert out["原稿の字数"][0] == "△" and "4（500字）" in out["原稿の字数"][1]
+    assert out["原稿の図の指し方"][0] == "△" and "3「グラフの右」" in out["原稿の図の指し方"][1] and "5「左から見」" in out["原稿の図の指し方"][1]
