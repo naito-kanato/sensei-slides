@@ -17,6 +17,8 @@
   3. 読み上げ原稿：全スライドに発表者ノートが入っている
   3b. 原稿の中身（check_notes.py）：構成案・設計メモの「引っかかりへの手当て」で原稿に回した枚に、その中身（「…」の言い回し・用語の説明）がある。
       無ければ ✘。1文の長さ・中身の無いつなぎ・発表時間との釣り合いは △
+  3c. 原稿の色（check_colors.py）：原稿が「赤い棒」「blue line」のように言う色が、その枚の図・図形（画像の画素と図形の塗り・線。
+      文字の色は数えない）に無ければ △（原稿の色を画面に合わせるか、図の色を直す）
   4. 原稿のページ：<資料名>_原稿.html が pptx と同じフォルダにあり、pptx より新しく、notes_html.py で作ってある（コメント機能つき）
   5. 完成後のレビュー：<work>/review.md に、判定と直した点が書いてある
   5a. レビューを別の担当がしたか：outline_review.md・memo_review.md・review.md があれば、AI の道具の会話の記録で、
@@ -233,6 +235,12 @@ def check(pptx: Path, work: Path | None, record: bool = True):
         stexts = {i: "\n".join(sh.text_frame.text for sh in s.shapes if getattr(sh, "has_text_frame", False) and sh.has_text_frame)
                   for i, s in enumerate(prs.slides, 1)}
         res += check_notes.check(work, slide_texts=stexts)
+    # 3c. 原稿の色：原稿が言う「赤い棒」「blue line」の色が、その枚の図・図形にあるか（△。check_colors.py）
+    try:
+        import check_colors
+        res += check_colors.check(pptx)
+    except Exception as e:   # 確かめられなくても、ほかの確認の結果は出す
+        res.append(("△", "原稿と図の色", f"確かめられなかった（{type(e).__name__}）"))
 
     # 4. 原稿のページ
     import language

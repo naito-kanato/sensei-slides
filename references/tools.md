@@ -19,7 +19,8 @@
 | `scripts/figkit.py`・`figlib.py`・`figschema.py`・`figgrid.py`・`catalog.py` | 図の共通設定と小道具・よく使う図の型・仕組みの模式図の型・図の一覧画像・これまでの図のカタログ |
 | `scripts/figdraft.py` | 自分で描く図の下書きの雛形（模式図は実物・気づく・配置・ラベル、グラフは気づく）と、`--check` で下書きの抜け・箱と矢印だけの模式図 |
 | `scripts/zemi.py` | build.py で使う `Deck`・`Slide`・`Eq`（部品の一覧はファイル冒頭） |
-| `scripts/make_deck.py` | 図→組む→描く→検査を1回で（render_check_py.py・render_check.ps1・check_layout.py・grid.py・check_notes.py をまとめて呼ぶ） |
+| `scripts/make_deck.py` | 図→組む→描く→検査を1回で（render_check_py.py・render_check.ps1・check_layout.py・grid.py・check_notes.py・check_colors.py をまとめて呼ぶ） |
+| `scripts/check_colors.py` | 原稿が言う色（「赤い棒」「blue line」）が、その枚の図・図形（画像の画素と図形の塗り・線。文字の色は数えない）にあるか。無ければ △「原稿と図の色」（make_deck.py・check_done.py が呼ぶ） |
 | `scripts/render_check_py.py` | PowerPoint を使わない描画（pptx だけから render_check.ps1 と同じ形の shapes.json と画像を作る。make_deck.py がふだん使う） |
 | `scripts/notes_html.py`・`set_notes.py` | 原稿HTML・notes.md を発表者ノートに入れる |
 | `scripts/budget.py` | 回数の予算：担当の起動と make_deck の回数、上限（オプション「回数の上限」「使用量の上限」） |

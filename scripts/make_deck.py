@@ -18,7 +18,8 @@ PowerPoint で確かめられなかったとき（サンドボックスで止め
   3. 描く（render_check_py.py）→ render/
   4. 描画の検査（check_layout.py --brief：直す所だけ）。ERROR 0 なら、PowerPoint があれば render_check.ps1 で描いて確かめ、
      PowerPoint の検査の結果を使う（PowerPoint の画像と shapes.json を render/ に置き、新しい描画の分は render/python/ に移す）
-  5. 一覧の画像 render/grid-N.jpg（6枚ずつ。レビューと目視はこれで見る。1枚ずつ開かない）と、原稿の確認（check_notes.py：✘・△ だけ）
+  5. 一覧の画像 render/grid-N.jpg（6枚ずつ。レビューと目視はこれで見る。1枚ずつ開かない）と、原稿の確認（check_notes.py：✘・△ だけ）。
+     原稿が言う色（「赤い棒」）がその枚の図に無ければ △「原稿と図の色」（check_colors.py。標準の流れでも、この △ は直してから止める）
   6. 最後に1行：ERROR・WARN・原稿の ✘ の数と、次にやること
   7. 組みの記録：枚ごとの指紋を <work>/build_log.jsonl に1行足す（何枚作り直したか。build_log.py）
   8. 最後の回（ERROR・WARN・✘ が0、回数の上限の回、--final）なら、原稿HTML（notes_html.py）も作る（担当が別に走らせる1回を省く）
@@ -355,7 +356,8 @@ def main(argv=None):
         print(f"{mk} {item}：{msg}")
     # 構成案・設計メモどおりに組んだか（渡す前の確認と同じ項目。仕上げの1周目で気づけるように）
     import check_done
-    PLAN_ITEMS = ("役割と結論", "図の案どおりか", "図の無いスライド", "本文の形", "流れ図の数", "スライドの型")
+    PLAN_ITEMS = ("役割と結論", "図の案どおりか", "図の無いスライド", "本文の形", "流れ図の数", "スライドの型",
+                  "原稿と図の色")   # 原稿の「赤い棒」が画面では青い、を組んだその場で直せるように（check_colors.py）
     try:
         plan_rows = [(mk, item, msg) for mk, item, msg in check_done.check(pptx, work, record=False)
                      if item in PLAN_ITEMS and mk in ("✘", "△")]
@@ -388,7 +390,9 @@ def main(argv=None):
         stop_at_pass = stage == "仕上げ" and budget.light(work)
     except Exception:
         stop_at_pass = False
-    todo = n_err or n_x or (not stop_at_pass and (n_warn or "←" in lay))
+    # 原稿の色と図の色の食い違い（△）は、標準の流れでも直す：原稿の1語か図の色1つで直り、伏せた採点では2人とも減点した
+    color_todo = any(item == "原稿と図の色" and mk == "△" for mk, item, _ in notes)
+    todo = n_err or n_x or color_todo or (not stop_at_pass and (n_warn or "←" in lay))
     last = final or not todo or used + 1 >= cap
     if last:
         code, text = run([sys.executable, "-X", "utf8", str(HERE / "notes_html.py"), str(pptx)], pptx.parent)
@@ -407,7 +411,8 @@ def main(argv=None):
               else "✘ 原稿HTMLが作れなかった：" + " / ".join(short(text, 3) or text.strip().splitlines()[-3:])
               + f"（python {HERE.as_posix()}/notes_html.py \"{pptx.name}\" を単独で走らせる）")
     if todo:
-        nxt = ("上に出た ERROR・✘ を**全部**直してから、もう一度だけ make_deck.py（1か所ずつ回さない。WARN・← は直さなくてよい：標準の流れは ERROR 0・✘ 0 で止める）"
+        nxt = ("上に出た ERROR・✘" + ("・△「原稿と図の色」" if color_todo else "")
+               + " を**全部**直してから、もう一度だけ make_deck.py（1か所ずつ回さない。WARN・← は直さなくてよい：標準の流れは ERROR 0・✘ 0 で止める）"
                if stop_at_pass else
                "上に出た所を**全部**（ERROR・WARN・←・✘、直せる △ も）直してから、もう一度だけ make_deck.py（1か所ずつ回さない）")
     elif stop_at_pass:
