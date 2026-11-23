@@ -81,7 +81,7 @@ def test_presentation_without_data_goes_back_to_the_designer(tmp_path, root):
         shutil.copy(root / "examples" / "zemi" / f, w / f)
     p = w / "outline.md"
     p.write_text(re.sub(r"## 3b\. データ.*?(?=^## )", "", p.read_text(encoding="utf-8"), flags=re.S | re.M)
-                 .replace("| 軽さ | 標準 |", "| 軽さ | 念入り |"), encoding="utf-8")   # 前の版の念入りの構成案
+                 .replace("| 丁寧さ | 0 |\n", "| 丁寧さ | 0 |\n| 軽さ | 念入り |\n"), encoding="utf-8")   # 前の版の念入りの構成案
     _, nxt = next_step.steps_for(w)
     assert "data_1.md" in nxt and "軽量の設計の担当を新しく起動" in nxt   # 念入りの作業フォルダには、まだ軽量の設計の担当がいない
     import brief

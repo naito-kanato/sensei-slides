@@ -16,19 +16,19 @@ def work(root, tmp_path):
 
 def test_cards_for_body_slides(work):
     names = sorted(p.name for p in (work / "cards").glob("[0-9][0-9].md"))
-    assert names[0] == "02.md" and "01.md" not in names and len(names) == 16   # 表紙はカードなし（見本に論文の表紙は無い）
+    assert names[0] == "02.md" and "01.md" not in names and len(names) == 14   # 表紙はカードなし（見本に論文の表紙は無い）
     c = (work / "cards" / "04.md").read_text(encoding="utf-8")
-    assert "この枚の青帯：低い周波数は地面の揺れ" in c
+    assert "この枚の青帯：周波数ごとに雑音の源が違い" in c
     assert "前の枚（3）の青帯" in c and "次の枚（5）の青帯" in c                     # 前後のつながり
     assert "しかし（壁）" in c and "ここに壁があります" in c                          # 前の枚からの書き方
     common = (work / "cards" / "00_共通.md").read_text(encoding="utf-8")
     assert "筋の問い（2枚目）" in common and "筋の問い（" not in c and "00_共通.md" in c   # どのカードにも同じ決まりは共通の紙に1回だけ
-    assert "figs/s04.png" in c and 'summary="低い周波数は地面の揺れ' in c             # 図の名前と骨組み
+    assert "figs/s04.png" in c and 'summary="周波数ごとに雑音の源が違い' in c             # 図の名前と骨組み
 
 
 def test_merge_puts_parts_back(work):
     (work / "parts" / "04.py").write_text(
-        's = deck.slide("実験手法", summary="低い周波数は地面の揺れ、高い周波数は光の粒の雑音が邪魔をする")\ns.p("書いた本文")\n', encoding="utf-8")
+        's = deck.slide("検出器", summary="周波数ごとに雑音の源が違い、最良の帯は 100〜300 Hz")\ns.p("書いた本文")\n', encoding="utf-8")
     (work / "parts" / "04.md").write_text("## 4\nしかし、ここに壁があります。\n", encoding="utf-8")
     assert scaffold.main([str(work), "--merge"]) == 0
     b = (work / "build.py").read_text(encoding="utf-8")
@@ -56,22 +56,22 @@ def test_underline_marker_becomes_markup():
 
 
 def test_table_slide_gets_no_figure_file(work):
-    c = (work / "cards" / "15.md").read_text(encoding="utf-8")   # 図が「—」の枚（まとめ）
-    assert "s15.png" not in c and "s.table" in c
+    c = (work / "cards" / "13.md").read_text(encoding="utf-8")   # 図が「—」の枚（まとめ）
+    assert "s13.png" not in c and "s.table" in c
     assert "1行は20字まで" in (work / "cards" / "00_共通.md").read_text(encoding="utf-8")
 
 
 def test_points_go_to_the_slots_of_each_form(root, tmp_path):
-    # 見本にラベル・展開の枚が無いので、3枚目（式の注釈・展開）の形をラベル・展開に変えて組む
+    # 見本の6枚目がラベル・展開の形
     text = (root / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
-    assert text.count("| 式の注釈・展開 |") == 1
-    (tmp_path / "outline.md").write_text(text.replace("| 式の注釈・展開 |", "| ラベル・展開 |"), encoding="utf-8")
+    assert text.count("| ラベル・展開 |") == 1
+    (tmp_path / "outline.md").write_text(text, encoding="utf-8")
     shutil.copy2(root / "examples" / "zemi" / "outline_review.md", tmp_path / "outline_review.md")
     assert scaffold.main([str(tmp_path)]) == 0
-    c = (tmp_path / "cards" / "03.md").read_text(encoding="utf-8")   # ラベル・展開：「→」の要点は展開へ、「見出し：」の要点はラベルへ
-    assert 's.develop("腕の差", "{r:明暗が h に比例' in c   # 見本の構成案の文言は手直しで変わるので、頭だけ見る
+    c = (tmp_path / "cards" / "06.md").read_text(encoding="utf-8")   # ラベル・展開：「→」の要点は展開へ、「見出し：」の要点はラベルへ
+    assert 's.develop("ずらした H1", "{r:L1 と重なる' in c   # 見本の構成案の文言は手直しで変わるので、頭だけ見る
     assert any(line.startswith('s.block("') and "：" in line for line in c.splitlines())
-    assert not any("腕の差" in line for line in c.splitlines() if line.startswith("s.block"))   # 同じ要点を2つの形に入れない
+    assert not any("ずらした H1" in line for line in c.splitlines() if line.startswith("s.block"))   # 同じ要点を2つの形に入れない
 
 
 def test_cards_share_excerpt_files(root, tmp_path):
@@ -83,10 +83,10 @@ def test_cards_share_excerpt_files(root, tmp_path):
     files = sorted(p.name for p in (tmp_path / "cards").glob("資料*.md"))
     assert files                                                   # 抜き出しは別のファイル
     c5 = (tmp_path / "cards" / "05.md").read_text(encoding="utf-8")
-    c6 = (tmp_path / "cards" / "06.md").read_text(encoding="utf-8")
+    c4 = (tmp_path / "cards" / "04.md").read_text(encoding="utf-8")
     pointer = [l for l in c5.splitlines() if "抜き出し：" in l][0]
     assert "cards/資料" in pointer and "Arms 4 km" not in c5      # カードは抜き出しを指すだけ
-    assert pointer.split("抜き出し：")[1].split("（")[0] in c6     # 同じ節の枚は同じファイルを指す
+    assert pointer.split("抜き出し：")[1].split("（")[0] in c4     # 同じ節の枚は同じファイルを指す
     assert "s.block(" in c5                                        # 使う部品の書き方
 
 
@@ -157,8 +157,8 @@ def test_recap_role_is_built_from_the_story_table(root, tmp_path):
     """役割「まとめ」の枚は、筋の表の問いと答えを入れた s.recap で組む（まとめの形を決めて縛る）。"""
     import story
     text = (root / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
-    row = next(l for l in text.splitlines() if l.startswith("| 15 "))
-    assert row.rstrip().rstrip("|").rsplit("|", 1)[-1].strip() == "まとめ"   # 見本の15枚目が役割「まとめ」（最後の列）
+    row = next(l for l in text.splitlines() if l.startswith("| 13 "))
+    assert row.rstrip().rstrip("|").rsplit("|", 1)[-1].strip() == "まとめ"   # 見本の13枚目が役割「まとめ」（最後の列）
     for f in ("outline.md", "outline_review.md"):
         shutil.copy2(root / "examples" / "zemi" / f, tmp_path / f)
     assert scaffold.main([str(tmp_path)]) == 0

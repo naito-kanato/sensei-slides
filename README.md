@@ -18,7 +18,7 @@ You ask an AI coding agent (Codex, Claude Code; Antigravity and GitHub Copilot c
 | ![Course example: script page](docs/en-course-notes.jpg) | ![Talk example: script page](docs/en-zemi-notes.jpg) |
 | Sample: AI literacy course, lecture 1, "What Generative AI Actually Computes" (18 slides) | Sample: paper review, "Observation of Gravitational Waves from a Binary Black Hole Merger" (Abbott et al., PRL 2016, CC BY 3.0; 18 slides) |
 
-The samples were not picked for quality: we chose a topic, asked once in English, and show what the current version made. We only changed where the scripts look for the skill and where they write the deck, so that they build inside this repository. The same topics made in Japanese are in [examples/course](examples/course) and [examples/zemi](examples/zemi).
+The samples were not picked for quality: we chose a topic, asked once in English, and show what the current version made. We only changed where the scripts look for the skill and the paper pages and where they write the deck, so that they build inside this repository. The same topics made in Japanese are in [examples/course](examples/course) and [examples/zemi](examples/zemi).
 
 **Course sample** (slides 1–4)
 

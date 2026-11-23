@@ -17,24 +17,24 @@ def test_zemi_example_builds(built):
     pptx = built / "examples" / "zemi" / "Abbott2016_PRL116_061102_スライド.pptx"
     prs = Presentation(pptx)
     items = nh.slide_texts(prs)
-    assert len(items) == 17                                          # 表紙＋本文14（まとめを含む）＋想定質問2
-    assert items[1][1] == "重力波とひずみ h"                         # ●見出し
-    assert items[1][2] == "重力波が 4 km の腕を伸ばす量は約 4×10⁻¹⁸ m"   # 青帯
+    assert len(items) == 15                                          # 表紙＋本文12（まとめを含む）＋想定質問2
+    assert items[1][1] == "小さすぎる伸び"                           # ●見出し
+    assert items[1][2] == "重力波が 4 km の腕に起こす伸びは約 4×10⁻¹⁸ m"   # 青帯
     assert "1916年" in items[1][3]                                   # notes.md が発表者ノートに入っている
     assert "Observation of Gravitational Waves" in items[0][0]       # 表紙は論文の題
-    assert items[15][2] == items[16][2] == "想定質問"
+    assert items[13][2] == items[14][2] == "想定質問"
 
 
 def test_zemi_paper_figures_have_sources(built):
     """論文から切り出した図のあるスライドには、出典の注記（著者・雑誌・図番号）が付いている"""
     prs = Presentation(built / "examples" / "zemi" / "Abbott2016_PRL116_061102_スライド.pptx")
-    for i in (2, 3, 4, 6, 7, 10):                                    # 干渉計・雑音・工夫・結果①〜③（0 始まり。図は src/ の頁から切り出す）
+    for i in (2, 3, 5, 6, 10):                                       # 干渉計・雑音・2台の揺れ・周波数・背景（0 始まり。図は src/ の頁から切り出す）
         texts = [sh.text_frame.text for sh in prs.slides[i].shapes if sh.has_text_frame]
-        assert any("Abbott ほか 2016, Fig." in t for t in texts), i
-    prs = Presentation(built / "examples" / "zemi_en" / "Abbott2016_PRL116_061102_slides.pptx")
-    for i in (6, 7, 8, 9, 13):                                       # 英語版：雑音・結果①〜③（paper_figs/ の切り出し）
+        assert any("Abbott et al., PRL 116, 061102 (2016) Fig." in t for t in texts), i
+    prs = Presentation(built / "examples" / "zemi_en" / "Gravitational_Waves_slides.pptx")
+    for i in (5, 6, 7, 8, 11):                                       # 英語版：雑音・2か所・GW150914・チャープ・背景（paper_figs/ の頁から切り出す）
         texts = [sh.text_frame.text for sh in prs.slides[i].shapes if sh.has_text_frame]
-        assert any("Abbott et al., PRL 116, 061102 (2016), Fig." in t for t in texts), i
+        assert any("Abbott et al. 2016, Fig." in t for t in texts), i
 
 
 def test_course_example_builds_with_questions(built):
@@ -70,7 +70,7 @@ def test_english_examples_build(built):
     assert [q for q, _ in nh.slide_questions(prs)[14]] == ["1-1", "1-2", "1-3"]
     assert items[14][3].startswith("Review questions.") and "確認問題" not in items[14][3]
     assert "Recall what you saw on slide" in items[16][3]
-    assert len(Presentation(built / "examples" / "zemi_en" / "Abbott2016_PRL116_061102_slides.pptx").slides) == 18
+    assert len(Presentation(built / "examples" / "zemi_en" / "Gravitational_Waves_slides.pptx").slides) == 18
 
 
 def test_structures_example_uses_every_part(built):

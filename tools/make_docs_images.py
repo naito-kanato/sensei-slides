@@ -34,12 +34,12 @@ JOBS = [  # (出力, 描画のフォルダ, スライド番号, 列の数, 全�
     ("course-slides-1.jpg", COURSE, range(1, 5), 2, 1648),
     ("course-slides-2.jpg", COURSE, range(5, 18), 3, 1654),
     ("zemi-slides-1.jpg", ZEMI, range(1, 5), 2, 1648),
-    ("zemi-slides-2.jpg", ZEMI, range(5, 18), 3, 1654),
+    ("zemi-slides-2.jpg", ZEMI, range(5, 16), 3, 1654),
 ]
 # README の一番上の動く画像（講座と発表の見本を交互に）：(描画のフォルダ, スライド番号, 上の帯の文字)
 DEMO = [(COURSE, 1, "講座：AI が講師の連続講座"), (COURSE, 4, "講座：結論の一文と図"), (COURSE, 3, "講座：数値はグラフで"),
         (COURSE, 14, "講座：確認問題"), (ZEMI, 1, "発表：論文紹介"), (ZEMI, 7, "発表：論文の図と数値"),
-        (ZEMI, 11, "発表：結果と赤丸"), (ZEMI, 16, "発表：想定質問と回答案")]
+        (ZEMI, 11, "発表：結果と赤丸"), (ZEMI, 14, "発表：想定質問と回答案")]
 
 
 # 英語の README 用：日本語の見本を英語に訳して組み直したもの（examples/zemi_en・examples/course_en。スキル自体の出力は日本語）
@@ -53,7 +53,7 @@ EN_JOBS = [
 ]
 EN_DEMO = [(EN_COURSE, 1, "Course: an AI-taught series"), (EN_COURSE, 4, "Course: one conclusion line and a figure"),
            (EN_COURSE, 7, "Course: numbers as charts"), (EN_COURSE, 15, "Course: quiz"), (EN_ZEMI, 1, "Talk: paper review"),
-           (EN_ZEMI, 8, "Talk: the paper's figures and numbers"), (EN_ZEMI, 14, "Talk: result with a red circle"),
+           (EN_ZEMI, 8, "Talk: the paper's figures and numbers"), (EN_ZEMI, 12, "Talk: the result above all background"),
            (EN_ZEMI, 17, "Talk: anticipated questions")]
 
 
@@ -124,7 +124,7 @@ NOTES = [("course-notes.jpg", ROOT / "examples" / "course" / "AI活用講座" / 
          ("zemi-notes.jpg", ROOT / "examples" / "zemi" / "Abbott2016_PRL116_061102_原稿.html")]
 # 英語版の見本の原稿のページ（notes_html.py で作る。画面の言葉も英語）。使い方のページの英語版で使う
 EN_NOTES = [("en-course-notes.jpg", ROOT / "examples" / "course_en" / "AI_Literacy" / "01_What Generative AI Actually Computes_script.html"),
-            ("en-zemi-notes.jpg", ROOT / "examples" / "zemi_en" / "Abbott2016_PRL116_061102_script.html")]
+            ("en-zemi-notes.jpg", ROOT / "examples" / "zemi_en" / "Gravitational_Waves_script.html")]
 
 
 def card_spans(im, x: int = 16, head: int = 100):

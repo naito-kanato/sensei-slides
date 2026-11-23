@@ -224,7 +224,7 @@ def test_notes_html_images_without_powerpoint(built):
     """PowerPoint も LibreOffice も無い PC では、原稿のページの画像を新しい描画で作る。"""
     import notes_html
     imgs = notes_html.python_images(built / "examples" / "zemi" / "Abbott2016_PRL116_061102_スライド.pptx", width=400)
-    assert len(imgs) == 17 and all(len(x) > 1000 for x in imgs)
+    assert len(imgs) == 15 and all(len(x) > 1000 for x in imgs)
 
 
 def test_math_box_in_alternate_content_is_kept(tmp_path):

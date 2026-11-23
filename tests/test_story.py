@@ -30,7 +30,7 @@ def test_question_must_be_a_question(outline):
 
 
 def test_answer_must_come_late(outline):
-    text = outline.replace("BH連星の合体 | 13 |", "BH連星の合体 | 5 |")
+    text = outline.replace("BH 合体の重力波 | 11 |", "BH 合体の重力波 | 5 |")
     assert marks(text)["話の筋"] == "△"
 
 
@@ -64,7 +64,7 @@ def test_unknown_kind_warns(outline):
 
 def test_open_doubt_warns(outline):
     """しかし（疑い）のあと、最後まで「だから」が無いと出しっぱなし。"""
-    mark, msg = link_msg(outline.replace("| だから（帰結） |", "| そして（次へ） |"))
+    mark, msg = link_msg(outline.replace("| だから（帰結） |", "| そして（次へ） |").replace("| だから（手段） |", "| そして（次へ） |"))
     assert mark == ("✘" if "「そして」が続く" in msg else "△") and "出しっぱなし" in msg
 
 

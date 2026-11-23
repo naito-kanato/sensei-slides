@@ -1,161 +1,145 @@
-# 構成案（論文紹介）：Observation of Gravitational Waves from a Binary Black Hole Merger（表紙＋論文の表紙＋本文14枚＋想定質問2枚）
-
-論文：B. P. Abbott et al. (LIGO Scientific Collaboration and Virgo Collaboration), "Observation of Gravitational Waves from a Binary Black Hole Merger", Phys. Rev. Lett. **116**, 061102 (2016), DOI 10.1103/PhysRevLett.116.061102。CC BY 3.0（図を切り出すときは書誌と DOI を出典に）。資料：作業ディレクトリの `Abbott2016_PRL116_061102.pdf`（16頁、本文は p.1〜8）。
-
-テンプレート1（結論ヘッダー）なので、本文の最後に赤字の結論を繰り返す帰結の形は使わず、根拠を見せる形（ラベル・式の注釈・場合分け・展開・問い・手順）で組む。★＝赤字（根拠の要の数値・語）。
-スライドに載る列（タイトル・●見出し・青帯・本文の要点）と図の中身・ノートは英語。
+# 構成案：Observation of Gravitational Waves from a Binary Black Hole Merger
 
 ## オプション
 
-| オプション | 今の値 |
+| 項目 | 値 |
 |---|---|
-| 軽さ | 標準 |
-| 言語 | 英語 |
-| 原稿のモード | 発表 |
+| 発表の種類 | 論文紹介（水曜ゼミ） |
+| 資料 | B. P. Abbott et al., PRL 116, 061102 (2016)（CC BY 3.0。図は出典つきで切り出す） |
+| 言語 | 英語（スライド・原稿とも） |
 | 発表時間 | 20分 |
-| 聞き手 | 研究室のゼミ（学部の物理を習った人） |
-| 聞き手の前提知識 | 知っている＝波と干渉・周波数・光速・一般相対論の名前・太陽質量・中性子星とブラックホールの名前・正規分布と σ／知らない＝重力波の検出の方法・ひずみ h・マイケルソン干渉計の腕の共振器とリサイクリング・ショット雑音・SN 比とマッチドフィルター・チャープ質量・シュヴァルツシルト半径の値の目安・時刻ずらしの背景・誤報率 |
-| 聞き手のテーマへの詳しさ | 初学者・多少知っている |
-| 丁寧さ | 1 |
-| 範囲 | 主要な結果に絞る（II〜VI 節。VI 節の天体物理の含意・合体率・背景重力波はノートか省略） |
-| 答えの位置 | 後（論文の順に方法から入り、結論を最後に回収） |
+| 発表者名 | なし（表紙に名前を出さない） |
+| 範囲 | II〜VI節（天体物理的な意味・合体率・背景重力波はノートか省略） |
+| 順 | 論文の順（方法から始めて、結論を最後に回収） |
 | ねらい | 論文を紹介する（方法から） |
-| テンプレート | テンプレート1（結論ヘッダー） |
+| 答えの位置 | 後 |
+| テンプレート | テンプレート1 |
+| 聞き手のテーマへの詳しさ | 多少知っている（学部の物理まで。重力波の検出の小分野は知らない） |
+| 前提知識 | 知っている＝波と干渉・周波数・光速・一般相対論の名前・太陽質量・中性子星とブラックホールの名前・正規分布とσ／知らない＝重力波の検出のしかた・ひずみ h・マイケルソン干渉計の腕の共振器とリサイクリング・ショットノイズ・SNR とマッチドフィルタ・チャープ質量・シュワルツシルト半径の大きさの感覚・タイムスライドの背景・誤警報率 |
+| 丁寧さ | 1枚に許すあと 1つまで |
 | 構成案の確認 | 任せる |
-| 発表者名 | なし |
+| 原稿のモード | 発表（ゼミの聞き手全体に話す） |
+
+- 道筋：Background（何が足りなかったか）→ Detector（10⁻²¹ のひずみをどう読むか）→ Observation（何が見えたか）→ Significance（雑音の偶然ではないか）→ Source（何が出したか）
 
 ## 話の筋
 
-入口は2枚目の予想（「4 km の物差しはどれだけ伸びるか」）。5枚目で答え（4×10⁻¹⁸ m）が予想と食い違い、問いを立てる（スライドに赤字で1行）。光と振り子で越え（6・7枚目）、信号を見て正体を詰め（8〜11枚目）、疑い（12枚目：雑音の偶然）を時刻ずらしで晴らし（13枚目）、14枚目で答える。16枚目のまとめで冒頭の問いに戻って言い直す。
-
 | 筋 | 型 | 一文 | 枚 |
 |---|---|---|---|
-| 状況 | — | Gravitational waves were predicted in 1916 and seen only indirectly, through the energy loss of the binary pulsar PSR B1913+16 | 2 |
-| 複雑化 | 壁 | A strain of 10⁻²¹ changes the length difference of 4 km arms by only about 4×10⁻¹⁸ m, about 1/400 of a proton | 5 |
-| 問い | どうやって | How can a stretch this tiny be caught on Earth, and told apart from noise? | 5 |
-| 答え | — | Same chirp at two sites, not noise | 14 |
-| 対立 | — | Is the signal seen at both sites a gravitational wave, or glitches and noise lining up by chance? | 12 |
-| それで | — | Sensors rule out local disturbances, and time-shifted background puts chance noise below once in 203,000 years (5.1σ): the noise explanation is gone, so the wave was caught directly | 14 |
-| 語り手 | — | The LIGO team: they read a stretch smaller than a proton, then cleared the doubt of chance noise with 608,000 years of time-shifted background | — |
+| 状況 | — | Gravitational waves were predicted in 1916, and a binary pulsar showed their effect only indirectly | 2 |
+| 複雑化 | 壁 | But a strain of 10⁻²¹ moves a 4-km mirror by only about 4×10⁻¹⁸ m, and every detector shakes with its own noise | 3 |
+| 問い | どうやって | How can such a tiny stretch be caught, and shown not to be a chance coincidence of noise? | 3 |
+| 対立 | — | Is the matching wiggle in the two detectors a gravitational wave, or noise bursts that lined up by chance? | 10 |
+| それで | — | Noise alone fakes it less than once per 203,000 years, so the chance-coincidence explanation falls away: a first direct detection | 12 |
+| 答え | — | Seen at two sites beyond chance: two black holes | 13 |
+| 語り手 | — | The LIGO team: building an instrument for a 10⁻²¹ strain, then proving the first event is not noise | — |
 
 話の型：論文紹介（方法から）
 
-拍の割り当て：だから（手段：方法・装置）＝4、しかし（壁：越えるべき難しさ）＝5、そして（次へ：結果）＝8、しかし（疑い：別の説明・偶然では）＝12、だから（帰結：確かめた結果）＝14。拍のあいだの肉付け：6・7（壁の越え方）、9〜11（波形から波源へ）、13（背景の作り方）、15（波源の値）。
-
 ## 3b. データ（data.py merge が data_N.md から入れる。図の案から「データN」で指す。値・単位・注記はこのとおりに描く。驚きの事実は、使うなら3節の事実の行に写す）
 
-### データ1：False alarm rate of GW150914 in each search
-- 驚き：波形の形の条件を外した探索でも、雑音が同じ強さを出すのは 8,400 年に1回。一番強い探索では背景のどの事象も超えたので、上限（20万3千年に1回未満）しか言えない
-- 問いの候補：雑音の偶然の一致で、この信号が出ることはあるのか？
-- 単位：年（雑音が同じ強さ以上の事象を1回出すまでの年数。大きいほど偶然らしくない）
+### データ1：How rarely noise alone fakes GW150914, by search
+- 驚き：A single 0.2-s event in 16 days of data is judged against tens of thousands to hundreds of thousands of years of noise, and noise still never reaches it in the matched-filter search
+- 問いの候補：Could a chance coincidence of noise in two detectors make GW150914?
+- 単位：years per one false alarm (inverse false alarm rate; for the binary search an upper bound)
 - 分母：—
-- 時点：2015年9月12日〜10月20日の16日分の同時観測
-- 出典：V. Searches（A. Generic transient search・B. Binary coalescence search）、Fig. 4（Abbott et al., Phys. Rev. Lett. 116, 061102, 2016）
+- 時点：16 days of coincident data, 12 Sep – 20 Oct 2015
+- 出典：Abbott et al., PRL 116, 061102 (2016), V-A, V-B, Fig. 4
 - 確認：○
-- 別の読み方：連星合体の探索の値は「背景の長さ（60万8千年分）で決まる上限」で、測った頻度ではない。探索ごとに背景の長さ（汎用は6万7400年分）と分類の数が違うので、差は探索のよし悪しの比べではない
-| 区分 | 値 | σ |
-|---|---|---|
-| Binary coalescence search（上限） | 203000 | 5.1 |
-| Generic transient search（C3 class） | 22500 | 4.6 |
-| Generic, any shape（C2+C3 class） | 8400 | 4.4 |
-
-### データ2：Black hole masses before and after the merger
-- 驚き：合体後のブラックホール（62 M⊙）は、合体前の2つ（36＋29 M⊙）の和より軽い。差は重力波で出たエネルギー（論文の推定 3.0 ± 0.5 M⊙c²）
-- 問いの候補：消えた質量はどこへ行ったのか？
-- 単位：太陽質量 M⊙（波源の系）
-- 分母：—
-- 時点：GW150914（2015年9月14日 09:50:45 UTC）
-- 出典：Table I（Abbott et al., Phys. Rev. Lett. 116, 061102, 2016）
-- 確認：○
-- 別の読み方：どれも中央値で、90% の範囲は ±4〜5 M⊙。引き算の差 3 は範囲と同じくらいなので、放出エネルギーは論文の推定値 3.0 ± 0.5 M⊙c²〔VI〕で言う
+- 別の読み方：The binary search value is only a bound set by the length of the background (608,000 years); the model-free search, with fewer assumptions, gives a smaller number
 | 区分 | 値 |
 |---|---|
-| Primary (before) | 36 |
-| Secondary (before) | 29 |
-| Final (after) | 62 |
+| Binary coalescence search (matched filter) | 203000 |
+| Generic transient search, class C3 | 22500 |
+| Generic transient search, classes C2+C3 | 8400 |
+
+### データ2：Masses before and after the merger (source frame)
+- 驚き：The final black hole is lighter than the two it came from: about 3 solar masses are missing, carried away as gravitational waves
+- 問いの候補：Where did 3 solar masses go?
+- 単位：M☉ (source frame, median of the 90% credible interval)
+- 分母：—
+- 時点：GW150914, 14 Sep 2015
+- 出典：Abbott et al., PRL 116, 061102 (2016), Table I, VI
+- 確認：○
+- 別の読み方：Each mass has an uncertainty of about ±4 M☉, larger than the 3 M☉ gap; the radiated energy (3.0 ± 0.5 M☉c²) is estimated separately from fits to numerical simulations
+| 区分 | 値 |
+|---|---|
+| Primary black hole | 36 |
+| Secondary black hole | 29 |
+| Sum of the two | 65 |
+| Final black hole | 62 |
+| Radiated as gravitational waves | 3.0 |
 
 ## 構成
 
-| 番号 | 範囲（論文） | タイトル | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 本文の要点 | ノートへ | 本文の形 | 役割 |
+| 番号 | 範囲 | タイトル | ●見出し | 前の枚から | 青帯（結論） | 図で見せるもの | 本文の要点 | 本文の形 | ノートへ | 役割 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | — | — | — | — | — | — | Paper review: Observation of Gravitational Waves from a Binary Black Hole Merger | — | — | 表紙 |
-| 2 | I. Introduction | Background | A century-old prediction | — | Before 2015, the only evidence was one pulsar's energy loss | 仕組み：模式図：a ring of free particles stretched one way, then the other, over one wave cycle (self-drawn. 読み方：dots = freely floating masses, ring shape = the stretch at that moment) | Prediction (1916)：transverse waves of spatial strain (space itself stretches and squeezes) moving at the speed of light〔I. Introduction〕 / Indirect evidence：binary pulsar PSR B1913+16, orbital ★energy loss (the orbit shrinks as GWs carry energy away)〔I. Introduction〕 / Your guess：how far would a 4 km ruler stretch?〔III. Detectors〕 | Einstein knew the amplitude would be tiny; the reality of GWs was debated until 1957; pulsar = neutron star sending regular radio pulses; quadrupole moment = how the mass distribution changes | ラベル | 本文 |
-| 3 | — | — | — | — | — | — | Paper title / B. P. Abbott et al. (LIGO Scientific Collaboration and Virgo Collaboration) / Phys. Rev. Lett. 116, 061102 (2016) / CC BY 3.0, DOI 10.1103/PhysRevLett.116.061102 | — | — | 表紙 |
-| 4 | III. Detectors, Fig. 3 | Detector | Interferometer as a ruler | だから（手段） | Two perpendicular 4 km arms turn a stretch of space into a phase shift | 仕組み：模式図：Michelson interferometer drawn after Fig. 3 (laser, beam splitter, two 4 km arms with test-mass mirrors, photodetector; not to scale. 読み方：red line = light path, one arm stretches while the other shrinks) | ΔL(t) = δLx − δLy = h(t)L〔III. Detectors〕 / h：strain, the fractional stretch (no unit)〔III. Detectors〕 / L：arm length, ★4 km〔III. Detectors〕 / Readout：ΔL shifts the phase of the returning light → photodetector〔III. Detectors〕 | Test masses are free-hanging mirrors; the wave changes the distance between them; like the ring on slide 2, when the x arm stretches the y arm shrinks, so the difference of the two arms catches it; two sites: Hanford (H1) and Livingston (L1) | 式の注釈 | 本文 |
-| 5 | Abstract, III. Detectors | Detector | The size of the target | しかし（壁） | The target stretch, 4×10⁻¹⁸ m, is about 1/400 of a proton | 印象：大きな数字：4×10⁻¹⁸ m（about 1/400 of a proton, 1.7 fm wide; presenter's estimate, proton size from CODATA 2018） | 10⁻²¹ (peak strain of the signal we will see)〔要旨〕 × 4 km〔III. Detectors〕 → ★4×10⁻¹⁸ m〔発表者の概算〕 / Question：how can we catch it? | Answer to the slide-2 guess; 10⁻²¹ is the peak strain later measured (1.0×10⁻²¹); proton size (charge radius 0.84 fm) is outside the paper; earlier resonant bars (1960s) and initial interferometers (2002–2011) gave only upper limits | 展開・ラベル | 本文 |
-| 6 | III. Detectors | Detector | More light, sharper ruler | だから（手段） | Recycled light reaches 100 kW per arm, 5,000 times the 20 W input | 流れ：流れ図：Laser 20 W → Beam splitter 700 W → Each arm cavity 100 kW | Arm cavity：light bounces between the two test masses, each trip adds the shift again ⇒ phase effect ★×300〔III. Detectors〕 / Power recycling：a partly transmitting input mirror sends light heading back to the laser into the arms again, 20 W → 700 W → ★100 kW〔III. Detectors〕 | 5,000 = 100 kW / 20 W (presenter's arithmetic); purpose: more light ⇒ smaller relative shot noise; shot noise = the fluctuation in the number of photons, about √N for N photons, so the relative fluctuation falls as the light grows; 1064 nm laser | ラベル | 本文 |
-| 7 | III. Detectors, Fig. 3(b) | Detector | Noise by frequency band | そして（並べる） | Above 10 Hz, ground motion is cut by over 10 orders of magnitude | 実物：資料の図：Fig. 3(b), noise spectrum of H1 and L1 (figure first: large on the left, cases on the right) | Above 150 Hz：photon shot noise ⇒ more light (previous slide)〔III. Detectors・Fig. 3〕 / Middle：thermal noise ⇒ heavy 40 kg fused-silica mirrors, less thermal jiggle〔III. Detectors〕 / Low：seismic noise ⇒ ★quadruple pendulum on an active isolation platform〔III. Detectors〕 | Reading Fig. 3(b): vertical axis = noise in each frequency band, as strain (unit 1/√Hz); lower = smaller stretches can be read; a pendulum barely follows ground shaking faster than its own swing, and four stages multiply the effect; most sensitive band 100–300 Hz, 3–5× better than initial LIGO; arm tubes below 1 μPa; calibration within 10% in amplitude | 場合分け | 本文 |
-| 8 | II. Observation, Fig. 1 top row | Result 1 | GW150914 | そして（次へ） | On 14 Sep 2015, Livingston saw it 6.9 ms before Hanford | 実物：資料の図：Fig. 1 top row, H1 and L1 strain, with H1 shifted and inverted over L1 (wide, below the text) | L1 first → H1 ★6.9 ms later (light needs up to 10 ms between the sites ⇒ one wave could pass both)〔II. Observation・Fig. 1〕 / When：09:50:45 UTC, Hanford (H1) and Livingston (L1)〔II. Observation〕 / Strength：peak strain 1.0×10⁻²¹, combined SNR 24 (signal 24 times the typical noise)〔要旨・II. Observation〕 | H1 is inverted because the two detectors face differently; 35–350 Hz bandpass for display; only the two LIGO detectors were observing | 展開・ラベル | 本文 |
-| 9 | II. Observation, Fig. 1 bottom row | Result 1 | Frequency and amplitude grow | そして（詳しく） | Eight cycles in 0.2 s, rising to 150 Hz at peak amplitude | 実物：資料の図：Fig. 1 bottom row, time–frequency map (wide, below the text) | Track：35 → 150 Hz in about 8 cycles over 0.2 s, amplitude peaks at ★150 Hz〔II. Observation〕 / Both sites：the same rising track in H1 and L1〔Fig. 1〕 / Reading：a 'chirp': two masses spiral in as they lose energy to GWs and orbit faster, so frequency and amplitude rise〔II. Observation〕 | Reading the map: horizontal = time, vertical = frequency, brightness = signal strength; 'chirp': this rising sweep sounds like a bird's chirp as audio; the whole signal spans 35–250 Hz (abstract) | ラベル | 本文 |
-| 10 | II. Observation, Fig. 2 | Result 2 | Weighing by the chirp | だから（帰結） | The rate of the rise weighs the pair at 70 M⊙ or more in total | 実物：資料の図：Fig. 2 top panel, full-band waveform with the horizon insets (figure first: large on the left) | ℳ = (m₁m₂)^(3⁄5) ⁄ (m₁+m₂)^(1⁄5) = (c³⁄G)[(5⁄96)π^(−8⁄3) f^(−11⁄3) ḟ]^(3⁄5)〔II. Observation〕 / f, ḟ：observed frequency and its rate of change, read from the data〔II. Observation・Fig. 1〕 / ℳ ≃ 30 M⊙〔II. Observation〕 ⇒ total ★≳ 70 M⊙〔II. Observation〕 | Chirp mass = the one mass combination that sets how fast the chirp rises: heavier pairs radiate more strongly and sweep faster; for a given total M, ℳ is largest at m₁ = m₂ (ℳ ≈ 0.435M), so ℳ ≃ 30 M⊙ needs M ≈ 70 M⊙ or more (presenter's arithmetic); Fig. 2 bottom: R_S = Schwarzschild radius 2GM/c² (horizon size); speed above 0.5c near merger | 式の注釈 | 本文 |
-| 11 | II. Observation | Result 2 | Ruling out neutron stars | だから（問い） | At about 350 km apart, only black holes can hold 70 M⊙ | 仕組み：模式図：scale drawing of two equal masses ≃350 km apart, with summed Schwarzschild radii ≳210 km (to scale. 読み方：circles = horizon size, gap = separation at 75 Hz) | Two neutron stars？⇒ ★each ≲ 2 M⊙〔II. Observation・Fonseca+ 2021〕 / Neutron star + black hole？⇒ merges at a much lower frequency〔II. Observation〕 / Two black holes？⇒ ★350 km apart (Kepler, 75 Hz orbit), radii sum ≳210 km (3 km per M⊙)〔II. Observation〕 | Heaviest well-measured neutron star: PSR J0740+6620, 2.08 ± 0.07 M⊙ (Fonseca et al., ApJL 915, L12, 2021; outside the paper), so two cannot reach 70 M⊙; orbit 75 Hz = half the 150 Hz GW frequency; equal point masses; R_S = 2GM/c² (slide 10), so 70 M⊙ gives about 210 km, and 350 km is under twice that: only black holes are that compact; NS + BH with this chirp mass would need a very large total mass, and a bigger pair touches at a wider, slower orbit, so it would merge at a lower frequency | 問い | 本文 |
-| 12 | IV. Detector validation, V. Searches | Result 3 | Glitches and disturbances | しかし（疑い） | Non-Gaussian glitches in the data could fake a coincidence | 違い：比較：Gravitational wave（same shape at both、≤10 ms apart、sensors quiet）と Noise（shapes differ、any offset、sensors see it） | Local disturbance？⇒ under ★6% of the signal's strain, too small to make it〔IV. Detector validation〕 / Chance coincidence？⇒ must be counted (next)〔V. Searches〕 | Glitch = a short burst of noise from the instrument; non-Gaussian = big bursts come far more often than a normal distribution predicts, so σ cannot be computed from a formula and chance must be counted; no correlated transients between sites; sensors: seismometers, microphones, magnetometers, radio receivers, cosmic-ray detector; ~10⁵ channels; detectors cannot be shielded from GWs | 問い | 本文 |
-| 13 | V. Searches | Result 3 | Manufacturing background | だから（手段） | Sliding one site's 16 days by ≫10 ms gave 608,000 years of noise | 仕組み：模式図：time shift: H1 and L1 noise traces, L1 slid by an offset much larger than 10 ms, coincidences counted (schematic. 読み方：rows = two detectors, after the shift a real signal no longer lines up) | 1. Shift one site by ≫10 ms (beyond the light time, so no real wave lines up) 2. Re-count coincidences 3. Repeat ~10⁷ times ⇒ ★608,000 years〔V. Searches〕 / Bias：conservative, a real signal left in makes noise look stronger〔V. Searches〕 | Nothing is invented: real noise is re-paired in time; each shift adds another 16 days of noise-only coincidences, so ~10⁷ shifts × 16 days add up to 608,000 years; 16 days: 12 Sep – 20 Oct 2015; numbers are for the binary coalescence search; a real signal in the background makes the false alarm rate an overestimate | 手順・ラベル | 本文 |
-| 14 | V. Searches, Fig. 4 right | Result 3 | Beyond every background event | だから（帰結） | No background event beat it: under 1 false alarm per 203,000 years | 実物：資料の図：Fig. 4 right, binary coalescence search histogram (GW150914 circled in red by the presenter; figure first: large on the left) | Binary coalescence search：templates, ρ̂c = 23.6 (loudness) ⇒ < 1 per 203,000 years, ★5.1σ〔V. Searches〕 / Generic transient search：no waveform model, ηc = 20.0 ⇒ < 1 per 22,500 years, 4.6σ〔V. Searches〕 / Two searches：independent, both detect it〔V. Searches〕 | Reading Fig. 4: horizontal = loudness score, vertical = number of events, lines = time-shifted background, red circle = GW150914; false alarm rate = how often noise alone makes an event this strong; 203,000 is an upper bound set by the background length; it is below 608,000 because the search sorts events into classes, and counting the chance in any class (trials factor) lowers the bound; 16 days ÷ 203,000 years ≈ 2×10⁻⁷ = chance that noise did it during the run ↔ 5.1σ Gaussian tail; values in データ1 | ラベル | 本文 |
-| 15 | VI. Source discussion, Table I | Discussion | Masses from the full waveform | そして（次へ） | Bayesian fits give 36 and 29 M⊙ before, 62 M⊙ after | 比べる：棒グラフ：データ2 | 36 + 29 M⊙ → ★62 M⊙〔Table I〕 / Radiated：the missing 3.0 ± 0.5 M⊙c² as GWs〔VI. Source discussion〕 / GR tests：three checks, ★no deviation〔VI. Source discussion〕 | Masses as at the source; read at Earth, cosmic expansion (z = 0.09) stretches the wave and masses look about 1.09× heavier, so slide 10's ≳70 M⊙ is about 65 = 36 + 29 here; 90% intervals ±4–5 M⊙; distance 410 Mpc (z = 0.09); peak luminosity 3.6×10⁵⁶ erg/s; graviton mass < 1.2×10⁻²² eV/c²; final spin 0.67; sky area ~600 deg² | 展開・ラベル | 本文 |
-| 16 | VIII. Conclusion | Conclusion | Back to the question | だから（帰結） | A sub-proton stretch, caught at two sites and not by chance | — | Catch it？⇒ strong light, quiet mirrors〔III. Detectors〕 / Noise？⇒ < 1 per 203,000 yr〔V. Searches〕 / Source？⇒ ★merging black holes〔II. Observation・VI. Source discussion〕 | Full answer: first direct GW detection and first binary black hole merger〔VIII. Conclusion〕; outlook: design sensitivity gives 3× SNR; Virgo, KAGRA, LIGO-India improve sky position〔VII. Outlook〕 | 問い | まとめ |
-| 17 | — | Q&A | Anticipated questions | — | — | — | — | — | — | 想定質問 |
-| 18 | — | Q&A | Anticipated questions | — | — | 実物：資料の図：for Q3, Fig. 1 top row, right panel (H1 shifted and inverted over L1) | — | — | — | 想定質問 |
+| 1 | — | — | — | — | — | — | — | — | — | 表紙 |
+| 2 | I | Background | A century of waiting | — | Predicted in 1916, gravitational waves were seen only indirectly until 2015 | 時期：年表：1916 Einstein predicts gravitational waves〔I〕／1957 Chapel Hill conference ends the debate on their reality〔I〕／1960s Weber's resonant bars〔I〕／1975 Hulse–Taylor binary pulsar〔I〕／2002–2011 initial interferometers observe jointly〔I〕／2015 Advanced LIGO starts〔I〕（主役は 2015 だけ赤） | Prediction：strain waves at light speed〔I〕 / Indirect proof：binary pulsar loses energy〔I〕 / Direct search：bars, then interferometers〔I〕 | ラベル | — | 本文 |
+| 3 | I, III | Background | How small is the signal? | しかし（壁） | A strain of 10⁻²¹ moves a 4-km arm by only about 4×10⁻¹⁸ m | 印象：大きな数字：4×10⁻¹⁸ m（arm change at h = 1.0×10⁻²¹, L = 4 km） | Strain h = ΔL/L：1.0×10⁻²¹ at peak〔III〕〔要旨〕 / ★Question：catch it, prove not noise? | ラベル | — | 本文 |
+| 4 | III, Fig. 3 | Detector | Michelson interferometer | だから（手段） | A Michelson interferometer turns the arm difference ΔL = hL into a light signal | 仕組み：模式図：Fig. 3 main diagram redrawn（laser at left, beam splitter at centre, 4-km arms to the right and up, photodetector at bottom）（読み方：one arm stretches while the other shrinks） | ΔL = δLx − δLy = hL〔III〕 / h：strain projected onto the detector〔III〕 / ΔL：shifts the phase of the two returning beams〔III〕 | 式の注釈 | — | 本文 |
+| 5 | III | Detector | Cavities and recycling | そして（詳しく） | Arm cavities multiply the phase shift 300-fold, with 100 kW stored per arm | 流れ：流れ図：Laser 20 W → Power-recycling mirror → 700 W on the beam splitter → 100 kW in each arm cavity | Arm cavity：phase effect ×300 over a plain arm〔III〕 / Power recycling：sends light back, 20 W → 700 W〔III〕 | ラベル | — | 本文 |
+| 6 | III, IV, Fig. 3(b) | Detector | Noise remains | しかし（壁） | One detector alone cannot tell a wave from its own bursts of noise | 仕組み：資料の図：Fig. 3(b) strain noise vs frequency（H1 red, L1 blue; lowest near 100–300 Hz; sharp lines are calibration and power-grid lines）（読み方：lower curve = quieter detector） | Above 150 Hz：photon shot noise〔Fig. 3〕 / Below 150 Hz：thermal and ground noise〔III〕 / Any band：non-Gaussian noise bursts〔IV〕 | 場合分け | — | 本文 |
+| 7 | III, V, Fig. 3(a) | Detector | Two distant sites | だから（手段） | A real wave must reach Hanford and Livingston within 10 ms | 実物：資料の図：Fig. 3(a) map（H1 at upper left in red, L1 at lower right in blue, dashed line "10 ms light travel time"） | Local noise? ⇒ seen at one site only〔III〕 / Real wave? ⇒ both sites within 10 ms〔Fig. 3〕〔V〕 | 問い | — | 本文 |
+| 8 | II, Fig. 1 | Observation | GW150914 | そして（次へ） | On 14 Sep 2015 both detectors recorded the same signal 6.9 ms apart | 実物：資料の図：Fig. 1 top row, right panel（L1 strain in blue with H1 shifted by 6.9 ms and inverted in orange on top） | When：14 Sep 2015, 09:50:45 UTC〔II〕 / Timing：L1 first, H1 6.9 ms later〔Fig. 1〕 / Size：peak h 1.0×10⁻²¹, combined SNR 24〔要旨〕〔II〕 | ラベル | — | 本文 |
+| 9 | II, Fig. 1, Fig. 2 | Observation | A rising chirp | そして（詳しく） | In 0.2 s the signal rose from 35 to 150 Hz in about 8 cycles | 実物：資料の図：Fig. 1 bottom row, left panel（H1 time–frequency map; a bright track rising to the right near 0.40–0.43 s） | 35 Hz〔II〕 → 150 Hz, loudest〔II〕 / Chirp：frequency and amplitude rise together〔II〕 / GR fit：residuals look like noise〔Fig. 1〕 | 展開・ラベル | — | 本文 |
+| 10 | IV, V | Significance | Is it just noise? | しかし（疑い） | Noise bursts in two detectors can also line up by chance within 10 ms | 違い：比較：Gravitational wave（same shape at both sites、within 10 ms、frequency rising）と Chance coincidence（independent at each site、random timing、many shapes） | Environmental disturbance? ⇒ under 6% of the strain〔IV〕 / Glitch shared by both sites? ⇒ none found〔IV〕 | 問い | — | 本文 |
+| 11 | V, V-B | Significance | Time-slide background | だから（手段） | Shifting one detector's data in time gave 608,000 years of noise-only pairs | 仕組み：模式図：two time lines H1 (red) above and L1 (blue) below; L1 slid sideways by an offset much larger than 10 ms; pairs that still coincide are counted as noise（読み方：each shift is one fake experiment with no real wave in common） | 1. Shift one site's time stamps ≫ 10 ms 2. Count coincidences again 3. Repeat ~10⁷ times〔V-B〕 / Conservative：a real wave can enter the background〔V〕 | 手順・ラベル | — | 本文 |
+| 12 | V-A, V-B, Fig. 4 | Significance | Above all background | だから（帰結） | No background event reached GW150914: under 1 false alarm per 203,000 years | 実物：資料の図：Fig. 4 right（binary coalescence search; black background line falls off below ρ̂c ≈ 21, orange square marked GW150914 alone at 23.6 on the right） | Matched filter：data vs ~250,000 GR waveforms〔V-B〕 / Can noise reach 23.6? ⇒ ★< 1 per 203,000 yr, > 5.1σ〔V-B〕 / Model-free search：4.6σ, 1 per 22,500 yr〔V-A〕 | ラベル・問い | — | 本文 |
+| 13 | II | Source | What can orbit at 75 Hz? | だから（問い） | A chirp mass of 30 M☉ at a 75-Hz orbit leaves only black holes | 判定：判定の流れ図：Two neutron stars?→ はい：ruled out, too light／いいえ：Black hole + neutron star?→ はい：ruled out, would merge at lower frequency／いいえ：Two black holes | Chirp mass ≈ 30 M☉〔II〕 → total ≳ 70 M☉〔II〕 / Size：Schwarzschild radii sum ≳ 210 km〔II〕 / 75-Hz orbit：only ≈ 350 km apart〔II〕 | 展開・ラベル | — | 本文 |
+| 14 | VI, Table I | Source | Masses of the pair | そして（詳しく） | Black holes of 36 and 29 M☉ became 62 M☉, radiating 3 M☉ as waves | 比べる：棒グラフ：データ2（上から Primary 36、Secondary 29、Sum 65、Final 62、Radiated 3.0。Radiated だけ青） | Before → after：36 + 29 → 62 M☉〔Table I〕 / ★Radiated：3.0 M☉c² as waves〔VI〕 / Source：410 Mpc away, spin 0.67〔Table I〕 | ラベル | — | 本文 |
+| 15 | II, VI, VII | Source | What is not yet known | しかし（限り） | Matches GR in strong gravity, but two detectors place it only within 600 deg² | 観点：表：Check×Result（Remnant mass and spin, early vs late＝consistent／Inspiral phase coefficients＝no deviation from GR／Graviton mass＝< 1.2×10⁻²² eV/c²／Sky position, 90% region＝about 600 deg²） | Does GR hold in strong gravity? ⇒ three tests, no deviation〔VI〕 / Where is the source? ⇒ only within ~600 deg²〔II〕 | 問い | — | 本文 |
+| 16 | VIII | Summary | Caught, and not noise | だから（帰結） | Two distant interferometers caught a black-hole merger far beyond chance | 流れ：流れ図：Cavities read h ≈ 10⁻²¹ → Same chirp at two sites 6.9 ms apart → Noise fakes it < 1 per 203,000 years → Only two black holes fit | How? ⇒ ★amplify, coincide, count noise〔講師のまとめ〕 / What? ⇒ ★first black-hole merger〔VIII〕 | 問い | — | まとめ |
+| 17 | — | — | — | — | — | — | — | — | — | 想定質問 |
+| 18 | — | — | — | — | — | — | — | — | — | 想定質問 |
 
 ## 引っかかりへの手当て
 
-- [2] strain が定義前に出る → 2枚目の本文に括弧で「space itself stretches and squeezes」（定義は4枚目の h）
-- [2] エネルギー損失がなぜ証拠か → 本文の括弧に「the orbit shrinks as GWs carry energy away」
-- [4] 直交する腕の差で読む理由 → ノートで2枚目の輪に戻し、x が伸びると y が縮むので差に出ると一言
-- [4] 7枚目で H1・L1 が先に出る → 4枚目のノートで Hanford (H1)・Livingston (L1) と略号を添えた
-- [5] 10⁻²¹ の出どころ → 本文の括弧に「peak strain of the signal we will see」（8枚目の 1.0×10⁻²¹ へ）
-- [6] 光を増やす理由とショット雑音 → ノートに、光子の数の揺らぎ √N で相対の揺らぎが下がると1文
-- [6] 往復で ×300 になる理由 → 本文の括弧に「each trip adds the shift again」
-- [6] recycling の像 → Power recycling の項を、レーザー側へ戻る光を腕へ送り返すと言い換え
-- [6] Signal recycling の帯域の主張 → 理由が置き場に無い細部なので本文から外した
-- [6] homodyne readout・Nd:YAG → ノートから外した（筋に要らない名前）
-- [7] Fig. 3(b) の読み方 → ノートの頭に縦軸（各帯域の雑音、ひずみ換算 1/√Hz、低いほど細かく読める）
-- [7] 低損失ファイバーで熱雑音が減る理由 → 置き場に理由が無いので low-loss を外し、「heavy 40 kg mirrors, less thermal jiggle」に言い換え
-- [7] 振り子で地面の揺れが切れる理由（青帯のなぜ） → ノートに、振り子は自分の揺れより速い揺れについていかず、4段で掛け算になると1文
-- [8] 6.9 ms の意味 → 本文の括弧に「⇒ one wave could pass both」
-- [8] SNR 24 → 本文の括弧を「signal 24 times the typical noise」に言い換え
-- [9] 時間周波数図の読み方 → ノートの頭に横・縦・明るさ
-- [9] 周波数が上がる ⇒ 近づく、の理由・chirp の語 → 本文の Reading を「a 'chirp': … orbit faster, so frequency and amplitude rise」に（chirp はここが初出）
-- [10] 掃引の速さで重さが分かる理由・チャープ質量 → ノートの頭に一言（重いほど強く放射して速く掃引）
-- [10] ℳ ≃ 30 ⇒ ≳70 → ノートに、同じ総質量なら m₁ = m₂ で ℳ が最大（≈0.435M）と1文
-- [10] detector frame → 10枚目は新しい名前が3つになるので本文から外し、中身は15枚目のノートへ（下の [15]）
-- [10] 図の R_S が11枚目の定義より先に出る → R_S = 2GM/c² の定義を10枚目のノートへ移した
-- [11] 350 km の出どころ → 本文の括弧に「Kepler at a 75 Hz orbit」
-- [11] 半径の和 210 km とブラックホールの結びつき → 本文に「about 3 km per M⊙」、ノートに 350 km は半径の和の2倍弱なので BH だけが詰まれると1文
-- [11] NS + BH が低い周波数で合体する理由 → ノートに、大きい組ほど広く遅い軌道で接すると1文
-- [11] ringdown・Kerr（ノート） → 語の中身が無い細部なので外した
-- [11] 中性子星2つでは質量が足りない理由 → 採らない：中性子星の質量の上限が置き場に無い。設計に戻す
-- [12] glitch・non-Gaussian → ノートの頭に、短い雑音の突発・正規分布より大きな揺れが多いので σ を式で出せず数えるしかない（13枚目へ）
-- [12] 6% 未満の意味 → 本文の括弧を「of the signal's strain, too small to make it」に
-- [13] ずらすと雑音だけになる理由 → 本文の手順1に括弧で「beyond the light time, so no real wave lines up」
-- [13] 16日が 608,000 年になる理由 → ノートに、1回ずらすごとに16日分、約10⁷回と1文
-- [13] Manufacturing の像 → ノートの頭に「Nothing is invented: real noise is re-paired in time」
-- [13] conservative の向き → 本文を「a real signal left in makes noise look stronger」に言い換え
-- [13] classes and trials factor（ノート） → 14枚目のノートへ中身つきで移した
-- [14] 608,000 年と 203,000 年の食い違い → ノートに、分類ごとの偶然を数える分（trials factor）で上限が下がると1文
-- [14] ρ̂c・ηc と、連星合体の探索が何をするか → 本文に「fits merger waveforms」「(loudness)」、ノートに横軸＝強さの点数
-- [14] ヒストグラムの読み方 → ノートの頭に横・縦・線・丸
-- [14] 203,000 年 ⇒ 5.1σ → ノートに、16日 ÷ 203,000 年 ≈ 2×10⁻⁷ が観測中の偶然の確率と1文
-- [14] 2つ目の事象（1 per 2.3 years） → 説明の無い細部なのでノートから外した
-- [15] Bayesian fits → 本文の括弧に「GR waveform fit」
-- [15] 10枚目の ≳70 と 36 + 29 = 65 → ノートに、地球で読むと z = 0.09 の膨張で約1.09倍重く見えるので、10枚目の ≳70 はここでの約65と1文
-- [15] 36 + 29 → 62 と放出エネルギーのつながり → 本文を「the missing 3.0 ± 0.5 M⊙c² left as GWs」に
+- [2] Weber's resonant bars の中身 → 2の原稿に「large metal bars meant to ring when a wave passes」
+- [2] 連星パルサーで何が見えたか → 2の原稿に「a neutron star whose radio pulses act as a clock」と「its orbit slowly shrinks」（13で思い出させる）
+- [2] LIGO の略語 → 2の原稿に「the upgraded Laser Interferometer Gravitational-Wave Observatory」
+- [3] 10⁻²¹ がまだ出ていない事象の値 → 3の原稿に予告「for the event we will see on slide eight」
+- [3] arm が何の腕か → 3の原稿に「mirrors at the ends of two arms」と予告「the next slide shows how」
+- [3] 像：strain＝力で材料が伸びる → 3の原稿に「Nothing pushes or pulls on the arm」「the mirrors hang freely」
+- [4] projected の意味 → 4の原稿に「the part of the wave's stretching that lies along the arms」
+- [5] 光を増やすとなぜ良いか → 5の原稿に「the signal grows in proportion to the light」と、6への予告「This randomness is the shot noise on the next slide」
+- [5] Signal recycling が帯域を広げる理由は事実の置き場に無く、答えにつながらない細部 → 本文の要点と原稿から外した
+- [6] H1/L1＝Hanford/Livingston → 6の原稿に「LIGO has two detectors, H1 at Hanford and L1 at Livingston」
+- [6] 非ガウスがなぜ困るか → 6の原稿に「we could compute the chance of a fake; here we cannot」、10の原稿で「this rate must be measured from the data, not computed from sigma」と思い出させて11の time slide へつなぐ
+- [6] calibration lines → 6の原稿に「signals injected on purpose to calibrate」
+- [8] GW150914 の名前 → 8の原稿に「GW for gravitational wave, followed by the date」
+- [9] GR fit が何の波形で、何が言えるか → 9の原稿に「for two compact objects orbiting and merging」と「one predicted shape explains the whole signal」
+- [12] false alarm の意味 → 12の原稿に「A false alarm is a noise-only event with a score this high or higher」
+- [12] 横軸の点数と8の SNR 24 → 12の原稿に「this search's version of the signal-to-noise ratio of slide eight」
+- [12] 5.1σ への換算 → 12の原稿に「a normal-distribution tail beyond five point one sigma」
+- [12] 608,000 年の背景から上限が 203,000 年になる理由 → 12の原稿に「the paper divides by this trials factor of three: six hundred eight thousand over three is about two hundred three thousand」（論文 V：試行の割り引き＝探した区分の数、V-B：区分は3つ、上限は3区分を通して 1/203,000 年）
+- [13] 周波数の上がり方がなぜ質量を決めるか → 13の原稿に「the pair loses energy to the waves, so it spirals inward and orbits faster」
+- [13] chirp mass と総質量 70 以上 → 13の原稿に「at most about 0.44 times the total mass」
+- [13] detector frame と z → 13の原稿に「read directly from the wave as it arrives」、14の原稿に「where z is the source's redshift」
+- [13] BH＋NS がなぜ低い周波数で合体するか → 13の原稿に「the star would reach it at a wider, slower orbit」
+- [13] 350 km と 210 km の比べ → 13の原稿に「less than twice the two hundred ten kilometres」
+- [14] spin 0.67・410 Mpc → 14の原稿に「the fastest spin a black hole can have」「roughly 1.3 billion light-years」
+- [15] inspiral・phase coefficients → 15の原稿に「the stage when the two orbit inward before merging」
+- [15] 重力子の質量の上限がなぜ付くか → 15の原稿に「the chirp would arrive distorted」
+- [15] 2台でなぜ 600 deg² か → 15の原稿に「anywhere on a ring across the sky」
 
 ## 想定質問
 
 | 番号 | 型 | 質問 | 回答の要点 | 戻る枚 |
 |---|---|---|---|---|
-| Q1 | 疑い | Could noise in the two detectors have lined up by chance? | Time-shifted background (608,000 years): noise this strong less than once in 203,000 years, 5.1σ〔V. Searches〕 | 14 |
-| Q2 | 疑い | Could an earthquake or a power-line disturbance have caused it? | Site sensors: all fluctuations under 6% of the strain amplitude; no correlated disturbance at both sites〔IV. Detector validation〕 | 12 |
-| Q3 | 数値の意味 | What does the 6.9 ms delay mean? | Shorter than the 10 ms light travel time between the sites, so one wave could have passed both〔II. Observation〕 | 8 |
-| Q4 | 限界 | Where in the sky was the source? | Only two detectors: about 600 deg² (90% region), set mainly by arrival time; Virgo and KAGRA will narrow it〔II. Observation・VII. Outlook〕 | 15 |
+| Q1 | 疑い | Could a disturbance common to both sites, not noise at each site, fake the signal? | Sensors found no such disturbance; environment explains under 6% of the strain | 10 |
+| Q2 | 数値の意味 | Why are there two significances, 5.1σ and 4.6σ? | Matched filter uses GR waveforms (5.1σ); the model-free search assumes less (4.6σ) | 12 |
+| Q3 | なぜ | Why is the time-slide background conservative? | A real wave in one detector can pair with shifted noise and enter the background | 11 |
+| Q4 | 今後 | How will the sky position improve? | Advanced Virgo, KAGRA and a LIGO detector in India will extend the network | 15 |
 
 ## 迷った所
 
-- 5枚目の図を「大きな数字」にした（陽子との比は論文の外の値。CODATA 2018 の陽子の荷電半径 0.84 fm から幅 1.7 fm として概算）。対数の物差しの模式図にする手もある
-- 14枚目は Fig. 4 右（実物）を主役にし、データ1（3つの探索の誤報率）は本文とノートに回した。棒グラフにするなら対数軸が要る
-- 12枚目の IV 節（検出器の確かめ）は1枚の問いの形に2行でまとめ（相関した雑音が無いことはノートへ）、雑音の偶然の数え方は13・14枚目に分けた
-- 15枚目の距離 410 Mpc はノートへ回した（入りの見込みのため）。範囲が「主要な結果」なので、波源の値は質量と放出エネルギー・GR の検証だけを本文に
-- 論文の節の順は II（観測）→ III（検出器）だが、依頼の「方法から入る」に合わせて III を先（4〜7枚目）、II を後（8〜11枚目）にした。論文どおり II を先にするなら 8〜11 を 4 の前へ
-- 筋の答えは、まとめの枚の入りの見込みのため短い一文（Same chirp at two sites, not noise）にした。数値（203,000 年に1回未満・5.1σ）は14枚目の青帯、初の直接検出の言い切りは16枚目のノートに
-- 2枚目の「Your guess」の答え合わせは5枚目（4×10⁻¹⁸ m）。陽子の幅 1.7 fm は論文の外（CODATA 2018 の荷電半径 0.84 fm の2倍）で、5枚目の大きな数字の注記にだけ置いた
+- 12枚目の 1/203,000 年は、背景 608,000 年を3区分の試行の割り引き（trials factor 3）で割った値（論文 V・V-B。608,000÷3≈202,700 を論文は 203,000 と書く）。原稿に1文で入れた
+
+- 16枚目（まとめ）の入りの見込みの △ は、英語の文字幅の見積もりで出ている見込み。答えの行と要点は縮めたが、残れば制作の段で流れ図の箱を短くする
+
+- 原稿の字数の △（目安 429字）は日本語の 300字/分 の目安で、英語の文字数には合わない。英語は 1枚 約130〜150語（700〜850文字、約1分）にそろえ、本文15枚で約20分になるようにしたので、このままにした
+
+- 論文の順は II Observation → III Detectors だが、依頼の「方法から始める」に合わせ、Detector（III）を Observation（II）より先に置いた
+- 3枚目の「4×10⁻¹⁸ m」は h = 1.0×10⁻²¹ と L = 4 km を掛けた発表者の概算（論文に ΔL の値そのものは無い）
+- 13枚目のチャープ質量 30 M☉・総質量 70 M☉ は検出器系の値、14枚目の 36・29・62 M☉ は源の系の値（(1+z) 倍の違い）。原稿で一言断る

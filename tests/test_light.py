@@ -112,13 +112,13 @@ def test_light_presentation_shows_the_outline_first(tmp_path):
             shutil.copy(root / "examples" / "zemi" / f, w / f)
     p = w / "outline.md"
     t = p.read_text(encoding="utf-8")
-    assert "| 軽さ | 標準 |" in t and "| 構成案の確認 | 任せる |\n" in t   # 見本は標準・任せる
+    assert "| 軽さ |" not in t and "| 構成案の確認 | 任せる |\n" in t   # 見本は標準（軽さの行は無くなった）・任せる
     p.write_text(t.replace("| 構成案の確認 | 任せる |\n", ""), encoding="utf-8")   # 確認の行を外す（既定は見せる）
     assert budget.light(w)
     assert not [r for r in check_outline.check(p) if r[0] == "✘"]
     _, nxt = next_step.steps_for(w)
     assert nxt.startswith("構成案をユーザーに見せる") and "軽量の制作の担当" in nxt
-    p.write_text(p.read_text(encoding="utf-8").replace("| 軽さ | 標準 |", "| 軽さ | 標準 |\n| 構成案の確認 | 任せる |"), encoding="utf-8")
+    p.write_text(p.read_text(encoding="utf-8").replace("| 丁寧さ | 0 |\n", "| 丁寧さ | 0 |\n| 構成案の確認 | 任せる |\n"), encoding="utf-8")
     assert next_step.steps_for(w)[1].startswith("軽量：制作の担当1人を起動")
 
 
@@ -271,10 +271,10 @@ def test_light_flow_runs_the_inference_audit(tmp_path):
     for f in ("outline.md", "data_1.md"):
         shutil.copy(root / "examples" / "zemi" / f, w / f)
     p = w / "outline.md"
-    assert "| 軽さ | 標準 |" in p.read_text(encoding="utf-8")   # 見本は標準
+    assert "| 軽さ |" not in p.read_text(encoding="utf-8")   # 見本は標準（軽さの行は無くなった）
     assert next_step.steps_for(w)[1].startswith("推論距離の担当1人を起動")
-    # 見本の手当ての節に無い枚（12）の穴
-    (w / "outline_review.md").write_text("## 推論距離\n\n- [12] 「A ⇒ B」｜用語｜語｜補う前提：x｜使う所：12｜架け方：括弧\n", encoding="utf-8")
+    # 見本の手当ての節に無い枚（9）の穴
+    (w / "outline_review.md").write_text("## 推論距離\n\n- [9] 「A ⇒ B」｜用語｜語｜補う前提：x｜使う所：9｜架け方：括弧\n", encoding="utf-8")
     nxt = next_step.steps_for(w)[1]
     assert nxt.startswith("軽量：設計の担当に続けて頼む")   # 推論距離の担当をまだ起動していない（記録が無い）なら設計の担当へ
     d = brief.build("推論距離の担当", str(w), count=True)   # 起動を記録する
@@ -384,6 +384,8 @@ def _zemi(tmp_path, lightness="標準"):
     import re
     src = (Path(__file__).resolve().parents[1] / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
     src, n = re.subn(r"(\|\s*軽さ\s*\|\s*)[^|]*\|", rf"\g<1>{lightness} |", src, count=1)
+    if n == 0:   # 見本の構成案には軽さの行が無い（オプションは無くなった）。前の版の構成案として行を足す
+        src, n = re.subn(r"(\| オプション \| 値 \|\n\|---\|---\|\n)", rf"\g<1>| 軽さ | {lightness} |\n", src, count=1)
     assert n == 1
     w = tmp_path / "_work" / "ゼミ"
     w.mkdir(parents=True)
@@ -401,10 +403,10 @@ def test_outline_script_fills_the_notes(tmp_path, monkeypatch):
     w = _zemi(tmp_path)
     assert {i: m for m, i, _ in check_outline.check(w / "outline.md")}.get("原稿") == "△"   # script.md が無い
     say = "い" * 440 + "と書かれています〔Fig. 3〕。"
-    body = "".join(f"## {n}\n{say}\n※（資料外の補足）根拠〔p.2〕\n\n" for n in range(1, 18))
+    body = "".join(f"## {n}\n{say}\n※（資料外の補足）根拠〔p.2〕\n\n" for n in range(1, 16))
     (w / "script.md").write_text(body, encoding="utf-8")
     items = {i: (m, x) for m, i, x in check_outline.check(w / "outline.md")}
-    assert "原稿" not in items and "原稿の字数" not in items   # 目安 20分×300字÷本文13枚＝約462字（出どころは数えない）
+    assert "原稿" not in items and "原稿の字数" not in items   # 目安 20分×300字÷本文11枚＝約545字（出どころは数えない。その0.8〜1.2倍）
     assert scaffold.main([str(w)]) == 0
     notes = re.sub(r"<!--.*?-->", "", (w / "notes.md").read_text(encoding="utf-8"), flags=re.S)   # 枚ごとのコメント（構成案の列）は見ない
     assert "い" * 440 + "と書かれています。" in notes and "〔Fig. 3〕" not in notes and "※（資料外の補足）根拠〔p.2〕" in notes
@@ -421,16 +423,20 @@ def test_outline_script_checks(tmp_path, monkeypatch):
     o = w / "outline.md"
     s = o.read_text(encoding="utf-8").replace("## 引っかかりへの手当て\n", "## 引っかかりへの手当て\n- [5] 効きの意味 → 原稿で「同じ伸びを重ねて拾う」と言う\n", 1)
     o.write_text(s, encoding="utf-8")
-    ok = "あ" * 350   # 講座なら目安に入るが、20分・本文13枚の発表では短い
-    bad = {4: "あ" * 460 + "これは私の概算です。", 13: "あ" * 460 + "棒グラフの右端が型を使う探索です。"}
-    (w / "script.md").write_text("".join(f"## {n}\n{bad.get(n, ok)}\n\n" for n in range(1, 18)), encoding="utf-8")
+    ok = "あ" * 350   # 講座なら目安に入るが、20分・本文11枚の発表では短い
+    bad = {4: "あ" * 460 + "これは私の概算です。", 12: "あ" * 460 + "棒グラフの右端が型を使う探索です。"}
+    (w / "script.md").write_text("".join(f"## {n}\n{bad.get(n, ok)}\n\n" for n in range(1, 16)), encoding="utf-8")
     out = {i: (m, x) for m, i, x in check_outline.check(o)}
-    assert out["原稿の字数"][0] == "△" and "2（350字）" in out["原稿の字数"][1] and "462字前後" in out["原稿の字数"][1]
+    assert out["原稿の字数"][0] == "△" and "2（350字）" in out["原稿の字数"][1] and "545字前後" in out["原稿の字数"][1]
     assert "4（" not in out["原稿の字数"][1]
-    assert out["原稿の図の指し方"][0] == "△" and "13「グラフの右」" in out["原稿の図の指し方"][1]
+    assert out["原稿の図の指し方"][0] == "△" and "12「グラフの右」" in out["原稿の図の指し方"][1]
     assert "原稿の作業メモ" not in out
     assert out["原稿の手当て"][0] == "✘" and "[5]" in out["原稿の手当て"][1]
-    (w / "script.md").write_text("".join(f"## {n}\n" + "あ" * 440 + ("同じ伸びを重ねて拾うからです。" if n == 5 else "") + "\n\n"
-                                         for n in range(1, 18)), encoding="utf-8")
+    import check_notes
+    said = {}   # 手当てで原稿に回した言い回し（見本の手当ての節の分と、上で足した [5]）
+    for n, say, terms, _ in check_notes.care_items(o.read_text(encoding="utf-8")):
+        said[n] = said.get(n, "") + "".join(f"{x}。" for x in [*say, *terms])
+    (w / "script.md").write_text("".join(f"## {n}\n" + "あ" * max(0, 545 - len(said.get(n, ""))) + said.get(n, "") + "\n\n"
+                                         for n in range(1, 16)), encoding="utf-8")
     out = {i: m for m, i, _ in check_outline.check(o)}
     assert not {"原稿", "原稿の字数", "原稿の図の指し方", "原稿の手当て"} & set(out)

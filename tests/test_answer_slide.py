@@ -38,7 +38,9 @@ def test_answer_slides_are_the_story_answer_the_beat_and_why():
     t2 = text.replace("| 11 | 誤りが出やすい所 | だから（帰結） |", "| 11 | 誤りが出やすい所 | だから（問い） |")
     assert story.answer_slides(t2, "memo")[11] == "だから（問い）の枚"
     zemi = (Path(__file__).resolve().parents[1] / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
-    assert story.answer_slides(zemi, "outline") == {10: "答えの拍「確かめた結果」の枚", 13: "筋の答えの枚"}   # 型の答えの拍はゼミの見本で
+    assert story.answer_slides(zemi, "outline") == {11: "筋の答えの枚"}   # ゼミの見本は型の答えの拍（確かめた結果）も11枚目
+    z2 = zemi.replace("| 答え | — | 偶然でなく BH 合体の重力波 | 11 |", "| 答え | — | 偶然でなく BH 合体の重力波 | 12 |")
+    assert story.answer_slides(z2, "outline") == {11: "答えの拍「確かめた結果」の枚", 12: "筋の答えの枚"}   # 型の答えの拍（筋の答えを12枚目にずらして見る）
 
 
 def test_table_on_the_answer_slide_warns(memo):

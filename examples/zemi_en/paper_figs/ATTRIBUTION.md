@@ -1,7 +1,8 @@
-# Sources of the figures in this folder
+# Sources of the images in this folder
 
-The images in this folder are parts cut out of the figures of the following paper (apart from cropping, nothing was changed).
-`../figs.py` copies them to `figs/`, and the slides use them from there.
+The images in this folder are pages of the following paper, rendered from the PDF at 400 dpi (only the pages the slides use).
+To keep the files small, everything except the parts that `../figs.py` cuts out was blanked to white.
+`../figs.py` cuts the figures out of these pages, adds labels, and writes them to `figs/`; the slides use them from there.
 
 - B. P. Abbott et al. (LIGO Scientific Collaboration and Virgo Collaboration),
   "Observation of Gravitational Waves from a Binary Black Hole Merger",
@@ -9,15 +10,20 @@ The images in this folder are parts cut out of the figures of the following pape
 - License: [Creative Commons Attribution 3.0 (CC BY 3.0)](https://creativecommons.org/licenses/by/3.0/).
   The paper states that it may be reused, in whole or in part, without permission, provided the authors, title, journal and DOI are cited.
 
-| File | Slide | Original figure | Notes |
+| File | Page |
+|---|---|
+| `p02.png` | p.2 (Fig. 1) |
+| `p04.png` | p.4 (Fig. 3) |
+| `p06.png` | p.6 (Fig. 4) |
+
+## Which figure is used on which slide
+
+| Slide | Figure (`figs/`) | Original figure | Changes besides cropping |
 |---|---|---|---|
-| `s07.png` | 7 | p.4, Fig. 3(b) (strain noise of the H1 and L1 detectors) | Cropped only |
-| `s08.png` | 8 | p.2, Fig. 1, top row (strain observed at Hanford H1 and Livingston L1) | Cropped only (the vertical label is cut off, so the slide and the script say it) |
-| `s09.png` | 9 | p.2, Fig. 1, bottom row (time–frequency maps) | Cropped only |
-| `s10.png` | 10 | p.3, Fig. 2, top panel (estimated waveform and the horizon sketches) | Cropped only |
-| `s14.png` | 14 | p.6, Fig. 4, right (result of the binary coalescence search and its noise background) | Cropped only (the red ring around GW150914 is drawn on the slide) |
-| `s18.png` | 18 (expected question Q3) | p.2, Fig. 1, top row, right panel (L1, with H1 shifted and inverted on top) | Cropped only (the tick labels are in the left panel, so they are cut off) |
+| 6 | `s06.png` | p.4, Fig. 3(b) (strain noise of the H1 and L1 detectors) | Enlarged 1.5x; the panel letter (b) removed; a one-line reading guide added |
+| 7 | `s07.png` | p.4, Fig. 3(a) (map of the two sites) | Enlarged 3.6x; the panel letter (a) removed; the site names added |
+| 8 | `s08.png` | p.2, Fig. 1, top row, right panel (L1, with H1 shifted and inverted on top) | Enlarged 1.5x; the strain ticks of the left panel and the time axis of the bottom row joined on; the axis name added |
+| 9 | `s09.png` | p.2, Fig. 1, bottom row, left panel (H1 time–frequency map) | Enlarged 1.5x; the color bar left out; a title and the label "chirp" added |
+| 12 | `s12.png` | p.6, Fig. 4, right panel (result of the binary coalescence search and its background) | Enlarged 1.7x; the label "23.6" added |
 
-The figures were cut from the PDF pages rendered at 200 dpi, keeping the axes, tick labels and legends where they fit.
-
-The other figures drawn by `../figs.py` (stretching of a ring of free masses, the Michelson interferometer, the size of the binary, time shifts, and the bar chart of the masses) were drawn in this repository based on the paper.
+The other figures drawn by `../figs.py` (the timeline on slide 2, the Michelson interferometer on slide 4, which was redrawn in simplified form from Fig. 3, the time slides on slide 11, and the bar chart of the masses on slide 14) were drawn in this repository based on the paper.

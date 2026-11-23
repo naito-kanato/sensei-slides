@@ -1,234 +1,93 @@
 ## 1
 <!-- 表紙の枚 -->
 
-Good afternoon. Today I will present the paper "Observation of Gravitational Waves from a Binary Black Hole Merger," published by the LIGO and Virgo collaborations in Physical Review Letters in 2016.
-
-This is the paper that reported the first gravitational-wave signal, GW150914. I will start with the background, then explain how the detector works, then look at the signal and its source, and finally show how the team made sure it was not noise.
+I will present the paper "Observation of Gravitational Waves from a Binary Black Hole Merger" by the LIGO Scientific Collaboration and the Virgo Collaboration, published in Physical Review Letters in 2016. Today's question is simple to state: the signal they were looking for is unimaginably small, so how did they catch it, and how can they say it was not just noise? I will follow the path along the top of the slides. First, the background: what was missing. Then the detector: how a strain of ten to the minus twenty-one can be read at all. Then the observation itself, then its significance, that is, whether it could be noise, and finally the source: what kind of object produced it. I will bring the answer to today's question back at the end.
 
 ## 2
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ ノートへ：Einstein knew the amplitude would be tiny; the reality of GWs was debated until 1957; pulsar = neutron star sending regular radio pulses; quadrupole moment = how the mass distribution changes -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 手当て：[2] Weber's resonant bars の中身 → 2の原稿に「large metal bars meant to ring when a wave passes」 ／ 手当て：[2] 連星パルサーで何が見えたか → 2の原稿に「a neutron star whose radio pulses act as a clock」と「its orbit slowly shrinks」（13で思い出させる） ／ 手当て：[2] LIGO の略語 → 2の原稿に「the upgraded Laser Interferometer Gravitational-Wave Observatory」 -->
 
-Let me begin with the background. In 1916, general relativity predicted gravitational waves: transverse waves of strain, which means space itself stretches and squeezes, moving at the speed of light.
-
-Look at the figure on the right. Each dot is a mass floating freely, and the shape of the ring shows the stretch at that moment, for a wave passing straight into the screen. At a quarter period the ring is stretched sideways and squeezed vertically. Half a period later, it is the other way round. The stretch is greatly exaggerated here.
-
-For almost a century the only evidence was indirect. The binary pulsar PSR B1913+16 is a neutron star that sends regular radio pulses while orbiting a companion. Its orbit loses energy and shrinks, because gravitational waves carry the energy away. Einstein himself knew the amplitude would be tiny, and whether the waves were even real was debated until 1957.
-
-You can think of ripples on a pond. The difference is that here the ripple is in distance itself: nothing pushes the dots, the space between them changes.
-
-So here is a question for you. If such a wave passes a 4 km ruler, how far does the ruler stretch? Please keep your guess in mind.
-
-※ (Figure) The ring is schematic and the stretch is exaggerated; the wave travels perpendicular to the page.
+Let me start with what we already know. Einstein predicted gravitational waves in 1916: waves of stretching and squeezing of space that travel at the speed of light. On the timeline, read from top to bottom. Even their physical reality was debated until the Chapel Hill conference in 1957. In 1975 Hulse and Taylor found a binary pulsar, a neutron star whose radio pulses act as a clock, orbiting a companion. Later measurements showed that the pair loses energy and its orbit slowly shrinks, exactly as if it were radiating gravitational waves. So the waves were accepted, but only indirectly: nobody had seen a wave itself arrive. Direct searches started with Weber's resonant bars in the 1960s, large metal bars meant to ring when a wave passes, and then interferometers took over; initial detectors observed jointly from 2002 to 2011 without a detection. The red point at the bottom is 2015, when Advanced LIGO, the upgraded Laser Interferometer Gravitational-Wave Observatory, began observing. If you know general relativity only by name, that is enough for today: the important picture is that a passing wave changes distances across the detector. Why did it take a century? Because of the size of the effect, which is on the next slide.
 
 ## 3
-<!-- 表紙の枚 -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：しかし（壁）（1文目でこの語のつながりを言う） ／ 手当て：[3] 10⁻²¹ がまだ出ていない事象の値 → 3の原稿に予告「for the event we will see on slide eight」 ／ 手当て：[3] arm が何の腕か → 3の原稿に「mirrors at the ends of two arms」と予告「the next slide shows how」 ／ 手当て：[3] 像：strain＝力で材料が伸びる → 3の原稿に「Nothing pushes or pulls on the arm」「the mirrors hang freely」 -->
 
-This is the paper I am presenting today. The authors are B. P. Abbott and the rest of the LIGO Scientific Collaboration and the Virgo Collaboration, and it appeared in Physical Review Letters, volume 116, article 061102, in 2016.
-
-The paper is open access under CC BY 3.0, so the figures I show are cropped from it with credit. I will cover the main results, Sections II to VI. One change from the paper's order: I start with the detector, Section III, and then go to the observation, Section II, so that you know how the signal is measured before we look at it.
-
-※ Source: CC BY 3.0, DOI 10.1103/PhysRevLett.116.061102.
+But the effect is tiny. The amount is called the strain, h: the fractional change of a length, delta L over L. A strain of one means the length doubles; for the event we will see on slide eight, the peak strain was one point zero times ten to the minus twenty-one. LIGO measures the distance to mirrors at the ends of two arms, each four kilometres long; the next slide shows how. Multiplying the two numbers gives about four times ten to the minus eighteen metres, the large number on the slide. Nothing pushes or pulls on the arm, as a force would stretch a material: the mirrors hang freely, and the wave changes the distance between them itself. This is my own estimate from the two numbers in the paper, not a value the paper quotes.
+※ (Not from the source) For scale, the proton charge radius is about 0.84 femtometres, that is 8.4 times 10 to the minus 16 metres (CODATA 2018), so the arm moves by roughly one two-hundredth of a proton radius.
+At the same time, the mirrors are shaken by the ground, by heat, and by the light itself. So today's question has two halves. How can such a tiny stretch be caught at all? And once something is caught, how can we show that it is not a chance coincidence of noise? The paper answers the first half with the instrument, which is next.
 
 ## 4
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（手段）（1文目でこの語のつながりを言う） ／ ノートへ：Test masses are free-hanging mirrors; the wave changes the distance between them; like the ring on slide 2, when the x arm stretches the y arm shrinks, so the difference of the two arms catches it; two sites: Hanford (H1) and Livingston (L1) -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（手段）（1文目でこの語のつながりを言う） ／ 手当て：[4] projected の意味 → 4の原稿に「the part of the wave's stretching that lies along the arms」 -->
 
-So how do you measure a stretch of space? The answer is to use an interferometer as a ruler.
+So the tool is a Michelson interferometer, the same idea you have seen in an optics lab, scaled up. In the diagram, the laser comes in from the left, the beam splitter in the centre sends light into two four-kilometre arms, one to the right and one upward, and the returning light is combined at the photodetector at the bottom. The mirrors at the ends of the arms hang freely and act as test masses. A passing wave stretches one arm while it shrinks the other, and half a cycle later the roles reverse. The measured quantity is the difference of the two arm changes, delta L equals delta L x minus delta L y, which equals h times L; here h is the part of the wave's stretching that lies along the arms, the strain projected onto the detector. That difference shifts the phase between the two returning beams, so the light at the photodetector changes in proportion to the strain. Note that the detector reads a length difference, not an absolute length; this is why the right angle between the arms matters. A bare Michelson, however, gives far too small a phase shift, and the next slide shows how LIGO enlarges it.
 
-The drawing on the right is a simplified version of Fig. 3 in the paper, not to scale. Light from the laser is split at the beam splitter and sent down two perpendicular arms, each 4 km long. At the ends hang mirrors called test masses. They hang freely, just like the floating dots on the previous slide. The red line is the light path, and the dashed outlines show one arm getting longer while the other gets shorter.
-
-The paper writes this as the equation on the left. The difference of the two arm changes, delta L x minus delta L y, equals h times L. Here h is the strain, the fractional stretch with no unit, and L is the arm length, 4 km. This difference shifts the phase of the light coming back to the beam splitter, and the photodetector reads it out.
-
-Why take the difference? Remember the ring: when the x direction stretches, the y direction shrinks, so the difference catches both. It is like two runners on perpendicular tracks whose finish times split apart when one track gets longer and the other shorter. The difference is that here the change is far smaller than an atom.
-
-LIGO has two of these, at Hanford, called H1, and Livingston, called L1. So how small is the change?
+※ (About the figure) Redrawn from Fig. 3 of the paper; the power- and signal-recycling mirrors are omitted here, and the power-recycling mirror appears on the next slide.
 
 ## 5
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：しかし（壁）（1文目でこの語のつながりを言う） ／ ノートへ：Answer to the slide-2 guess; 10⁻²¹ is the peak strain later measured (1.0×10⁻²¹); proton size (charge radius 0.84 fm) is outside the paper; earlier resonant bars (1960s) and initial interferometers (2002–2011) gave only upper limits -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（詳しく）（1文目でこの語のつながりを言う） ／ 手当て：[5] 光を増やすとなぜ良いか → 5の原稿に「the signal grows in proportion to the light」と、6への予告「This randomness is the shot noise on the next slide」 ／ 手当て：[5] Signal recycling が帯域を広げる理由は事実の置き場に無く、答えにつながらない細部 → 本文の要点と原稿から外した -->
 
-But here we hit a wall. Let me answer the guess from slide 2.
-
-The signal we will see later has a peak strain of about ten to the minus 21. Multiply that by the 4 km arm, and the change in length is only about 4 times ten to the minus 18 meters. That is the big number on the slide. A proton is about 1.7 femtometers across, so this stretch is about one four-hundredth of a proton.
-
-This is why earlier detectors failed. Resonant bars in the 1960s and the first interferometers, from 2002 to 2011, gave only upper limits. They never saw a signal.
-
-So the question for the rest of this talk is the one in red at the bottom: how can a stretch this tiny be caught on Earth, and be told apart from noise?
-
-It is easy to think that the problem is simply the length of the ruler. A longer arm does help, but 4 km is already the size of a small town. The real problem is reading such a small change against all the shaking and noise around it.
-
-The next two slides show how LIGO does this, starting with light.
-
-※ (Not from the source) Proton size: charge radius 0.84 fm (CODATA 2018), so about 1.7 fm across. 4×10⁻¹⁸ m and 1/400 are the presenter's estimate.
+Let me look at the enhancements in more detail. Follow the flow from top to bottom. First, each arm is not a single pass: the two test masses form an optical cavity, so the light bounces back and forth many times before it returns, and this multiplies the effect of a wave on the light phase by a factor of three hundred. Second, a partially transmitting mirror at the input, the power-recycling mirror, sends back the light that would otherwise leave the interferometer, so it builds up: twenty watts from the laser become seven hundred watts on the beam splitter and one hundred kilowatts circulating in each arm. More light means the random arrival of photons matters less: the signal grows in proportion to the light, while the random count of photons grows more slowly. This randomness is the shot noise on the next slide. All of this maximizes how much light signal we get per unit strain. Even so, the readout is not quiet, and that is the wall on the next slide.
 
 ## 6
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（手段）（1文目でこの語のつながりを言う） ／ ノートへ：5,000 = 100 kW / 20 W (presenter's arithmetic); purpose: more light ⇒ smaller relative shot noise; shot noise = the fluctuation in the number of photons, about √N for N photons, so the relative fluctuation falls as the light grows; 1064 nm laser -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：しかし（壁）（1文目でこの語のつながりを言う） ／ 手当て：[6] H1/L1＝Hanford/Livingston → 6の原稿に「LIGO has two detectors, H1 at Hanford and L1 at Livingston」 ／ 手当て：[6] 非ガウスがなぜ困るか → 6の原稿に「we could compute the chance of a fake; here we cannot」、10の原稿で「this rate must be measured from the data, not computed from sigma」と思い出させて11の time slide へつなぐ ／ 手当て：[6] calibration lines → 6の原稿に「signals injected on purpose to calibrate」 -->
 
-So the first tool is light: more light makes a sharper ruler.
-
-Look at the flow on the right. The laser puts in 20 watts. A partly transmitting power-recycling mirror at the input sends light that is heading back toward the laser into the arms again, so 700 watts reach the beam splitter. Inside each arm, the light bounces between the two test masses and builds up to 100 kilowatts. That is 5,000 times the input.
-
-The bouncing does a second job. Each trip down the arm adds the phase shift again, so the arm cavity multiplies the effect of the wave on the light phase by about 300.
-
-Why does more light help? At high frequencies the main noise is shot noise. Light arrives as photons, and the number of photons fluctuates by about the square root of N for N photons. So the relative fluctuation becomes smaller as the light grows.
-
-It is like measuring rainfall by counting drops in a bucket. In a light drizzle, a few extra drops make a big error, but in a downpour the same random scatter is a tiny fraction. Unlike rain, the light here comes from a stable 1064 nm laser, so the only randomness left is the photon count itself.
-
-But light helps only at high frequency. What about the rest of the band?
-
-※ (Not from the source) 5,000 = 100 kW / 20 W is the presenter's arithmetic.
+However, here is a wall. LIGO has two detectors, H1 at Hanford and L1 at Livingston; why two, is the next slide. The figure is their measured noise near the time of the event, H1 in red and L1 in blue, expressed as an equivalent strain. Lower is better, and the curve is lowest between roughly one hundred and three hundred hertz. Above one hundred fifty hertz the limit is photon shot noise, the graininess of light: photons arrive at random times, so the measured intensity fluctuates. Below that, thermal motion of the mirrors and their suspensions and ground motion take over; the paper says each mirror hangs as the last stage of a quadruple pendulum, and the isolation is more than ten orders of magnitude above ten hertz. The sharp spikes are calibration lines, signals injected on purpose to calibrate, and the sixty-hertz power grid. The real problem is the third line: the noise is not Gaussian. With Gaussian noise, a large excursion would be as rare as its sigma predicts, so we could compute the chance of a fake; here we cannot. Short bursts, called glitches, appear from many instrumental causes, and a burst in one detector can look like a short signal. So one detector alone cannot tell a wave from its own noise. The way out is to use a second detector far away, next.
 
 ## 7
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（並べる）（1文目でこの語のつながりを言う） ／ ノートへ：Reading Fig. 3(b): vertical axis = noise in each frequency band, as strain (unit 1/√Hz); lower = smaller stretches can be read; a pendulum barely follows ground shaking faster than its own swing, and four stages multiply the effect; most sensitive band 100–300 Hz, 3–5× better than initial LIGO; arm tubes below 1 μPa; calibration within 10% in amplitude -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（手段）（1文目でこの語のつながりを言う） -->
 
-And the noise is different in each frequency band, so each band needs its own fix.
-
-The figure on the left is Fig. 3(b) of the paper. The horizontal axis is frequency. The vertical axis is the noise in each frequency band, written as strain, in units of one over root hertz. Lower means smaller stretches can be read. Red is Hanford and blue is Livingston; you can ignore the narrow spikes for now. The most sensitive band is about 100 to 300 Hz, three to five times better than initial LIGO.
-
-The three cases on the right go through the bands. Above 150 Hz, photon shot noise dominates, and the extra light from the previous slide pushes it down. In the middle band, thermal noise: the test masses are heavy, 40 kg fused-silica mirrors, so they jiggle less. At low frequency, seismic noise: each mirror hangs as the last stage of a quadruple pendulum on an active isolation platform.
-
-Why does a pendulum help? A pendulum barely follows ground shaking that is faster than its own swing, and four stages multiply the effect. In total, ground motion is cut by more than ten orders of magnitude above 10 Hz.
-
-Two more details: the arm tubes are kept below one micropascal, and the calibration is good to within 10 percent in amplitude. With this detector running, a signal arrived.
+So LIGO uses two sites. On the map, Hanford is at the upper left in red and Livingston at the lower right in blue; the dashed line says ten milliseconds of light travel time between them. A gravitational wave moves at the speed of light, so a real wave must appear at both sites within about ten milliseconds. A noise burst made by a local cause, such as a truck or a glitch in the electronics, is seen at one site only. So the searches keep only events that appear at both sites within this window; one search uses fifteen milliseconds, which is the ten milliseconds plus five for timing uncertainty. This does not make noise disappear; it only means that noise must now be unlucky twice, at the right time in both places. How unlucky is the question we will come back to. With this instrument running, here is what was seen on September fourteenth, 2015.
 
 ## 8
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（次へ）（1文目でこの語のつながりを言う） ／ ノートへ：H1 is inverted because the two detectors face differently; 35–350 Hz bandpass for display; only the two LIGO detectors were observing -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（次へ）（1文目でこの語のつながりを言う） ／ 手当て：[8] GW150914 の名前 → 8の原稿に「GW for gravitational wave, followed by the date」 -->
 
-And then, on 14 September 2015, at 09:50:45 UTC, both LIGO detectors recorded a signal. It is called GW150914, after the date.
-
-The figure at the bottom is the top row of Fig. 1. The vertical axis is strain in units of ten to the minus 21, and time is in seconds after 09:50:45. The left panel is Hanford, H1, in red. The right panel is Livingston, L1, in dark blue, with the Hanford data laid on top in light red. That Hanford trace is shifted in time and flipped upside down, because the two detectors face in different directions. After that, the two wiggles match closely.
-
-The signal reached Livingston first, and Hanford 6.9 milliseconds later. Light needs up to 10 milliseconds to travel between the sites, so a single wave could have passed both. A delay longer than that would have pointed to two unrelated events.
-
-The peak strain was 1.0 times ten to the minus 21. The combined signal-to-noise ratio was 24, which means the signal was 24 times the typical noise. For display, the data were filtered to 35 to 350 Hz. Only these two LIGO detectors were observing at the time.
-
-Next, let us see how the frequency changed during those wiggles.
+Next, the event itself, named GW150914: GW for gravitational wave, followed by the date, 2015-09-14. The figure shows the strain recorded at Livingston in blue; the time axis is in seconds after 09:50:45 UTC. The orange curve on top of the blue is the Hanford data shifted by six point nine milliseconds and inverted; the inversion is needed because the two detectors are oriented differently. The two curves overlap well: the same waveform, arriving first at Livingston and six point nine milliseconds later at Hanford, well inside the ten-millisecond window. The peak strain is one point zero times ten to the minus twenty-one. The combined signal-to-noise ratio, SNR, is twenty-four; SNR is the signal strength measured in units of the typical noise level, so twenty-four means the signal stands far above the noise. The event was first flagged by a quick, model-free search within three minutes of the data. The next slide looks at the shape of this signal.
 
 ## 9
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（詳しく）（1文目でこの語のつながりを言う） ／ ノートへ：Reading the map: horizontal = time, vertical = frequency, brightness = signal strength; 'chirp': this rising sweep sounds like a bird's chirp as audio; the whole signal spans 35–250 Hz (abstract) -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（詳しく）（1文目でこの語のつながりを言う） ／ 手当て：[9] GR fit が何の波形で、何が言えるか → 9の原稿に「for two compact objects orbiting and merging」と「one predicted shape explains the whole signal」 -->
 
-Let us look at the same signal in more detail, as a time-frequency map.
-
-The figure at the bottom is the bottom row of Fig. 1, Hanford on the left and Livingston on the right. The horizontal axis is time, the vertical axis is frequency, and brightness is signal strength. You can see a bright track rising from the lower left to the upper right.
-
-Over about 0.2 seconds, the signal goes from 35 to 150 Hz in about eight cycles, and the amplitude peaks at 150 Hz. The whole signal spans 35 to 250 Hz. Importantly, the same rising track appears in both detectors.
-
-This rising sweep is called a chirp, because played as audio it sounds like a bird's chirp. The reading on the right explains why it rises. Two masses spiral in as they lose energy to gravitational waves, so they orbit faster and faster, and both the frequency and the amplitude go up.
-
-One point is easy to get backward: losing energy makes the orbit faster, not slower. As the masses fall closer together they speed up, a bit like water spinning faster near a drain. Unlike the water, nothing pulls them in except the energy carried off by the waves.
-
-So the shape of this chirp is a clue. How fast it rises tells us how heavy the pair is.
+Let me look more closely at the shape. This is the time-frequency map from Hanford: time runs to the right, frequency goes up, and brighter colour means more signal. A bright track rises to the right near zero point four seconds, and the Livingston map in the paper shows the same track. In words: over zero point two seconds the signal goes from thirty-five hertz to about one hundred fifty hertz in about eight cycles, and the amplitude grows at the same time, until it peaks. This rising pattern is called a chirp, like a bird's call sweeping upward. The paper also compares the data with a waveform computed from general relativity for two compact objects orbiting and merging; which kind of objects is slide thirteen. After subtracting it, what remains looks like ordinary noise, so that one predicted shape explains the whole signal. So the signal has a definite shape that both detectors share. But a shape alone does not settle the question we raised on slide three: could noise in two places produce this by chance? That doubt is next.
 
 ## 10
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（帰結）（1文目でこの語のつながりを言う） ／ ノートへ：Chirp mass = the one mass combination that sets how fast the chirp rises: heavier pairs radiate more strongly and sweep faster; for a given total M, ℳ is largest at m₁ = m₂ (ℳ ≈ 0.435M), so ℳ ≃ 30 M⊙ needs M ≈ 70 M⊙ or more (presenter's arithmetic); Fig. 2 bottom: R_S = Schwarzschild radius 2GM/c² (horizon size); speed above 0.5c near merger -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：しかし（疑い）（1文目でこの語のつながりを言う） -->
 
-So the rate of the rise lets us weigh the pair.
-
-On the left is Fig. 2 of the paper. The top panel is the full waveform, with pictures of the black hole horizons from numerical relativity: inspiral, merger, and ringdown. Below this panel, the paper also plots the separation of the two bodies in Schwarzschild radii and their speed, which goes above 0.5 c near the merger. The Schwarzschild radius, R S, is 2 G M over c squared; it is the size of the horizon.
-
-On the right is the equation for the chirp mass, script M. It is the one combination of the two masses that sets how fast the chirp rises: heavier pairs radiate more strongly and sweep faster. The right-hand side needs only f, the observed frequency, and f dot, its rate of change, both read from the data in Fig. 1.
-
-From the data, the chirp mass is about 30 solar masses. For a given total mass, the chirp mass is largest when the two masses are equal, at about 0.435 of the total. So 30 solar masses needs a total of about 70 solar masses or more.
-
-Seventy solar masses, orbiting fast enough to give these frequencies. What kind of objects can do that?
-
-※ (Not from the source) ≳70 M⊙ from ℳ ≈ 0.435M at m₁ = m₂ is the presenter's arithmetic.
+Here a doubt comes up: noise bursts in two detectors can also line up by chance within ten milliseconds. The comparison on the slide shows what we need to tell apart. On the left, a gravitational wave: the same shape at both sites, within ten milliseconds, with rising frequency. On the right, a chance coincidence: independent bursts at each site that happen to fall close in time. First, could something in the environment have caused it? Each site has seismometers, microphones, magnetometers, radio receivers and more, and all disturbances during that second could explain less than six percent of the strain amplitude. Second, could one disturbance have affected both sites together? The team searched for such correlated disturbances and found none. So the remaining explanation is pure chance: two unrelated noise bursts. To rule that out we need a number: how often does noise alone make an event this strong? Because the noise is not Gaussian, as on slide six, this rate must be measured from the data, not computed from sigma. The difficulty is that we cannot switch off gravitational waves to measure the noise. The next slide shows the trick.
 
 ## 11
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（問い）（1文目でこの語のつながりを言う） ／ ノートへ：Heaviest well-measured neutron star: PSR J0740+6620, 2.08 ± 0.07 M⊙ (Fonseca et al., ApJL 915, L12, 2021; outside the paper), so two cannot reach 70 M⊙; orbit 75 Hz = half the 150 Hz GW frequency; equal point masses; R_S = 2GM/c² (slide 10), so 70 M⊙ gives about 210 km, and 350 km is under twice that: only black holes are that compact; NS + BH with this chirp mass would need a very large total mass, and a bigger pair touches at a wider, slower orbit, so it would merge at a lower frequency -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（手段）（1文目でこの語のつながりを言う） -->
 
-That leads to the next question: what objects could these be? The figure on the left answers it with a scale drawing.
-
-It is drawn to scale, with the bar at the top showing 100 km. The blue circles are the horizon sizes, and the distance between their centers is the separation at a 75 Hz orbit. The orbit is 75 Hz because the gravitational-wave frequency, 150 Hz at the peak, is twice the orbital frequency.
-
-On the right we check three candidates. Two neutron stars? Each is at most about 2 solar masses; the heaviest well-measured one is 2.08. So two of them cannot reach 70. A neutron star and a black hole? With this chirp mass the total mass would be very large, and a bigger pair touches at a wider, slower orbit, so it would merge at a much lower frequency. Two black holes? Kepler's law for equal point masses puts them only 350 km apart. The Schwarzschild radius is about 3 km per solar mass, so 70 solar masses gives radii that add up to about 210 km.
-
-350 km is less than twice 210 km, so the pair is extremely compact, and only black holes are that compact.
-
-So the source looks like two black holes. But can we trust that the signal is real at all?
-
-※ (Not from the source) Heaviest well-measured neutron star: PSR J0740+6620, 2.08 ± 0.07 M⊙ (Fonseca et al., ApJL 915, L12, 2021).
-※ (Figure) Equal masses; each horizon radius is about 105 km, half of 210 km.
+So the team measures the noise background with time slides. Picture the two time lines, Hanford in red above and Livingston in blue below. Slide the Livingston data sideways by an offset much longer than ten milliseconds, then search for coincidences again. After such a shift no real wave can appear at both sites at the same moment, so every coincidence you find is made by noise alone. Each shift is one fake experiment. Repeating this about ten million times turns sixteen days of real data into a background equivalent to six hundred eight thousand years. This is also conservative: if a real wave sits in one detector, it can pair with shifted noise in the other and inflate the background, which can only make the event look less significant, not more. Now we can put GW150914 on this background, which is the next slide.
 
 ## 12
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：しかし（疑い）（1文目でこの語のつながりを言う） ／ ノートへ：Glitch = a short burst of noise from the instrument; non-Gaussian = big bursts come far more often than a normal distribution predicts, so σ cannot be computed from a formula and chance must be counted; no correlated transients between sites; sensors: seismometers, microphones, magnetometers, radio receivers, cosmic-ray detector; ~10⁵ channels; detectors cannot be shielded from GWs -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（帰結）（1文目でこの語のつながりを言う） ／ 手当て：[12] false alarm の意味 → 12の原稿に「A false alarm is a noise-only event with a score this high or higher」 ／ 手当て：[12] 横軸の点数と8の SNR 24 → 12の原稿に「this search's version of the signal-to-noise ratio of slide eight」 ／ 手当て：[12] 5.1σ への換算 → 12の原稿に「a normal-distribution tail beyond five point one sigma」 ／ 手当て：[12] 608,000 年の背景から上限が 203,000 年になる理由 → 12の原稿に「the paper divides by this trials factor of three: six hundred eight thousand over three is about two hundred three thousand」（論文 V：試行の割り引き＝探した区分の数、V-B：区分は3つ、上限は3区分を通して 1/203,000 年） -->
 
-But wait. Could this signal be fake? The data contain glitches, so we have to doubt it.
-
-A glitch is a short burst of noise from the instrument. LIGO noise is also non-Gaussian, which means big bursts come far more often than a normal distribution predicts. So we cannot compute the sigma from a formula; the chance has to be counted.
-
-The two questions at the top are the two doubts. First, a local disturbance. The sites are watched by about a hundred thousand channels: seismometers, microphones, magnetometers, radio receivers, and a cosmic-ray detector. Every disturbance they saw was under 6 percent of the signal's strain, too small to make it, and there were no correlated transients between the sites. You cannot shield a detector from gravitational waves, so these sensors are the check.
-
-The comparison at the bottom shows what to look for. A gravitational wave has the same shape at both sites, arrives no more than 10 ms apart, and leaves the sensors quiet. Noise has different shapes, any offset in time, and the sensors see it.
-
-The second doubt is a chance coincidence: two unrelated glitches that happen to line up. That cannot be ruled out by sensors; it must be counted, which is the next slide.
+From this we can say: no background event reached GW150914. This figure is from the binary coalescence search. It uses a matched filter: the data are compared with about two hundred fifty thousand waveform templates predicted by general relativity, and the match is scored. The horizontal axis is that score, written rho-hat-c, this search's version of the signal-to-noise ratio of slide eight, and the vertical axis is the number of events, on a log scale. The black line is the time-slide background; it falls off and ends a little above twenty. The orange square at the far right, marked GW150914, sits at twenty-three point six, beyond every background event. So only an upper bound can be given. A false alarm is a noise-only event with a score this high or higher, and noise makes one less than once per two hundred three thousand years. Why two hundred three thousand and not the six hundred eight thousand years of background? The candidates were sorted into three classes by template length, and because three classes were searched, the paper divides by this trials factor of three: six hundred eight thousand over three is about two hundred three thousand. For our sixteen days of data, that chance is as small as a normal-distribution tail beyond five point one sigma. As a cross-check, the generic search, which assumes no waveform model, also finds it as its strongest event, at four point six sigma, or one in twenty-two thousand five hundred years. A chance coincidence of noise is therefore ruled out. The next question is what produced it.
 
 ## 13
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（手段）（1文目でこの語のつながりを言う） ／ ノートへ：Nothing is invented: real noise is re-paired in time; each shift adds another 16 days of noise-only coincidences, so ~10⁷ shifts × 16 days add up to 608,000 years; 16 days: 12 Sep – 20 Oct 2015; numbers are for the binary coalescence search; a real signal in the background makes the false alarm rate an overestimate -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（問い）（1文目でこの語のつながりを言う） ／ 手当て：[13] 周波数の上がり方がなぜ質量を決めるか → 13の原稿に「the pair loses energy to the waves, so it spirals inward and orbits faster」 ／ 手当て：[13] chirp mass と総質量 70 以上 → 13の原稿に「at most about 0.44 times the total mass」 ／ 手当て：[13] detector frame と z → 13の原稿に「read directly from the wave as it arrives」、14の原稿に「where z is the source's redshift」 ／ 手当て：[13] BH＋NS がなぜ低い周波数で合体するか → 13の原稿に「the star would reach it at a wider, slower orbit」 ／ 手当て：[13] 350 km と 210 km の比べ → 13の原稿に「less than twice the two hundred ten kilometres」 -->
 
-So how do you count chance? You manufacture a background.
-
-The figure on the left shows the idea. The rows are the two detectors. In the original data at the top, a real signal, in red, lines up in H1 and L1. At the bottom, the L1 data are slid in time by an offset much larger than 10 ms. Now the real signal no longer lines up, so any coincidence that is left must come from noise alone.
-
-The steps are on the right. First, shift one site by much more than 10 ms, beyond the light travel time, so no real wave can line up. Second, count the coincidences again. Third, repeat about ten million times. Each shift adds another 16 days of noise-only coincidences, from the observing period of 12 September to 20 October 2015. So ten million shifts of 16 days add up to 608,000 years of noise.
-
-Nothing is invented here; it is real noise, only re-paired in time. Think of shuffling two decks of cards against each other to see how often pairs match by luck. Unlike the cards, the real signal is still inside the data, which makes the noise look stronger, so the method is conservative.
-
-These numbers are for the binary coalescence search. So how did GW150914 compare with this background?
+So why must the source be black holes? The answer comes from the chirp on slide nine. Like the binary pulsar on slide two, the pair loses energy to the waves, so it spirals inward and orbits faster: that is the rising frequency. How fast it rises depends on the masses through one combination, called the chirp mass, which is at most about 0.44 times the total mass, reached for equal masses. From the data it is about thirty solar masses, so the total mass is at least about seventy. These are detector-frame values, read directly from the wave as it arrives, before the correction for the expansion of the universe on the next slide. The Schwarzschild radius, two G M over c squared, is the size of a black hole of mass M, and for seventy solar masses the two radii add up to at least two hundred ten kilometres. Now, the gravitational-wave frequency is twice the orbital frequency, so a one hundred fifty hertz wave means a seventy-five hertz orbit, and equal point masses orbiting that fast would be only about three hundred fifty kilometres apart. Follow the decision chart from top to bottom: two neutron stars do not have enough mass; a black hole with a neutron star would need a large total mass, so the black hole would be large, and the star would reach it at a wider, slower orbit, merging at a much lower frequency. So more than seventy solar masses must fit within about three hundred fifty kilometres, less than twice the two hundred ten kilometres of their Schwarzschild radii. Only black holes are compact enough. How heavy were they? Next.
 
 ## 14
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：だから（帰結）（1文目でこの語のつながりを言う） ／ ノートへ：Reading Fig. 4: horizontal = loudness score, vertical = number of events, lines = time-shifted background, red circle = GW150914; false alarm rate = how often noise alone makes an event this strong; 203,000 is an upper bound set by the background length; it is below 608,000 because the search sorts events into classes, and counting the chance in any class (trials factor) lowers the bound; 16 days ÷ 203,000 years ≈ 2×10⁻⁷ = chance that noise did it during the run ↔ 5.1σ Gaussian tail; values in データ1 -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（詳しく）（1文目でこの語のつながりを言う） ／ 手当て：[14] spin 0.67・410 Mpc → 14の原稿に「the fastest spin a black hole can have」「roughly 1.3 billion light-years」 -->
 
-Here is the result: no background event beat it.
-
-The figure on the left is the right panel of Fig. 4, from the binary coalescence search. The horizontal axis is the loudness score, and the vertical axis is the number of events, on a log scale. The black line is the time-shifted background, the orange squares are the real events, and GW150914 is the one circled in red, far to the right.
-
-This search fits merger waveforms, called templates. Its loudness score for GW150914 was 23.6, beyond every background event. So the false alarm rate, meaning how often noise alone makes an event this strong, is less than once per 203,000 years. That is 5.1 sigma.
-
-Note that 203,000 years is an upper bound set by the length of the background. It is below 608,000 because the search sorts events into classes, and counting the chance in any class, the trials factor, lowers the bound. Sixteen days divided by 203,000 years is about two times ten to the minus 7: the chance that noise did this during the run, which matches a 5.1 sigma Gaussian tail.
-
-The generic transient search, which uses no waveform model, also found it, at less than once per 22,500 years, 4.6 sigma. Two independent searches both detect it. So the answer to our question: the same chirp at two sites, and not noise.
+Let me look at the masses in more detail, from the paper's full analysis with general relativity. In the bar chart, read from the top: the primary black hole is thirty-six solar masses and the secondary is twenty-nine, so together sixty-five. The final black hole is sixty-two. The bottom bar, highlighted, is what is missing: about three solar masses, radiated away as gravitational waves. These are source-frame values, which is why they differ from the detector-frame chirp mass on the previous slide by a factor of one plus z, where z is the source's redshift. Be careful with the size of the gap: each mass carries an uncertainty of about four solar masses, so the three solar masses come from a separate estimate, three point zero plus or minus zero point five. The source was about four hundred ten megaparsecs, or roughly 1.3 billion light-years, away, at redshift zero point zero nine, and the final black hole spins at zero point six seven, on a scale where one is the fastest spin a black hole can have. But what does this event not tell us? That is the next slide.
 
 ## 15
-<!-- 目安 462字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：そして（次へ）（1文目でこの語のつながりを言う） ／ ノートへ：Masses as at the source; read at Earth, cosmic expansion (z = 0.09) stretches the wave and masses look about 1.09× heavier, so slide 10's ≳70 M⊙ is about 65 = 36 + 29 here; 90% intervals ±4–5 M⊙; distance 410 Mpc (z = 0.09); peak luminosity 3.6×10⁵⁶ erg/s; graviton mass < 1.2×10⁻²² eV/c²; final spin 0.67; sky area ~600 deg² -->
+<!-- 目安 429字前後（導入・図の読み方・根拠・例か間違いやすい所・次へのつなぎ） ／ 前の枚から：しかし（限り）（1文目でこの語のつながりを言う） ／ 手当て：[15] inspiral・phase coefficients → 15の原稿に「the stage when the two orbit inward before merging」 ／ 手当て：[15] 重力子の質量の上限がなぜ付くか → 15の原稿に「the chirp would arrive distorted」 ／ 手当て：[15] 2台でなぜ 600 deg² か → 15の原稿に「anywhere on a ring across the sky」 -->
 
-And with the signal confirmed, the full waveform tells us about the source.
-
-The bar chart on the left shows the masses from Table I of the paper. Before the merger, the two black holes had 36 and 29 solar masses. After the merger, one black hole of 62 solar masses remained; that is the highlighted bar.
-
-Now the arithmetic: 36 plus 29 is 65, but the final mass is only 62. The missing mass left as gravitational waves; the paper estimates 3.0 plus or minus 0.5 solar masses times c squared. The peak luminosity was 3.6 times ten to the 56 erg per second. These values come from Bayesian fits of general-relativity waveforms.
-
-One point may confuse you. On slide 10 the total was 70 or more, but here it is 65. These masses are at the source. Read at Earth, cosmic expansion at redshift 0.09 stretches the wave, so the masses look about 1.09 times heavier. The distance is 410 megaparsecs. Each mass also has a 90 percent range of about plus or minus 4 to 5 solar masses.
-
-Finally, the team ran three tests of general relativity and found no deviation. For example, the graviton mass must be below 1.2 times ten to the minus 22 eV over c squared. The final black hole has a spin of 0.67.
-
-Let me now summarize.
+However, there are limits to what one event with two detectors can say. On what it does say: the table lists the checks against general relativity. The final mass and spin inferred from the early part and the late part of the signal agree. In the inspiral, the stage when the two orbit inward before merging, the coefficients that set how the wave's phase advances show no deviation. And the mass of the graviton is bounded below one point two times ten to the minus twenty-two electron volts: a graviton with mass would make waves travel slower than light, at speeds that differ by frequency, and the chirp would arrive distorted. So general relativity holds in this strong-field regime, as far as these tests go. On what it does not say: with only two detectors, the position on the sky comes mainly from the arrival-time difference. One time difference fixes only the angle from the line between the sites, so the source could lie anywhere on a ring across the sky: about six hundred square degrees, the 90 percent region. The spin of the secondary black hole is also only weakly constrained. The paper points to Advanced Virgo, KAGRA and a possible LIGO detector in India to improve the position. With these limits in mind, let me return to today's question.
 
 ## 16
-<!-- まとめの枚 ／ ノートへ：Full answer: first direct GW detection and first binary black hole merger〔VIII. Conclusion〕; outlook: design sensitivity gives 3× SNR; Virgo, KAGRA, LIGO-India improve sky position〔VII. Outlook〕 -->
+<!-- まとめの枚 -->
 
-Let me go back to the question from slide 5: how can a stretch smaller than a proton be caught on Earth, and told apart from noise?
-
-The flow at the top retraces the story. The stretch is tiny, about 4 times ten to the minus 18 meters. Strong light, 100 kilowatts in each arm, and quiet mirrors on quadruple pendulums made it readable. The same chirp appeared at both sites, 6.9 ms apart. And 608,000 years of time-shifted background showed it was not chance, at 5.1 sigma.
-
-The three points below are what I would like you to take home. How do you catch it? Strong light and quiet mirrors. Could it be noise? Less than once per 203,000 years. What was the source? Merging black holes.
-
-So this paper reports both the first direct detection of gravitational waves and the first observation of a binary black hole merger. Looking ahead, reaching the design sensitivity will give about three times the signal-to-noise ratio, and adding Virgo, KAGRA, and LIGO-India will locate sources in the sky much better.
-
-Thank you for your attention.
+So, back to the question from slide three: how can a stretch of ten to the minus twenty-one be caught, and shown not to be noise? Read the flow from top to bottom. First, arm cavities and power recycling make the strain readable. Second, two sites ten milliseconds apart saw the same chirp, six point nine milliseconds apart. Third, the time-slide background shows that noise would fake such an event less than once per two hundred three thousand years. Fourth, only a pair of black holes is heavy and compact enough to orbit at seventy-five hertz. From here on is my own summary: amplify, demand coincidence, and measure the noise rate. The paper's own conclusion is that this is the first direct detection of gravitational waves and the first observation of a binary black hole merger. That's all. Thank you very much.
 
 ## 17
 <!-- 想定質問の枚 -->
 
-These are questions I expect.
-
-If someone asks whether noise in the two detectors could have lined up by chance, I will go back to slide 14. The time-shifted background is equivalent to 608,000 years, and noise this strong appears less than once in 203,000 years, which is 5.1 sigma.
-
-If someone asks whether an earthquake or a power-line disturbance could have caused it, I will go back to slide 12. The site sensors found every fluctuation under 6 percent of the strain amplitude, and no disturbance correlated between the two sites.
+Here are two questions I expect. First: could a disturbance common to both sites, rather than noise at each site, fake the signal? The environmental sensors found no such disturbance, and all environmental fluctuations could explain less than six percent of the strain. If we go back to slide ten, this is the first of the two checks there. Second: why are there two significances, five point one sigma and four point six sigma? The matched-filter search uses waveforms from general relativity and gives more than five point one sigma; the generic search assumes less about the shape and gives four point six. If we go back to slide twelve, the figure there is the matched-filter result.
 
 ## 18
 <!-- 想定質問の枚 -->
 
-Two more expected questions.
-
-If someone asks what the 6.9 ms delay means, I will go back to the figure from slide 8. It is shorter than the 10 ms light travel time between the sites, so one wave could have passed both.
-
-If someone asks where in the sky the source was, I will go back to slide 15. With only two detectors, the position is set mainly by the arrival times, so it is spread over about 600 square degrees for the 90 percent region. Virgo and KAGRA will narrow it.
+Two more. Third: why is the time-slide background called conservative? Because a real wave in one detector can pair with shifted noise in the other and enter the background, which makes any event look less significant. If we go back to slide eleven, these are the pairs that still coincide after the shift. Fourth: how will the sky position improve? Advanced Virgo, KAGRA and a planned LIGO detector in India will extend the network. If we go back to slide fifteen, the six hundred square degrees in the table is the number they should shrink.

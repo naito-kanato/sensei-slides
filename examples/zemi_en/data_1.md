@@ -1,25 +1,27 @@
-## データ：False alarm rate of GW150914 in each search
-- 驚き：波形の形の条件を外した探索でも、雑音が同じ強さを出すのは 8,400 年に1回。一番強い探索では背景のどの事象も超えたので、上限（20万3千年に1回未満）しか言えない
-- 問いの候補：雑音の偶然の一致で、この信号が出ることはあるのか？
-- 単位：年（雑音が同じ強さ以上の事象を1回出すまでの年数。大きいほど偶然らしくない）／分母：—／時点：2015年9月12日〜10月20日の16日分の同時観測
-- 出典：V. Searches（A. Generic transient search・B. Binary coalescence search）、Fig. 4（Abbott et al., Phys. Rev. Lett. 116, 061102, 2016）
+## データ：How rarely noise alone fakes GW150914, by search
+- 驚き：A single 0.2-s event in 16 days of data is judged against tens of thousands to hundreds of thousands of years of noise, and noise still never reaches it in the matched-filter search
+- 問いの候補：Could a chance coincidence of noise in two detectors make GW150914?
+- 単位：years per one false alarm (inverse false alarm rate; for the binary search an upper bound)／分母：—／時点：16 days of coincident data, 12 Sep – 20 Oct 2015
+- 出典：Abbott et al., PRL 116, 061102 (2016), V-A, V-B, Fig. 4
 - 確認：○
-- 別の読み方：連星合体の探索の値は「背景の長さ（60万8千年分）で決まる上限」で、測った頻度ではない。探索ごとに背景の長さ（汎用は6万7400年分）と分類の数が違うので、差は探索のよし悪しの比べではない
-| 区分 | 値 | σ |
-|---|---|---|
-| Binary coalescence search（上限） | 203000 | 5.1 |
-| Generic transient search（C3 class） | 22500 | 4.6 |
-| Generic, any shape（C2+C3 class） | 8400 | 4.4 |
-
-## データ：Black hole masses before and after the merger
-- 驚き：合体後のブラックホール（62 M⊙）は、合体前の2つ（36＋29 M⊙）の和より軽い。差は重力波で出たエネルギー（論文の推定 3.0 ± 0.5 M⊙c²）
-- 問いの候補：消えた質量はどこへ行ったのか？
-- 単位：太陽質量 M⊙（波源の系）／分母：—／時点：GW150914（2015年9月14日 09:50:45 UTC）
-- 出典：Table I（Abbott et al., Phys. Rev. Lett. 116, 061102, 2016）
-- 確認：○
-- 別の読み方：どれも中央値で、90% の範囲は ±4〜5 M⊙。引き算の差 3 は範囲と同じくらいなので、放出エネルギーは論文の推定値 3.0 ± 0.5 M⊙c²〔VI〕で言う
+- 別の読み方：The binary search value is only a bound set by the length of the background (608,000 years); the model-free search, with fewer assumptions, gives a smaller number
 | 区分 | 値 |
 |---|---|
-| Primary (before) | 36 |
-| Secondary (before) | 29 |
-| Final (after) | 62 |
+| Binary coalescence search (matched filter) | 203000 |
+| Generic transient search, class C3 | 22500 |
+| Generic transient search, classes C2+C3 | 8400 |
+
+## データ：Masses before and after the merger (source frame)
+- 驚き：The final black hole is lighter than the two it came from: about 3 solar masses are missing, carried away as gravitational waves
+- 問いの候補：Where did 3 solar masses go?
+- 単位：M☉ (source frame, median of the 90% credible interval)／分母：—／時点：GW150914, 14 Sep 2015
+- 出典：Abbott et al., PRL 116, 061102 (2016), Table I, VI
+- 確認：○
+- 別の読み方：Each mass has an uncertainty of about ±4 M☉, larger than the 3 M☉ gap; the radiated energy (3.0 ± 0.5 M☉c²) is estimated separately from fits to numerical simulations
+| 区分 | 値 |
+|---|---|
+| Primary black hole | 36 |
+| Secondary black hole | 29 |
+| Sum of the two | 65 |
+| Final black hole | 62 |
+| Radiated as gravitational waves | 3.0 |

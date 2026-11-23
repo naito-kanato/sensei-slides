@@ -34,11 +34,21 @@ def test_cover_strip_and_breadcrumb(tmp_path):
 
 def test_outline_roadmap_check(tmp_path):
     import check_outline
-    src = (ROOT / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
+    import re
+    full = (ROOT / "examples" / "zemi" / "outline.md").read_text(encoding="utf-8")
+    got = {i: (m, t) for m, i, t in check_outline.check(_write(tmp_path / "full" / "outline.md", full))}
+    assert got["道筋"][0] == "✔"                                    # 見本には道筋の行がある
+    src = re.sub(r"^- 道筋：.*\n", "", full, flags=re.M)             # 道筋の行を外して見る
     p = tmp_path / "outline.md"
     p.write_text(src, encoding="utf-8")
     got = {i: (m, t) for m, i, t in check_outline.check(p)}
     assert got["道筋"][0] == "△" and "- 道筋：" in got["道筋"][1]
-    p.write_text(src.replace("## 話の筋", "- 道筋：背景（a）→ 実験手法（b）→ 結果（c）\n\n## 話の筋", 1), encoding="utf-8")
+    p.write_text(src.replace("## 話の筋", "- 道筋：背景（a）→ 検出器（b）→ 観測（c）\n\n## 話の筋", 1), encoding="utf-8")
     got = {i: (m, t) for m, i, t in check_outline.check(p)}
-    assert got["道筋"][0] == "△" and "考察" in got["道筋"][1]      # 段に無いタイトルの枚には進み具合が出ない
+    assert got["道筋"][0] == "△" and "探索" in got["道筋"][1]      # 段に無いタイトルの枚には進み具合が出ない
+
+
+def _write(p, text):
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
+    return p
