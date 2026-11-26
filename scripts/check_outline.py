@@ -19,9 +19,6 @@
     outline.md の「## 引っかかりへの手当て」に [番号] で全部載っている（採らなかったものも理由つきで載せる）。「深」と、要と深の両方の行（迷い）は数えない（迷いは一覧に出す）。
     載っていなければ ✘。レビューの前（outline_review.md が無い）なら数えない
   照合できるのは、数えた結果と手当てが食い違っていないかまで。穴の数そのものは推論距離の担当の判断。
-  新しい名前：outline_review.md の「## 新しい名前」（推論距離の担当が、枚ごとにその枚と原稿で初めて出る新しい名前と考えを、
-    説明済みも含めて「- [5] 名前・名前」と書き出す）で、3つ以上の枚は ✘（その行に「理由：…」があれば通す）。節が無ければ △（前の版の作業フォルダ）で、
-    代わりに 語 の穴が3つ以上の枚を ✘
   話の筋・前の枚から：筋の表（状況・複雑化・問い・答え）と、構成の表の「前の枚から」（そして・しかし・だから）。story.py
   原稿：設計の担当が書く script.md。無い・短い枚・字数の外れ（目安は 発表時間×300字÷本文の枚数）・図の指し方・
     手当てで原稿に回したのに無い（✘）。check_memo と同じ検査（check_memo.script_checks）
@@ -144,9 +141,7 @@ def hole_form(review_text: str):
         per[int(n)] = per.get(int(n), 0) + 1
     if len(per) >= 6 and set(per.values()) == {1}:
         res.append(("△", "推論距離の数", f"{len(per)} 枚が全部ちょうど1穴にそろっている。枚ごとの数はそろえない（穴の無い枚は書かず、つなぎ目ごとに穴があれば何行でも）。つなぎ目を試し直す"))
-    if new_names_section(review_text) is not None:   # 新しい名前の節があれば、名前の数はそちらで数える（new_names_check。説明済みの名前も入る）
-        return res
-    names = {}   # 前の版の作業フォルダ（新しい名前の節が無い）：要2（名前の付いた知らない語）の穴を枚ごとに数える。迷いの行は数えない
+    names = {}   # 要2（名前の付いた知らない語）の穴を枚ごとに数える。迷いの行は数えない
     for n, _, _, need, _ in rows:
         if "要2" in labels(need) and not unsure(need):
             names[int(n)] = names.get(int(n), 0) + 1
@@ -156,56 +151,6 @@ def hole_form(review_text: str):
         res.append(("✘", "推論距離の名前の数", "知らない名前（語）が1枚に3つ以上ある枚：" + "・".join(f"{n}枚目（{names[n]}つ）" for n in many)
                     + f"。1枚に新しく出る名前は{NAMES_MAX}個まで：枚を分けるか、前の枚で先に出す（どうしても要るなら、手当ての行に理由を書く）"))
     return res
-
-
-NEW_NAMES_HEAD = "## 新しい名前"
-NEW_NAME_LINE = re.compile(r"^\s*[-*]?\s*\[\s*(\d+)\s*\]\s*(.*)$", re.M)
-
-
-def new_names_section(review_text: str):
-    """レビューの結果の「## 新しい名前」の節の中身。節が無ければ None（前の版の作業フォルダ）。"""
-    m = re.search(r"^##\s*新しい名前[^\n]*$(.*?)(?=^##\s|\Z)", review_text, re.S | re.M)
-    return m.group(1) if m else None
-
-
-def new_names(review_text: str):
-    """「## 新しい名前」の行（`- [5] 名前・名前`）：{枚: ([名前], 理由があるか)}。名前は「・」「、」で区切り、括弧の中（理由・注）は数えない。
-    節が無ければ None。同じ枚の行が2つあれば合わせる（同じ名前は1回）。"""
-    body = new_names_section(review_text)
-    if body is None:
-        return None
-    out = {}
-    for n, rest in NEW_NAME_LINE.findall(body):
-        why = bool(re.search(r"理由\s*[：:]\s*\S", rest))
-        plain = re.sub(r"[（(][^）)]*[）)]", "", rest)
-        names = [w.strip(" 　。.") for w in re.split(r"[・、,，／/]", plain)]
-        names = [w for w in names if w and w not in ("なし", "—", "-", "－")]
-        got, had = out.get(int(n), ([], False))
-        out[int(n)] = (list(dict.fromkeys(got + names)), had or why)
-    return out
-
-
-def new_names_check(review_text: str, measure: bool = False):
-    """新しい名前の数（inference-distance.md 3・6節）：推論距離の担当が、枚ごとにその枚と原稿で初めて出る新しい名前と考え
-    （説明済みも含む）を「## 新しい名前」に書き出す。3つ以上の枚は ✘（直す順：細部の名前は普通の言葉に・前の枚で先に出す・枚を分ける。
-    どうしても要るなら、その行に「理由：…」）。節が無い（前の版の作業フォルダ・まだ書いていない）は △ で、語 の穴の数で代える（hole_form）。
-    測るだけの回は数えて記録するだけ。"""
-    nn = new_names(review_text)
-    if nn is None:
-        return [("△", "推論距離の新しい名前", f"レビューの結果に「{NEW_NAMES_HEAD}」の節が無い（前の版の作業フォルダか、推論距離の担当がまだ書いていない）。"
-                 "推論距離の担当が、枚ごとにその枚と原稿で初めて出る新しい名前（説明済みも含む）を書き出し、3つ以上の枚を直す（inference-distance.md 3節）。"
-                 "今は 語 の穴の数だけを見た")]
-    many = sorted(n for n, (ws, why) in nn.items() if len(ws) > NAMES_MAX and not why)
-    told = sorted(n for n, (ws, why) in nn.items() if len(ws) > NAMES_MAX and why)
-    say = "・".join(f"{n}枚目（{len(nn[n][0])}つ：{'・'.join(nn[n][0][:5])}{'…' if len(nn[n][0]) > 5 else ''}）" for n in many)
-    if many and measure:
-        return [("・", "推論距離の新しい名前", f"測るだけ：新しい名前が3つ以上の枚 {len(many)} 枚（{say}）を記録した。直さない")]
-    if many:
-        return [("✘", "推論距離の新しい名前", f"新しい名前が1枚に3つ以上ある枚：{say}。1枚に新しく出る名前は{NAMES_MAX}つまで（説明しても数える）："
-                 "答えに要らない細部の名前は、名前を出さずに普通の言葉で言うか外す → 要る名前は前の枚で先に出す → それでも多ければ枚を分ける"
-                 "（直したら、その行を直したあとの名前に書き直す。どうしても要るなら、その行に「理由：…」）")]
-    return [("✔", "推論距離の新しい名前", f"{len(nn)} 枚に書き出し、どの枚も{NAMES_MAX}つまで"
-             + (f"（理由つきで3つ以上：{'・'.join(f'[{n}]' for n in told)}）" if told else ""))]
 
 
 def cared(text: str):
@@ -269,8 +214,6 @@ def reasoning(outline: Path, text: str, require_review: bool = False, small: boo
     rv_text = rv.read_text(encoding="utf-8")
     hs = holes(rv_text)
     res += hole_form(rv_text)
-    from slide_profile import measure_only as _measure
-    res += new_names_check(rv_text, _measure(text))
     if not hs:
         res.append(("✘", "推論距離の手当て", f"{REVIEW} に推論距離の行が無い（穴1つを1行で、{HOLE_FORM} の形。references/inference-distance.md 4節）"))
         return res
