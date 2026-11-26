@@ -40,6 +40,19 @@ The samples were not picked for quality: we chose a topic, asked once in English
 ![Talk sample, slides 5-18](docs/en-zemi-slides-2.jpg)
 </details>
 
+## Same request, without the skill
+
+We gave the talk sample's request (same paper, same audience, 20 minutes) to an AI agent without the skill, once in English and once in Japanese. Only two lines changed: "use your own design" instead of the template, and "put a read-aloud script in the speaker notes", so that both decks come with a script. Each deck was then scored on a 100-point rubric for how easily the audience can follow: what they don't know yet, links between slides, how much is on each slide, figures and labels, and the conclusion. Two AI raters scored each deck without knowing how it was made, and the table shows their average. One run each.
+
+| | Without the skill | sensei-slides |
+|---|---|---|
+| English talk | 76 | 91 |
+| Japanese talk | 74.5 | 90 |
+
+Without the skill the slides look richer. They lost most points for putting too much on each slide, using new terms without explaining them, and moving to the next slide without saying how it follows. Three matching slides from the English decks:
+
+![Same request: three matching slides without the skill (left) and with sensei-slides (right)](docs/compare-en.jpg)
+
 ## Design principles
 
 AI-made slides often look tidy but leave gaps that only the AI can fill. The skill is built on five principles, each checked before and after the deck is built.
